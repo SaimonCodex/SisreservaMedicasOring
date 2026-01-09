@@ -22,8 +22,8 @@
 
             <!-- Desktop Menu -->
             <div class="hidden md:flex items-center gap-8">
-                <a href="{{ route('login') }}" class="font-medium text-slate-600 hover:text-medical-600 transition-colors">Iniciar Sesión</a>
-                <a href="{{ route('register') }}" class="btn bg-medical-600 text-white hover:bg-medical-700 shadow-md shadow-medical-200 rounded-lg px-6 py-2.5 font-medium transition-all hover:-translate-y-0.5">
+                <a href="{{ url('index.php/login?rol=paciente') }}" class="font-medium text-slate-600 hover:text-medical-600 transition-colors">Iniciar Sesión</a>
+                <a href="{{ url('index.php/register?rol=paciente') }}" class="btn bg-medical-600 text-white hover:bg-medical-700 shadow-md shadow-medical-200 rounded-lg px-6 py-2.5 font-medium transition-all hover:-translate-y-0.5">
                     Registrarme
                 </a>
             </div>
@@ -60,7 +60,7 @@
                     </p>
 
                     <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
-                        <a href="{{ route('register') }}" class="btn bg-slate-900 text-white hover:bg-slate-800 h-12 px-8 rounded-lg text-base shadow-xl flex items-center justify-center gap-2 transition-all hover:-translate-y-1">
+                        <a href="{{ url('index.php/register?rol=paciente') }}" class="btn bg-slate-900 text-white hover:bg-slate-800 h-12 px-8 rounded-lg text-base shadow-xl flex items-center justify-center gap-2 transition-all hover:-translate-y-1">
                             Crear Cuenta Gratis
                             <i class="bi bi-arrow-right"></i>
                         </a>

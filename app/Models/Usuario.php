@@ -30,11 +30,11 @@ class Usuario extends Authenticatable
         'remember_token',
     ];
 
-    public function setPasswordAttribute($value)
-    {
-        // MD5 aplicado dos veces como solicitaste
-        $this->attributes['password'] = md5(md5($value));
-    }
+    /* Mutador eliminado para evitar aplicar MD5 múltiple ya que el controlador lo maneja */
+    // public function setPasswordAttribute($value)
+    // {
+    //     $this->attributes['password'] = md5(md5($value));
+    // }
 
     public function rol()
     {

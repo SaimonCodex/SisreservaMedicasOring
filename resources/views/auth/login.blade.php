@@ -146,8 +146,8 @@
 
 @push('scripts')
 <script type="module">
-import { validateEmail, showFieldFeedback } from '/js/validators.js';
-import { showToast, shakeElement, toggleSubmitButton } from '/js/alerts.js';
+import { validateEmail, showFieldFeedback } from '{{ asset("js/validators.js") }}';
+import { showToast, shakeElement, toggleSubmitButton } from '{{ asset("js/alerts.js") }}';
 
 window.togglePassword = function() {
     const passwordInput = document.getElementById('password');
@@ -219,6 +219,19 @@ if(loginForm) {
         showToast('error', '{{ $error }}', 10000);
     @endforeach
     
+    if(loginForm) shakeElement(loginForm);
+@endif
+
+@if($errors->any())
+    @foreach($errors->all() as $error)
+        showToast('error', '{{ $error }}', 10000);
+    @endforeach
+    
+    if(loginForm) shakeElement(loginForm);
+@endif
+
+@if(session('error'))
+    showToast('error', '{{ session('error') }}', 10000);
     if(loginForm) shakeElement(loginForm);
 @endif
 

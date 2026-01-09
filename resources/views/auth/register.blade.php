@@ -58,13 +58,23 @@
         <input type="hidden" name="rol_id" value="3">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-                <label for="primer_nombre" class="block text-sm font-medium text-slate-700">Nombres *</label>
+                <label for="primer_nombre" class="block text-sm font-medium text-slate-700">Primer Nombre *</label>
                 <input type="text" name="primer_nombre" id="primer_nombre" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required value="{{ old('primer_nombre') }}">
             </div>
 
             <div>
-                <label for="primer_apellido" class="block text-sm font-medium text-slate-700">Apellidos *</label>
+                <label for="segundo_nombre" class="block text-sm font-medium text-slate-700">Segundo Nombre *</label>
+                <input type="text" name="segundo_nombre" id="segundo_nombre" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required value="{{ old('segundo_nombre') }}">
+            </div>
+
+            <div>
+                <label for="primer_apellido" class="block text-sm font-medium text-slate-700">Primer Apellido *</label>
                 <input type="text" name="primer_apellido" id="primer_apellido" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required value="{{ old('primer_apellido') }}">
+            </div>
+
+            <div>
+                <label for="segundo_apellido" class="block text-sm font-medium text-slate-700">Segundo Apellido *</label>
+                <input type="text" name="segundo_apellido" id="segundo_apellido" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required value="{{ old('segundo_apellido') }}">
             </div>
 
             <div>
@@ -126,13 +136,13 @@
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                     <label for="ciudad_id" class="block text-sm font-medium text-slate-700">Ciudad</label>
+                     <label for="ciudad_id" class="block text-sm font-medium text-slate-700">Ciudad*</label>
                      <select name="ciudad_id" id="ciudad_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                          <option value="">Primero selecciona estado...</option>
                      </select>
                 </div>
                  <div>
-                     <label for="municipio_id" class="block text-sm font-medium text-slate-700">Municipio</label>
+                     <label for="municipio_id" class="block text-sm font-medium text-slate-700">Municipio*</label>
                      <select name="municipio_id" id="municipio_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                          <option value="">Primero selecciona estado...</option>
                      </select>
@@ -141,13 +151,13 @@
 
              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                  <div>
-                     <label for="parroquia_id" class="block text-sm font-medium text-slate-700">Parroquia</label>
+                     <label for="parroquia_id" class="block text-sm font-medium text-slate-700">Parroquia*</label>
                      <select name="parroquia_id" id="parroquia_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                          <option value="">Primero selecciona municipio...</option>
                      </select>
                 </div>
                  <div>
-                     <label for="direccion" class="block text-sm font-medium text-slate-700">Dirección Exacta</label>
+                     <label for="direccion" class="block text-sm font-medium text-slate-700">Dirección Exacta*</label>
                      <input type="text" name="direccion" id="direccion" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Av. Ppal, Edif. A, Apto 1" value="{{ old('direccion') }}">
                 </div>
             </div>
@@ -213,20 +223,71 @@
     </div>
 
     <!-- Navigation Buttons -->
-    <div class="flex justify-between pt-6 border-t border-gray-100">
-        <button type="button" id="prevBtn" class="hidden px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" onclick="window.changeStep(-1)">
-            <i class="bi bi-arrow-left mr-2"></i> Anterior
-        </button>
+    <div class="flex justify-between pt-6 border-t border-gray-100 items-center">
+        <a href="{{ route('login') }}" class="text-sm text-slate-500 hover:text-medical-600 font-medium transition-colors">
+            <i class="bi bi-arrow-left"></i> Volver al Login
+        </a>
         
-        <button type="button" id="nextBtn" class="ml-auto px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" onclick="window.changeStep(1)">
-            Siguiente <i class="bi bi-arrow-right ml-2"></i>
-        </button>
-        
-        <button type="submit" id="submitBtn" class="hidden ml-auto px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-            Crear Cuenta <i class="bi bi-check-lg ml-2"></i>
-        </button>
+        <div class="flex gap-3">
+            <button type="button" id="prevBtn" class="hidden px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" onclick="window.changeStep(-1)">
+                Anterior
+            </button>
+            
+            <button type="button" id="nextBtn" class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" onclick="window.changeStep(1)">
+                Siguiente <i class="bi bi-arrow-right ml-2"></i>
+            </button>
+            
+            <button type="submit" id="submitBtn" class="hidden px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                Crear Cuenta <i class="bi bi-check-lg ml-2"></i>
+            </button>
+        </div>
     </div>
 </form>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Validación de preguntas de seguridad para evitar duplicados
+        const selects = [
+            document.getElementById('pregunta_seguridad_1'),
+            document.getElementById('pregunta_seguridad_2'),
+            document.getElementById('pregunta_seguridad_3')
+        ];
+
+        function updateSelects() {
+            const selectedValues = selects.map(s => s.value).filter(v => v);
+            
+            selects.forEach(select => {
+                Array.from(select.options).forEach(option => {
+                    if (selectedValues.includes(option.value) && select.value !== option.value) {
+                        option.disabled = true;
+                    } else {
+                        option.disabled = false;
+                    }
+                });
+            });
+        }
+
+        selects.forEach(select => {
+            if(select) select.addEventListener('change', updateSelects);
+        });
+
+        // Debug logging
+        const form = document.getElementById('registerForm');
+        form.addEventListener('submit', (e) => {
+             console.log('Enviando formulario de registro...');
+             const questions = selects.map(s => s.value);
+             const uniqueQuestions = new Set(questions.filter(v=>v));
+             
+             if(uniqueQuestions.size < 3) {
+                 e.preventDefault();
+                 alert('Por favor selecciona 3 preguntas de seguridad diferentes.');
+                 return;
+             }
+        });
+    });
+</script>
+@endpush
 
 @push('scripts')
 <script>
@@ -270,18 +331,54 @@
         window.currentStep = step;
     };
 
+    window.checkPasswordStrength = function(password) {
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        const hasSymbol = /[@$!%*#?&.]/.test(password);
+        const minLength = password.length >= 8;
+
+        return {
+            valid: hasUpperCase && hasNumber && hasSymbol && minLength,
+            errors: {
+                upper: !hasUpperCase,
+                number: !hasNumber,
+                symbol: !hasSymbol,
+                length: !minLength
+            }
+        };
+    };
+
     window.validateStep = function(step) {
         if (step === 1) {
-            const required = ['primer_nombre', 'primer_apellido', 'numero_documento', 'fecha_nac', 'genero', 'numero_tlf'];
+            const required = ['primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'numero_documento', 'fecha_nac', 'genero', 'numero_tlf'];
             let missing = [];
             
             required.forEach(id => {
                 const el = document.getElementById(id);
                 if (!el || !el.value.trim()) {
-                    missing.push(id.replace('_', ' '));
+                    missing.push(id.replace(/_/g, ' '));
                     if(el) el.style.borderColor = 'red';
                 } else {
-                    if(el) el.style.borderColor = ''; // reset
+                    // Validaciones específicas
+                    let isValid = true;
+                    if (['primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido'].includes(id)) {
+                        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(el.value)) {
+                            isValid = false;
+                            alert('El campo ' + id.replace(/_/g, ' ') + ' solo debe contener letras.');
+                        }
+                    } else if (id === 'numero_documento') {
+                        if (el.value.length < 10) {
+                            isValid = false;
+                            alert('La Cédula debe tener al menos 10 dígitos.');
+                        }
+                    }
+
+                    if (!isValid) {
+                        el.style.borderColor = 'red';
+                        missing.push(id.replace(/_/g, ' ') + ' (inválido)');
+                    } else {
+                        if(el) el.style.borderColor = ''; // reset
+                    }
                 }
             });
 
@@ -301,6 +398,29 @@
 
         return true;
     };
+    
+    // Intercept submit for final validation
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        const p1 = document.getElementById('password').value;
+        const p2 = document.getElementById('password_confirmation').value;
+        
+        if (p1 !== p2) {
+             e.preventDefault();
+             alert('Las contraseñas no coinciden');
+             return;
+        }
+
+        const strength = window.checkPasswordStrength(p1);
+        if (!strength.valid) {
+             e.preventDefault();
+             let msg = 'La contraseña debe tener:\n';
+             if(strength.errors.length) msg += '- Al menos 8 caracteres\n';
+             if(strength.errors.upper) msg += '- Al menos una mayúscula\n';
+             if(strength.errors.number) msg += '- Al menos un número\n';
+             if(strength.errors.symbol) msg += '- Al menos un símbolo (@$!%*#?&.)';
+             alert(msg);
+        }
+    });
 
     function updateIndicators(step) {
         for(let i=1; i<=3; i++) {

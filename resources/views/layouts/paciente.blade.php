@@ -51,7 +51,9 @@
                             <p class="text-sm font-semibold text-smoke-700">{{ auth()->user()->correo }}</p>
                             <p class="text-xs text-smoke-400">Paciente</p>
                         </div>
-                        <form method="POST" action="{{ url('index.php/logout') }}" class="inline">@csrf
+                            <p class="text-xs text-smoke-400">Paciente</p>
+                        </div>
+                        <form method="POST" action="{{ route('logout') }}" class="inline">@csrf
                             <button type="submit" class="text-xs font-semibold uppercase tracking-wide text-rose-500 transition-colors hover:text-rose-600">Salir</button>
                         </form>
                     </div>
@@ -80,7 +82,7 @@
                             <i class="bi bi-credit-card text-lg"></i>
                             <span>Pagos</span>
                         </a>
-                        <form method="POST" action="{{ url('index.php/logout') }}" class="mt-3">@csrf
+                        <form method="POST" action="{{ route('logout') }}" class="mt-3">@csrf
                             <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-500/10 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-500/20">
                                 <i class="bi bi-box-arrow-right"></i>
                                 Cerrar Sesión
@@ -126,6 +128,29 @@
                     menu.classList.toggle('hidden');
                 });
             }
+
+            // Auto-hide alerts
+            const alerts = document.querySelectorAll('#alert-success, #alert-error');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.transition = 'opacity 0.5s ease-out';
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }, 5000);
+            });
+
+            // Dismiss buttons
+            document.querySelectorAll('[data-dismiss]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-dismiss');
+                    const target = document.getElementById(targetId);
+                    if(target) {
+                        target.style.transition = 'opacity 0.3s';
+                        target.style.opacity = '0';
+                        setTimeout(() => target.remove(), 300);
+                    }
+                });
+            });
         });
     </script>
     @endpush

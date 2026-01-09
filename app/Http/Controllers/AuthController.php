@@ -80,7 +80,14 @@ class AuthController extends Controller
             'primer_nombre' => 'required|max:100',
             'primer_apellido' => 'required|max:100',
             'correo' => 'required|email|unique:usuarios,correo|max:150',
-            'password' => 'required|min:8|confirmed',
+            'password' => [
+                'required',
+                'min:8',
+                'confirmed',
+                'regex:/[A-Z]/',      // Al menos una mayúscula
+                'regex:/[0-9]/',      // Al menos un número
+                'regex:/[@$!%*#?&.]/' // Al menos un símbolo
+            ],
             'pregunta_seguridad' => 'required|exists:preguntas_catalogo,id',
             'respuesta_seguridad' => 'required|min:2',
             'tipo_documento' => 'required|in:V,E,P,J',
@@ -91,7 +98,9 @@ class AuthController extends Controller
             'genero' => 'required|in:Masculino,Femenino,Otro'
         ], [
             'fecha_nac.before' => 'Debe ser mayor de 18 años',
-            'password.confirmed' => 'Las contraseñas no coinciden'
+            'password.confirmed' => 'Las contraseñas no coinciden',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres',
+            'password.regex' => 'La contraseña debe tener al menos una mayúscula, un número y un símbolo (@$!%*#?&.)'
         ]);
 
         if ($validator->fails()) {
@@ -322,14 +331,17 @@ class AuthController extends Controller
         Paciente::create([
             'user_id' => $userId,
             'primer_nombre' => $request->primer_nombre,
-            'segundo_nombre' => $request->segundo_nombre ?? null,
+            'segundo_nombre' => $request->segundo_nombre,
             'primer_apellido' => $request->primer_apellido,
-            'segundo_apellido' => $request->segundo_apellido ?? null,
+            'segundo_apellido' => $request->segundo_apellido,
             'tipo_documento' => $request->tipo_documento,
             'numero_documento' => $request->numero_documento,
             'fecha_nac' => $request->fecha_nac,
             'estado_id' => $request->estado_id ?? null,
             'ciudad_id' => $request->ciudad_id ?? null,
+            'municipio_id' => $request->municipio_id ?? null,
+            'parroquia_id' => $request->parroquia_id ?? null,
+            'direccion_detallada' => $request->direccion,
             'prefijo_tlf' => $request->prefijo_tlf,
             'numero_tlf' => $request->numero_tlf,
             'genero' => $request->genero,

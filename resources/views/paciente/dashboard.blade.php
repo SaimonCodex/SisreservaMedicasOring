@@ -15,7 +15,7 @@
                 </h2>
                 <p class="text-white/90 text-lg">¿Cómo te sientes hoy? Estamos aquí para cuidar de ti.</p>
             </div>
-            <a href="{{ route('citas.create') }}" class="btn bg-white text-emerald-600 hover:bg-gray-50 border-none shadow-md">
+            <a href="{{ route('paciente.citas.create') }}" class="btn bg-white text-emerald-600 hover:bg-gray-50 border-none shadow-md">
                 <i class="bi bi-plus-lg"></i> Solicitar Cita
             </a>
         </div>
@@ -60,7 +60,7 @@
                     </h3>
                     <p class="text-sm text-gray-600 mt-1">Tus consultas programadas</p>
                 </div>
-                <a href="{{ route('citas.index') }}" class="btn btn-sm btn-outline">Ver todas</a>
+                <a href="{{ route('paciente.citas.index') }}" class="btn btn-sm btn-outline">Ver todas</a>
             </div>
             
             <div class="divide-y divide-gray-100">
@@ -152,7 +152,7 @@
                         </h3>
                         <p class="text-sm text-gray-600 mt-1">Tus últimas consultas y procedimientos</p>
                     </div>
-                    <a href="{{ url('index.php/paciente/historial') }}" class="btn btn-sm btn-outline">Ver historial completo</a>
+                    <a href="{{ route('paciente.historial') }}" class="btn btn-sm btn-outline">Ver historial completo</a>
                 </div>
             </div>
             <div class="p-6">
@@ -172,7 +172,7 @@
                                 {{ \Carbon\Carbon::parse($registro->created_at)->format('d/m/Y') }}
                             </p>
                         </div>
-                        <a href="{{ url('index.php/paciente/historial/' . $registro->id) }}" class="btn btn-sm btn-outline opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a href="{{ url('paciente/historial/' . $registro->id) }}" class="btn btn-sm btn-outline opacity-0 group-hover:opacity-100 transition-opacity">
                             <i class="bi bi-eye"></i>
                         </a>
                     </div>
@@ -287,21 +287,21 @@
                 Menú Rápido
             </h4>
             <div class="space-y-2">
-                <a href="{{ url('index.php/paciente/citas/create') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 transition-all group">
+                <a href="{{ route('paciente.citas.create') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 transition-all group">
                     <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors">
                         <i class="bi bi-calendar-plus"></i>
                     </div>
                     <span class="font-medium flex-1">Agendar Cita</span>
                     <i class="bi bi-chevron-right text-gray-400 group-hover:translate-x-1 transition-transform"></i>
                 </a>
-                <a href="{{ url('index.php/paciente/historial') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 text-gray-600 hover:text-blue-700 transition-all group">
+                <a href="{{ route('paciente.historial') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 text-gray-600 hover:text-blue-700 transition-all group">
                     <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors">
                         <i class="bi bi-folder2-open"></i>
                     </div>
                     <span class="font-medium flex-1">Mi Historial</span>
                     <i class="bi bi-chevron-right text-gray-400 group-hover:translate-x-1 transition-transform"></i>
                 </a>
-                <a href="{{ url('index.php/paciente/pagos') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-purple-50 text-gray-600 hover:text-purple-700 transition-all group">
+                <a href="{{ route('paciente.pagos') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-purple-50 text-gray-600 hover:text-purple-700 transition-all group">
                     <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-100 transition-colors">
                         <i class="bi bi-wallet2"></i>
                     </div>
