@@ -13,7 +13,7 @@
         document.documentElement.classList.remove('no-js');
         document.documentElement.classList.add('js');
     </script>
-
+    
     @stack('styles')
 </head>
 <body class="min-h-screen bg-smoke-50 font-sans antialiased">
