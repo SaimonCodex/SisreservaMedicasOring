@@ -145,24 +145,27 @@
 </form>
 
 @push('scripts')
-<script type="module">
-import { validateEmail, showFieldFeedback } from '{{ asset("js/validators.js") }}';
-import { showToast, shakeElement, toggleSubmitButton } from '{{ asset("js/alerts.js") }}';
-
-window.togglePassword = function() {
-    const passwordInput = document.getElementById('password');
-    const toggleIcon = document.getElementById('toggleIcon');
-    
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        toggleIcon.classList.remove('bi-eye');
-        toggleIcon.classList.add('bi-eye-slash');
-    } else {
-        passwordInput.type = 'password';
-        toggleIcon.classList.remove('bi-eye-slash');
-        toggleIcon.classList.add('bi-eye');
+<script>
+    // Global scope for onclick handlers
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        }
     }
-};
+</script>
+
+<script type="module">
+import { validateEmail } from '{{ asset("js/validators.js") }}';
+import { showToast, shakeElement, toggleSubmitButton } from '{{ asset("js/alerts.js") }}';
 
 const emailInput = document.getElementById('correo');
 if(emailInput) {
@@ -170,7 +173,6 @@ if(emailInput) {
         const email = emailInput.value;
         if (email.length > 0) {
             const result = validateEmail(email);
-            // Custom styling logic if needed, or stick to default Tailwind classes
             if(!result.valid) {
                 emailInput.classList.add('border-red-300', 'text-red-900', 'focus:ring-red-500', 'focus:border-red-500');
             } else {
@@ -189,52 +191,23 @@ const submitBtn = document.getElementById('submitBtn');
 
 if(loginForm) {
     loginForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
+        // Allow form submission to proceed so server can validate and return specific errors
+        // We only block if fields are empty
         const email = emailInput.value;
         const password = document.getElementById('password').value;
         
-        const emailResult = validateEmail(email);
-        
-        if (!emailResult.valid) {
-            shakeElement(emailInput);
-            showToast('error', 'Por favor ingresa un correo válido');
+        if (!email || !password) {
+            e.preventDefault();
+            if(!email) shakeElement(emailInput);
+            if(!password) shakeElement(document.getElementById('password'));
             return;
         }
-        
-        if (password.length === 0) {
-            shakeElement(document.getElementById('password'));
-            showToast('error', 'Por favor ingresa tu contraseña');
-            return;
-        }
-        
+
         toggleSubmitButton(submitBtn, true, 'Iniciando sesión...');
-        this.submit();
     });
 }
 
-// Show Laravel validation errors
-@if($errors->any())
-    @foreach($errors->all() as $error)
-        showToast('error', '{{ $error }}', 10000);
-    @endforeach
-    
-    if(loginForm) shakeElement(loginForm);
-@endif
-
-@if($errors->any())
-    @foreach($errors->all() as $error)
-        showToast('error', '{{ $error }}', 10000);
-    @endforeach
-    
-    if(loginForm) shakeElement(loginForm);
-@endif
-
-@if(session('error'))
-    showToast('error', '{{ session('error') }}', 10000);
-    if(loginForm) shakeElement(loginForm);
-@endif
-
+// Success message implies welcome
 @if(session('success'))
     showToast('success', '{{ session('success') }}', 5000);
 @endif

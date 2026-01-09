@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -39,16 +41,30 @@ class AuthController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        // Aplicar MD5 dos veces a la contraseña
-        $passwordHash = md5(md5($request->password));
-
-        $usuario = Usuario::where('correo', $request->correo)
-                         ->where('password', $passwordHash)
-                         ->where('status', true)
-                         ->first();
+        // Buscar usuario por correo primero
+        $usuario = Usuario::where('correo', $request->correo)->first();
 
         if (!$usuario) {
-            return redirect()->back()->with('error', 'Credenciales inválidas o cuenta inactiva')->withInput();
+            return redirect()->back()
+                ->withErrors(['correo' => 'El correo electrónico no coincide con nuestros registros.'])
+                ->withInput();
+        }
+
+        // Verificar status
+         if (!$usuario->status) {
+            return redirect()->back()
+                ->withErrors(['correo' => 'Esta cuenta está inactiva.'])
+                ->withInput();
+        }
+
+        // Aplicar MD5 dos veces a la contraseña provista
+        $passwordHash = md5(md5($request->password));
+
+        // Verificar contraseña
+        if ($usuario->password !== $passwordHash) {
+             return redirect()->back()
+                ->withErrors(['password' => 'La contraseña es inválida.'])
+                ->withInput();
         }
 
         // Iniciar sesión usando el guard web explícitamente
@@ -68,75 +84,113 @@ class AuthController extends Controller
     public function showRegister()
     {
         $preguntas = PreguntaCatalogo::where('status', true)->get();
-        $roles = Role::whereIn('id', [2, 3])->where('status', true)->get(); // Solo Médico y Paciente
+        $roles = Role::whereIn('id', [2, 3])->where('status', true)->get();
         $estados = \App\Models\Estado::where('status', true)->get();
         return view('auth.register', compact('preguntas', 'roles', 'estados'));
     }
 
     public function register(Request $request)
     {
+        Log::info('Iniciando registro de paciente', ['correo' => $request->correo]);
+
         $validator = Validator::make($request->all(), [
-            'rol_id' => 'required|in:2,3', // 2=Médico, 3=Paciente
-            'primer_nombre' => 'required|max:100',
-            'primer_apellido' => 'required|max:100',
+            'rol_id' => 'required|in:2,3',
+            'primer_nombre' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
+            'segundo_nombre' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
+            'primer_apellido' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
+            'segundo_apellido' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
             'correo' => 'required|email|unique:usuarios,correo|max:150',
             'password' => [
                 'required',
                 'min:8',
                 'confirmed',
-                'regex:/[A-Z]/',      // Al menos una mayúscula
-                'regex:/[0-9]/',      // Al menos un número
-                'regex:/[@$!%*#?&.]/' // Al menos un símbolo
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[@$!%*#?&.]/'
             ],
-            'pregunta_seguridad' => 'required|exists:preguntas_catalogo,id',
-            'respuesta_seguridad' => 'required|min:2',
+            'pregunta_seguridad_1' => 'required|exists:preguntas_catalogo,id',
+            'pregunta_seguridad_2' => 'required|exists:preguntas_catalogo,id|different:pregunta_seguridad_1',
+            'pregunta_seguridad_3' => 'required|exists:preguntas_catalogo,id|different:pregunta_seguridad_1|different:pregunta_seguridad_2',
+            'respuesta_seguridad_1' => 'required|min:2',
+            'respuesta_seguridad_2' => 'required|min:2',
+            'respuesta_seguridad_3' => 'required|min:2',
             'tipo_documento' => 'required|in:V,E,P,J',
-            'numero_documento' => 'required|max:20',
+            'numero_documento' => 'required|min:6|max:12|regex:/^\d+$/',
             'fecha_nac' => 'required|date|before:-18 years',
             'prefijo_tlf' => 'required|in:+58,+57,+1,+34',
-            'numero_tlf' => 'required|max:15',
+            'numero_tlf' => 'required|max:15|regex:/^\d+$/',
             'genero' => 'required|in:Masculino,Femenino,Otro'
         ], [
+            'primer_nombre.regex' => 'El primer nombre solo debe contener letras',
+            'segundo_nombre.regex' => 'El segundo nombre solo debe contener letras',
+            'primer_apellido.regex' => 'El primer apellido solo debe contener letras',
+            'segundo_apellido.regex' => 'El segundo apellido solo debe contener letras',
             'fecha_nac.before' => 'Debe ser mayor de 18 años',
             'password.confirmed' => 'Las contraseñas no coinciden',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres',
-            'password.regex' => 'La contraseña debe tener al menos una mayúscula, un número y un símbolo (@$!%*#?&.)'
+            'password.regex' => 'La contraseña debe tener al menos una mayúscula, un número y un símbolo (@$!%*#?&.)',
+            'pregunta_seguridad_2.different' => 'Las preguntas de seguridad no pueden repetirse',
+            'pregunta_seguridad_3.different' => 'Las preguntas de seguridad no pueden repetirse',
+            'numero_documento.regex' => 'La cédula solo debe contener números',
+            'numero_documento.min' => 'La cédula debe tener entre 6 y 12 dígitos',
+            'numero_documento.max' => 'La cédula debe tener entre 6 y 12 dígitos',
+            'numero_tlf.regex' => 'El teléfono solo debe contener números'
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Validación fallida en registro', $validator->errors()->toArray());
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        // Crear usuario con MD5 dos veces
-        $usuario = Usuario::create([
-            'rol_id' => $request->rol_id,
-            'correo' => $request->correo,
-            'password' => md5(md5($request->password)),
-            'status' => true
-        ]);
+        try {
+            DB::beginTransaction();
 
-        // Crear respuesta de seguridad con MD5 dos veces
-        RespuestaSeguridad::create([
-            'user_id' => $usuario->id,
-            'pregunta_id' => $request->pregunta_seguridad,
-            'respuesta_hash' => md5(md5($request->respuesta_seguridad)),
-            'status' => true
-        ]);
+            // Crear usuario con MD5 dos veces
+            $usuario = Usuario::create([
+                'rol_id' => $request->rol_id,
+                'correo' => $request->correo,
+                'password' => md5(md5($request->password)),
+                'status' => true
+            ]);
 
-        // Crear perfil según el rol
-        if ($request->rol_id == 2) { // Médico
-            $this->crearPerfilMedico($usuario->id, $request);
-        } else { // Paciente
-            $this->crearPerfilPaciente($usuario->id, $request);
+            Log::info('Usuario creado', ['id' => $usuario->id]);
+
+            // Crear 3 respuestas de seguridad
+            for ($i = 1; $i <= 3; $i++) {
+                RespuestaSeguridad::create([
+                    'user_id' => $usuario->id,
+                    'pregunta_id' => $request->input("pregunta_seguridad_$i"),
+                    'respuesta_hash' => md5(md5($request->input("respuesta_seguridad_$i"))),
+                    'status' => true
+                ]);
+            }
+
+            Log::info('Respuestas de seguridad creadas');
+
+            // Crear perfil según el rol
+            if ($request->rol_id == 2) {
+                $this->crearPerfilMedico($usuario->id, $request);
+            } else {
+                $this->crearPerfilPaciente($usuario->id, $request);
+            }
+
+            Log::info('Perfil creado');
+
+            DB::commit();
+
+            // Enviar email de confirmación
+            $this->enviarEmailConfirmacion($usuario);
+
+            // Autenticar automáticamente
+            Auth::login($usuario);
+
+            return $this->redirectByRole($usuario);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error en registro: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return redirect()->back()->with('error', 'Error al registrar: ' . $e->getMessage())->withInput();
         }
-
-        // Enviar email de confirmación
-        $this->enviarEmailConfirmacion($usuario);
-
-        // Autenticar automáticamente
-        Auth::login($usuario);
-
-        return $this->redirectByRole($usuario);
     }
 
     public function logout()
@@ -161,12 +215,6 @@ class AuthController extends Controller
         if (!$usuario) {
             return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
         }
-
-        // Obtener preguntas del usuario
-        // Asumiendo que hay una relación o tabla pivote. 
-        // Si usamos el modelo actual de RespuestaSeguridad que parece tener solo una pregunta_id
-        // Necesitamos adaptar esto si cambiamos a 3 preguntas.
-        // Por ahora, buscaré las respuestas de seguridad del usuario.
         
         $respuestas = RespuestaSeguridad::where('user_id', $usuario->id)
                                         ->with('pregunta')
@@ -198,20 +246,15 @@ class AuthController extends Controller
         if (!$usuario) {
             return response()->json(['success' => false, 'message' => 'Usuario no válido'], 404);
         }
-
-        // Verificar cada respuesta
-        // El request trae answer_1, answer_2, answer_3 y sus correspondientes IDs en question_X_id
         
         $allCorrect = true;
         
-        // Iterar sobre las respuestas esperadas
-        // Esto asume que el frontend envía los índices 1, 2, 3
         for ($i = 1; $i <= 3; $i++) {
             $questionId = $request->input("question_{$i}_id");
             $userAnswer = $request->input("answer_{$i}");
             
             if (!$questionId || !$userAnswer) {
-                continue; // O manejar error
+                continue;
             }
             
             $respuestaAlmacenada = RespuestaSeguridad::where('user_id', $usuario->id)
@@ -223,7 +266,6 @@ class AuthController extends Controller
                 break;
             }
             
-            // Verificar hash (MD5 doble según lo visto en el código existente)
             if ($respuestaAlmacenada->respuesta_hash !== md5(md5($userAnswer))) {
                 $allCorrect = false;
                 break;
@@ -231,9 +273,8 @@ class AuthController extends Controller
         }
         
         if ($allCorrect) {
-            // Generar token para reset password
             $token = Str::random(64);
-            \DB::table('password_resets')->updateOrInsert(
+            DB::table('password_resets')->updateOrInsert(
                 ['email' => $usuario->correo],
                 ['token' => $token, 'created_at' => now()]
             );
@@ -246,12 +287,11 @@ class AuthController extends Controller
         } else {
             return response()->json(['success' => false, 'message' => 'Respuestas incorrectas'], 400);
         }
-
     }
 
     public function showResetPassword($token)
     {
-        $reset = \DB::table('password_resets')->where('token', $token)->first();
+        $reset = DB::table('password_resets')->where('token', $token)->first();
         
         if (!$reset) {
             return redirect()->route('login')->with('error', 'Token inválido o expirado');
@@ -272,7 +312,7 @@ class AuthController extends Controller
             return redirect()->back()->withErrors($validator);
         }
 
-        $reset = \DB::table('password_resets')
+        $reset = DB::table('password_resets')
                     ->where('email', $request->email)
                     ->where('token', $request->token)
                     ->first();
@@ -287,20 +327,16 @@ class AuthController extends Controller
             return redirect()->back()->with('error', 'Usuario no encontrado');
         }
 
-        // Actualizar contraseña con MD5 dos veces
         $usuario->update(['password' => md5(md5($request->password))]);
 
-        // Guardar en historial
         HistorialPassword::create([
             'user_id' => $usuario->id,
             'password_hash' => md5(md5($request->password)),
             'status' => true
         ]);
 
-        // Eliminar token
-        \DB::table('password_resets')->where('email', $request->email)->delete();
+        DB::table('password_resets')->where('email', $request->email)->delete();
 
-        // Enviar notificación
         $this->enviarEmailConfirmacionCambio($usuario);
 
         return redirect()->route('login')->with('success', 'Contraseña restablecida exitosamente');
@@ -341,7 +377,7 @@ class AuthController extends Controller
             'ciudad_id' => $request->ciudad_id ?? null,
             'municipio_id' => $request->municipio_id ?? null,
             'parroquia_id' => $request->parroquia_id ?? null,
-            'direccion_detallada' => $request->direccion,
+            'direccion_detallada' => $request->direccion ?? null,
             'prefijo_tlf' => $request->prefijo_tlf,
             'numero_tlf' => $request->numero_tlf,
             'genero' => $request->genero,
@@ -354,11 +390,11 @@ class AuthController extends Controller
     private function redirectByRole($usuario)
     {
         switch ($usuario->rol_id) {
-            case 1: // Admin
+            case 1:
                 return redirect()->route('admin.dashboard')->with('success', 'Bienvenido Administrador');
-            case 2: // Médico
+            case 2:
                 return redirect()->route('medico.dashboard')->with('success', 'Bienvenido Doctor');
-            case 3: // Paciente
+            case 3:
                 return redirect()->route('paciente.dashboard')->with('success', 'Bienvenido Paciente');
             default:
                 return redirect()->route('home');
@@ -373,7 +409,7 @@ class AuthController extends Controller
                         ->subject('Confirmación de Registro - Sistema Médico');
             });
         } catch (\Exception $e) {
-            \Log::error('Error enviando email de confirmación: ' . $e->getMessage());
+            Log::error('Error enviando email de confirmación: ' . $e->getMessage());
         }
     }
 
@@ -390,7 +426,7 @@ class AuthController extends Controller
                         ->subject('Recuperación de Contraseña - Sistema Médico');
             });
         } catch (\Exception $e) {
-            \Log::error('Error enviando email de recuperación: ' . $e->getMessage());
+            Log::error('Error enviando email de recuperación: ' . $e->getMessage());
         }
     }
 
@@ -402,7 +438,7 @@ class AuthController extends Controller
                         ->subject('Contraseña Cambiada - Sistema Médico');
             });
         } catch (\Exception $e) {
-            \Log::error('Error enviando email de confirmación de cambio: ' . $e->getMessage());
+            Log::error('Error enviando email de confirmación de cambio: ' . $e->getMessage());
         }
     }
 }

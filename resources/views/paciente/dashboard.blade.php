@@ -132,7 +132,7 @@
                     </div>
                     <p class="text-gray-500 mb-2 font-medium text-lg">No tienes citas próximas agendadas</p>
                     <p class="text-gray-400 text-sm mb-4">Solicita tu primera cita médica ahora</p>
-                    <a href="{{ route('citas.create') }}" class="btn btn-primary inline-flex items-center">
+                    <a href="{{ route('paciente.citas.create') }}" class="btn btn-primary inline-flex items-center">
                         <i class="bi bi-calendar-plus"></i>
                         Agendar mi primera cita
                     </a>

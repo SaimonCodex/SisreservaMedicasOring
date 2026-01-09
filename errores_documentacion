@@ -1,18 +1,18 @@
-1) botones iniciar sesion, crear cuenta gratis y registrarme no redirigen deben redirigir al inicio sesion del paciente y al registro del paciente
+solucionado 1) botones iniciar sesion, crear cuenta gratis y registrarme no redirigen deben redirigir al inicio sesion del paciente y al registro del paciente
 archivo: resources\views\welcome.blade.php
 
 parte paciente:
 
 registro:
-1)el registro debe tener campos para los dos nombres y apellidos por separado, Primer Nombre, Segundo Nombre igual para apellidos.
-2)Validar todos los campos con validacion real para cada campo. dejando las actuales funcionales
-3) cambiar la logica para las preguntas de seguridad, que no se repitan las preguntas y que no se pueda seleccionar la misma pregunta dos veces.
-4) solucionar el problema que no se guardan los datos en la base de datos una vez que se envia el formulario de registro. se debe guardar la informacion en la tabla usuarios y en la tabla pacientes los datos personales correspodientes a cada tabla y las preguntas de seguridad en la tabla respuestas_seguridad con doble md5 que es el requerido para este proyecto las constraseñas tambien en md5 doble.
+solucionado 1)el registro debe tener campos para los dos nombres y apellidos por separado, Primer Nombre, Segundo Nombre igual para apellidos.
+solucionado 2)Validar todos los campos con validacion real para cada campo. dejando las actuales funcionales
+solucionado 3) cambiar la logica para las preguntas de seguridad, que no se repitan las preguntas y que no se pueda seleccionar la misma pregunta dos veces.
+solucionado4) solucionar el problema que no se guardan los datos en la base de datos una vez que se envia el formulario de registro. se debe guardar la informacion en la tabla usuarios y en la tabla pacientes los datos personales correspodientes a cada tabla y las preguntas de seguridad en la tabla respuestas_seguridad con doble md5 que es el requerido para este proyecto las constraseñas tambien en md5 doble.
 en el modelo de usuario.php ya esta implementado el doble md5 para las contraseñas. revisar el modelo de las respuestasSeguridad.php para que se guarde la informacion en la tabla respuestas_seguridad con doble md5. igual que el modelo usuario.php para las contraseñas.
-5)implementar mensajes por consola para que se vean los errores cuando no se registra el usuario.
-geminis me encargo 6) implementar un boton para volver al inicio sesion del paciente.
-geminis me encargo 7) validar los campos las contraseñas deben tener al menos una mayuscula, un numero y un simbolo.
-8)cuando se registran el usuario se debe colocar el rol paciente 
+solucionado5)implementar mensajes por consola para que se vean los errores cuando no se registra el usuario.
+solucionado geminis me encargo 6) implementar un boton para volver al inicio sesion del paciente.
+solucionadogeminis me encargo 7) validar los campos las contraseñas deben tener al menos una mayuscula, un numero y un simbolo.
+solucionado8)cuando se registran el usuario se debe colocar el rol paciente 
 archivo: resources\views\auth\register.blade.php
 app/models/usuario.php
 app/models/respuestasSeguridad.php
@@ -20,25 +20,25 @@ app/Http/Controllers/AuthController.php
 app/Http/Controllers/usuarioController.php
 
 Login:
-geminis me encargo 1) Cuando el correo o contraseña sean incorrectos debe mostrar un mensaje de error.
-geminis me encargo 2)cuando se presiona para ver la contraseña se debe mostrar la contraseña.
+solucionado geminis me encargo 1) Cuando el correo o contraseña sean incorrectos debe mostrar un mensaje de error.
+solucionadogeminis me encargo 2)cuando se presiona para ver la contraseña se debe mostrar la contraseña.
 archivo: resources\views\auth\login.blade.php
 app/Http/Controllers/AuthController.php
 
 Dashboard:
-1) boton de salir da error: The POST method is not supported for route index.php/logout. Supported methods: GET, HEAD.  C:\laragon\www\SisreservaMedicasOring\public\index
+solucionado 1) boton de salir da error: The POST method is not supported for route index.php/logout. Supported methods: GET, HEAD.  C:\laragon\www\SisreservaMedicasOring\public\index
 .php
  
 : 51
 [top]. solucionar
-geminis me encargo 2) cuando se inicia sesion se manda un mensaje bienvenido paciente. no desaparece quiero que se desaparezca despues de 5 segundos.
-3)  botones: de <!-- Health Stats Mini --> linea 23 hasta </div>linea 45
+solucionado geminis me encargo 2) cuando se inicia sesion se manda un mensaje bienvenido paciente. no desaparece quiero que se desaparezca despues de 5 segundos.
+solucionado3)  botones: de <!-- Health Stats Mini --> linea 23 hasta </div>linea 45
     al preionar el boton dashboard se debe redirigir al dashboard del paciente.
     al preionar el boton solicitar cita se debe redirigir a la pagina de solicitar cita del paciente.
     al preionar el boton mi historial se debe redirigir a la pagina de historial del paciente.
     al preionar el boton pagos se debe redirigir a la pagina de pagos del paciente.
-4) lo mismo para los botones de la seccion de menu rapido. <!-- Accesos Directos --> desde la linea 283 hasta </div> linea 319
-5) boton de la seccion historial medico recientes el boton ver historial completo debe redirigir a la pagina de historial del paciente.  <!-- Historial Reciente --> desde la linea 144 hasta </div> linea 187
+solucionado 4) lo mismo para los botones de la seccion de menu rapido. <!-- Accesos Directos --> desde la linea 283 hasta </div> linea 319
+solucionado 5) boton de la seccion historial medico recientes el boton ver historial completo debe redirigir a la pagina de historial del paciente.  <!-- Historial Reciente --> desde la linea 144 hasta </div> linea 187
 6) problema principal: cuando se presiona lso botones +solicitar cita y el boton de la seccion mis proximas citas estos redirige al usuario con rol paciente al dashboard del administrador. cosas que no puede pasar. porque cada rol tiene sus vistas y los procesos y tareas que pueden realizar.
     
 archivo: resources\views\dashboard.blade.php
