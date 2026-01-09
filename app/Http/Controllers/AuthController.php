@@ -50,8 +50,8 @@ class AuthController extends Controller
                 ->withInput();
         }
 
-        // Verificar status
-         if (!$usuario->status) {
+        // Verificar status del usuario
+        if (!$usuario->status) {
             return redirect()->back()
                 ->withErrors(['correo' => 'Esta cuenta está inactiva.'])
                 ->withInput();
@@ -62,9 +62,34 @@ class AuthController extends Controller
 
         // Verificar contraseña
         if ($usuario->password !== $passwordHash) {
-             return redirect()->back()
+            return redirect()->back()
                 ->withErrors(['password' => 'La contraseña es inválida.'])
                 ->withInput();
+        }
+
+        // Verificar estado del perfil específico
+        $perfilInactivo = false;
+        
+        switch ($usuario->rol_id) {
+            case 1: // Administrador
+                if ($usuario->administrador && !$usuario->administrador->status) {
+                    $perfilInactivo = true;
+                }
+                break;
+            case 2: // Medico
+                if ($usuario->medico && !$usuario->medico->status) {
+                    $perfilInactivo = true;
+                }
+                break;
+            case 3: // Paciente
+                if ($usuario->paciente && !$usuario->paciente->status) {
+                    $perfilInactivo = true;
+                }
+                break;
+        }
+
+        if ($perfilInactivo) {
+            return redirect()->back()->with('error', 'Su perfil de usuario ha sido desactivado.')->withInput();
         }
 
         // Iniciar sesión usando el guard web explícitamente

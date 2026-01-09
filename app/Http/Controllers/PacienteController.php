@@ -113,7 +113,6 @@ class PacienteController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'nullable|exists:usuarios,id|unique:pacientes,user_id',
             'primer_nombre' => 'required|max:100',
             'primer_apellido' => 'required|max:100',
             'tipo_documento' => 'nullable|in:V,E,P,J',
@@ -127,16 +126,39 @@ class PacienteController extends Controller
             'numero_tlf' => 'nullable|max:15',
             'genero' => 'nullable|max:20',
             'ocupacion' => 'nullable|max:150',
-            'estado_civil' => 'nullable|max:50'
+            'estado_civil' => 'nullable|max:50',
+            // User credentials
+            'correo' => 'required|email|unique:usuarios,correo',
+            'password' => 'required|min:8|confirmed'
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        Paciente::create($request->all());
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+                // 1. Create User
+                $usuario = Usuario::create([
+                    'rol_id' => 3, // Paciente
+                    'correo' => $request->correo,
+                    'password' => $request->password,
+                    'status' => $request->has('status')
+                ]);
 
-        return redirect()->route('pacientes.index')->with('success', 'Paciente creado exitosamente');
+                // 2. Create Paciente Profile
+                $pacienteData = $request->except(['correo', 'password', 'password_confirmation', 'status']);
+                $pacienteData['user_id'] = $usuario->id;
+                $pacienteData['status'] = $request->has('status');
+
+                Paciente::create($pacienteData);
+            });
+
+            return redirect()->route('pacientes.index')->with('success', 'Paciente creado exitosamente');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al crear el paciente: ' . $e->getMessage())->withInput();
+        }
     }
 
     public function show($id)

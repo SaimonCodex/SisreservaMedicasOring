@@ -152,7 +152,6 @@ class AdministradorController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'nullable|exists:usuarios,id|unique:administradores,user_id',
             'primer_nombre' => 'required|max:100',
             'primer_apellido' => 'required|max:100',
             'tipo_documento' => 'nullable|in:V,E,P,J',
@@ -165,16 +164,39 @@ class AdministradorController extends Controller
             'prefijo_tlf' => 'nullable|in:+58,+57,+1,+34',
             'numero_tlf' => 'nullable|max:15',
             'genero' => 'nullable|max:20',
-            'tipo_admin' => 'required|in:Administrador,Root'
+            'tipo_admin' => 'required|in:Administrador,Root',
+            // User credentials
+            'correo' => 'required|email|unique:usuarios,correo',
+            'password' => 'required|min:8|confirmed'
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        Administrador::create($request->all());
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+                // 1. Create User
+                $usuario = Usuario::create([
+                    'rol_id' => 1, // Administrador
+                    'correo' => $request->correo,
+                    'password' => $request->password,
+                    'status' => $request->has('status') // Checkbox for status
+                ]);
 
-        return redirect()->route('admin.administradores.index')->with('success', 'Administrador creado exitosamente');
+                // 2. Create Administrator Profile
+                $adminData = $request->except(['correo', 'password', 'password_confirmation', 'status']);
+                $adminData['user_id'] = $usuario->id;
+                $adminData['status'] = $request->has('status'); // Checkbox for status
+
+                Administrador::create($adminData);
+            });
+
+            return redirect()->route('administradores.index')->with('success', 'Administrador creado exitosamente');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al crear el administrador: ' . $e->getMessage())->withInput();
+        }
     }
 
     public function show($id)
@@ -198,7 +220,6 @@ class AdministradorController extends Controller
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'nullable|exists:usuarios,id|unique:administradores,user_id,' . $id,
             'primer_nombre' => 'required|max:100',
             'primer_apellido' => 'required|max:100',
             'tipo_documento' => 'nullable|in:V,E,P,J',
@@ -211,7 +232,9 @@ class AdministradorController extends Controller
             'prefijo_tlf' => 'nullable|in:+58,+57,+1,+34',
             'numero_tlf' => 'nullable|max:15',
             'genero' => 'nullable|max:20',
-            'tipo_admin' => 'required|in:Administrador,Root'
+            'password' => 'nullable|min:8|confirmed'
+            // 'user_id' removed as it should not be changed
+            // 'tipo_admin' removed or assumed static for now, or add if needed
         ]);
 
         if ($validator->fails()) {
@@ -219,17 +242,47 @@ class AdministradorController extends Controller
         }
 
         $administrador = Administrador::findOrFail($id);
-        $administrador->update($request->all());
+        
+        // Actualizar datos del perfil
+        $data = $request->except(['user_id', 'password', 'password_confirmation', 'correo']);
+        // Manejar el checkbox de status: si no viene, es false
+        $data['status'] = $request->has('status');
 
-        return redirect()->route('admin.administradores.index')->with('success', 'Administrador actualizado exitosamente');
+        $administrador->update($data);
+
+        // Si se envió contraseña, actualizarla en el usuario
+        if ($request->filled('password')) {
+            $administrador->usuario->update([
+                'password' => $request->password // El mutator se encarga del hash
+            ]);
+        }
+
+        return redirect()->route('administradores.index')->with('success', 'Administrador actualizado exitosamente');
     }
 
     public function destroy($id)
     {
+        // Maintain destroy for consistency with resource controller, but acts as toggle/deactivate
+        // Or better, redirect to toggle function logic.
+        // For strict REST, destroy should specifically 'remove' or 'soft delete'.
+        // Given the requirement is "toggle", let's make destroy strictly deactivate, 
+        // and add a new method for toggle.
+        
         $administrador = Administrador::findOrFail($id);
         $administrador->update(['status' => false]);
 
-        return redirect()->route('admin.administradores.index')->with('success', 'Administrador desactivado exitosamente');
+        return redirect()->route('administradores.index')->with('success', 'Administrador desactivado exitosamente');
+    }
+
+    public function toggleStatus($id)
+    {
+        $administrador = Administrador::findOrFail($id);
+        $administrador->status = !$administrador->status;
+        $administrador->save();
+
+        $message = $administrador->status ? 'Administrador activado exitosamente' : 'Administrador desactivado exitosamente';
+        
+        return redirect()->route('administradores.index')->with('success', $message);
     }
 
     public function getCiudades($estadoId)
