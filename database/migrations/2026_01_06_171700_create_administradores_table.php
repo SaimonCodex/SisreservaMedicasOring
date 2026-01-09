@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('numero_tlf', 15)->nullable();
             $table->string('genero', 20)->nullable();
             
-            $table->enum('tipo_admin', ['Administrador', 'Root'])->default('Administrador');
+            $table->enum('tipo_admin', ['Administrador', 'Root', 'Supervisor', 'Recepcionista'])->default('Administrador');
             $table->boolean('status')->default(true);
             $table->timestamps();
             
