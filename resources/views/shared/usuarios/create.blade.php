@@ -18,6 +18,20 @@
     <form id="createUserForm" action="{{ route('usuarios.store') }}" method="POST">
         @csrf
 
+        @if ($errors->any())
+            <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl animate-fade-in-down">
+                <div class="flex items-center gap-3 mb-2">
+                    <i class="bi bi-exclamation-triangle-fill text-red-500 text-xl"></i>
+                    <h3 class="font-bold text-red-900">Por favor corrige los siguientes errores:</h3>
+                </div>
+                <ul class="list-disc list-inside text-sm text-red-800 space-y-1 ml-2">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Main Form -->
             <div class="lg:col-span-2 space-y-6">

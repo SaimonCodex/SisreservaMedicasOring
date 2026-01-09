@@ -176,7 +176,7 @@ class UsuarioController extends Controller
         $usuario = Usuario::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
-            'correo' => 'required|email|unique:usuarios,correo,' . $id . '|max:150',
+            // 'correo' validation removed to prevent updates
             'password' => 'nullable|min:8|confirmed',
             'status' => 'boolean',
             // Profile fields
@@ -211,11 +211,12 @@ class UsuarioController extends Controller
 
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($request, $usuario) {
-                // 1. Update User Credentials
+                // 1. Update User Credentials (ONLY Password and Status)
                 $userData = [
-                    'correo' => $request->correo,
                     'status' => $request->status ?? $usuario->status
                 ];
+                
+                // Ignore email update requests
                 
                 if ($request->filled('password')) {
                     $userData['password'] = $request->password; // Mutator will handle hashing

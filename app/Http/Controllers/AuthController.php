@@ -42,13 +42,42 @@ class AuthController extends Controller
         // Aplicar MD5 dos veces a la contraseña
         $passwordHash = md5(md5($request->password));
 
-        $usuario = Usuario::where('correo', $request->correo)
-                         ->where('password', $passwordHash)
-                         ->where('status', true)
-                         ->first();
+        // 1. Buscar usuario por correo
+        $usuario = Usuario::where('correo', $request->correo)->first();
 
-        if (!$usuario) {
-            return redirect()->back()->with('error', 'Credenciales inválidas o cuenta inactiva')->withInput();
+        // 2. Verificar si existe y la contraseña coincide
+        if (!$usuario || $usuario->password !== $passwordHash) {
+            return redirect()->back()->with('error', 'Credenciales inválidas')->withInput();
+        }
+
+        // 3. Verificar estado estrictamente (Usuario Base)
+        if (!$usuario->status) {
+            return redirect()->back()->with('error', 'Su cuenta está inactiva. Por favor contacte al administrador.')->withInput();
+        }
+
+        // 4. Verificar estado del perfil específico
+        $perfilInactivo = false;
+        
+        switch ($usuario->rol_id) {
+            case 1: // Administrador
+                if ($usuario->administrador && !$usuario->administrador->status) {
+                    $perfilInactivo = true;
+                }
+                break;
+            case 2: // Medico
+                if ($usuario->medico && !$usuario->medico->status) {
+                    $perfilInactivo = true;
+                }
+                break;
+            case 3: // Paciente
+                if ($usuario->paciente && !$usuario->paciente->status) {
+                    $perfilInactivo = true;
+                }
+                break;
+        }
+
+        if ($perfilInactivo) {
+             return redirect()->back()->with('error', 'Su perfil de usuario ha sido desactivado.')->withInput();
         }
 
         // Iniciar sesión usando el guard web explícitamente
