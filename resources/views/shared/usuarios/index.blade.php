@@ -122,11 +122,11 @@
                         <td>
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-                                    {{ substr($usuario->nombre ?? 'U', 0, 1) }}
+                                    {{ substr($usuario->nombre_completo ?? 'U', 0, 1) }}
                                 </div>
                                 <div>
-                                    <p class="font-semibold text-gray-900">{{ $usuario->nombre_completo ?? 'N/A' }}</p>
-                                    <p class="text-sm text-gray-500">{{ $usuario->cedula ?? 'N/A' }}</p>
+                                    <p class="font-semibold text-gray-900">{{ $usuario->nombre_completo }}</p>
+                                    <p class="text-sm text-gray-500">{{ $usuario->cedula }}</p>
                                 </div>
                             </div>
                         </td>
