@@ -9,10 +9,55 @@ use Illuminate\Support\Facades\Validator;
 
 class UsuarioController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $usuarios = Usuario::with('rol')->where('status', true)->paginate(10);
-        return view('shared.usuarios.index', compact('usuarios'));
+        // Estadísticas
+        $stats = [
+            'total' => Usuario::count(),
+            'activos' => Usuario::where('status', true)->count(),
+            'medicos' => Usuario::where('rol_id', 2)->count(),
+            'pacientes' => Usuario::where('rol_id', 3)->count(),
+        ];
+
+        // Query Base
+        $query = Usuario::with(['rol', 'administrador', 'medico', 'paciente']);
+
+        // Filtros
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('correo', 'like', "%{$search}%")
+                  ->orWhereHas('administrador', function($q) use ($search) {
+                      $q->where('primer_nombre', 'like', "%{$search}%")
+                        ->orWhere('primer_apellido', 'like', "%{$search}%")
+                        ->orWhere('numero_documento', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('medico', function($q) use ($search) {
+                      $q->where('primer_nombre', 'like', "%{$search}%")
+                        ->orWhere('primer_apellido', 'like', "%{$search}%")
+                        ->orWhere('numero_documento', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('paciente', function($q) use ($search) {
+                      $q->where('primer_nombre', 'like', "%{$search}%")
+                        ->orWhere('primer_apellido', 'like', "%{$search}%")
+                        ->orWhere('numero_documento', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->filled('rol')) {
+            if ($request->rol == 'admin') $query->where('rol_id', 1);
+            if ($request->rol == 'medico') $query->where('rol_id', 2);
+            if ($request->rol == 'paciente') $query->where('rol_id', 3);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $usuarios = $query->orderBy('created_at', 'desc')->paginate(10);
+        
+        return view('shared.usuarios.index', compact('usuarios', 'stats'));
     }
 
     public function create()
