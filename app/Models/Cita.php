@@ -1,0 +1,74 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Cita extends Model
+{
+    use HasFactory;
+
+    protected $table = 'citas';
+    protected $primaryKey = 'id';
+    protected $fillable = [
+        'paciente_id',
+        'medico_id',
+        'especialidad_id',
+        'consultorio_id',
+        'fecha_cita',
+        'hora_inicio',
+        'hora_fin',
+        'duracion_minutos',
+        'tarifa',
+        'tipo_consulta',
+        'estado_cita',
+        'observaciones',
+        'status'
+    ];
+
+    public function paciente()
+    {
+        return $this->belongsTo(Paciente::class, 'paciente_id');
+    }
+
+    public function medico()
+    {
+        return $this->belongsTo(Medico::class, 'medico_id');
+    }
+
+    public function especialidad()
+    {
+        return $this->belongsTo(Especialidad::class, 'especialidad_id');
+    }
+
+    public function consultorio()
+    {
+        return $this->belongsTo(Consultorio::class, 'consultorio_id');
+    }
+
+    public function evolucionClinica()
+    {
+        return $this->hasOne(EvolucionClinica::class, 'cita_id');
+    }
+
+    public function ordenesMedicas()
+    {
+        return $this->hasMany(OrdenMedica::class, 'cita_id');
+    }
+
+    public function facturaPaciente()
+    {
+        return $this->hasOne(FacturaPaciente::class, 'cita_id');
+    }
+
+    public function facturaCabecera()
+    {
+        return $this->hasOne(FacturaCabecera::class, 'cita_id');
+    }
+
+    public function solicitudesHistorial()
+    {
+        return $this->hasMany(SolicitudHistorial::class, 'cita_id');
+    }
+}

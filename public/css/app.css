@@ -1,0 +1,86 @@
+/* Estilos personalizados para el sistema médico */
+.medical-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.patient-theme {
+    --primary-color: #1a56db;
+    --secondary-color: #046c4e;
+}
+
+.doctor-theme {
+    --primary-color: #059669;
+    --secondary-color: #dc2626;
+}
+
+.admin-theme {
+    --primary-color: #7c3aed;
+    --secondary-color: #db2777;
+}
+
+/* Animaciones */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tarjetas con efecto hover */
+.card-hover {
+    transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Badges personalizados */
+.badge-medical {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Tablas responsivas */
+.table-medical th {
+    background-color: #f8fafc;
+    font-weight: 600;
+    color: #374151;
+}
+
+/* Formularios */
+.form-medical .form-label {
+    font-weight: 500;
+    color: #374151;
+}
+
+/* Botones médicos */
+.btn-medical {
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 280px;
+        height: 100vh;
+        transition: all 0.3s ease;
+        z-index: 1050;
+    }
+    
+    .sidebar.show {
+        left: 0;
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+}

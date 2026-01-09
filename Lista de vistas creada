@@ -1,0 +1,120 @@
+Sistema de Reservas Médicas - Creación Completa de Vistas
+Parte 1: Layouts ✅ COMPLETADO
+ layouts/app.blade.php
+ layouts/auth.blade.php
+ layouts/admin.blade.php
+ layouts/medico.blade.php
+ layouts/paciente.blade.php
+ layouts/error.blade.php
+Parte 2: Autenticación ✅ COMPLETADO
+ auth/login.blade.php (con personalización por rol)
+ auth/register.blade.php (con ubicaciones y preguntas seguridad)
+ auth/recovery.blade.php
+ auth/reset-password.blade.php
+ welcome.blade.php (standalone, sin layout conflicts)
+Parte 3: Admin Dashboard y Administradores ✅ COMPLETADO
+ admin/dashboard.blade.php
+ admin/administradores/index.blade.php
+ admin/administradores/create.blade.php
+ admin/administradores/show.blade.php
+ admin/administradores/edit.blade.php
+Parte 4-5: Configuración Admin (COMPLETADO PARCIALMENTE)
+ admin/configuracion/index.blade.php
+ admin/configuracion/general.blade.php
+ admin/configuracion/reparto.blade.php
+ admin/configuracion/tasas.blade.php
+ admin/configuracion/metodos-pago.blade.php
+ admin/configuracion/correo.blade.php
+ admin/configuracion/mantenimiento.blade.php
+ admin/configuracion/backup.blade.php
+ admin/configuracion/logs.blade.php
+ admin/configuracion/estadisticas.blade.php
+ admin/configuracion/servidor.blade.php
+Parte 6: Médico Dashboard y Citas
+ medico/dashboard.blade.php
+ medico/citas/index.blade.php
+ medico/citas/show.blade.php
+Parte 7-8: Historia Clínica Médico
+ medico/historia-clinica/evoluciones/index.blade.php
+ medico/historia-clinica/evoluciones/create.blade.php
+ medico/historia-clinica/evoluciones/show.blade.php
+ medico/historia-clinica/evoluciones/edit.blade.php
+ medico/historia-clinica/base/index.blade.php
+ medico/historia-clinica/base/create.blade.php
+ medico/historia-clinica/base/show.blade.php
+ medico/historia-clinica/base/edit.blade.php
+Parte 9-10: Órdenes Médicas
+ medico/ordenes-medicas/index.blade.php
+ medico/ordenes-medicas/create.blade.php
+ medico/ordenes-medicas/show.blade.php
+ medico/ordenes-medicas/edit.blade.php
+ medico/ordenes-medicas/recetas.blade.php
+ medico/ordenes-medicas/laboratorios.blade.php
+ medico/ordenes-medicas/imagenologias.blade.php
+ medico/ordenes-medicas/referencias.blade.php
+ medico/ordenes-medicas/registrar-resultados.blade.php
+Parte 11-12: Paciente
+ paciente/dashboard.blade.php
+ paciente/citas/index.blade.php
+ paciente/citas/create.blade.php
+ paciente/historial/index.blade.php
+ paciente/pagos/mis-pagos.blade.php
+Parte 13-27: Shared (Módulos Compartidos)
+Médicos (13) ✅ COMPLETADO
+ shared/medicos/index.blade.php
+ shared/medicos/create.blade.php
+ shared/medicos/show.blade.php
+ shared/medicos/edit.blade.php
+ shared/medicos/horarios.blade.php
+Pacientes (14) ✅ COMPLETADO
+ shared/pacientes/index.blade.php
+ shared/pacientes/create.blade.php
+ shared/pacientes/show.blade.php
+ shared/pacientes/edit.blade.php
+Citas (15) ✅ COMPLETADO
+ shared/citas/index.blade.php
+ shared/citas/create.blade.php
+ shared/citas/show.blade.php
+ shared/citas/edit.blade.php
+Especialidades (16) ✅ COMPLETADO
+ shared/especialidades/index.blade.php
+ shared/especialidades/create.blade.php
+ shared/especialidades/show.blade.php
+ shared/especialidades/edit.blade.php
+Consultorios (17) ✅ COMPLETADO
+ shared/consultorios/index.blade.php
+ shared/consultorios/create.blade.php
+ shared/consultorios/show.blade.php
+ shared/consultorios/edit.blade.php
+ shared/consultorios/horarios.blade.php
+Ubicaciones (18-21)
+ shared/ubicacion/estados/* (3 archivos)
+ shared/ubicacion/ciudades/* (3 archivos)
+ shared/ubicacion/municipios/* (3 archivos)
+ shared/ubicacion/parroquias/* (3 archivos)
+Facturación (22)
+ shared/facturacion/* (5 archivos)
+Pagos (23)
+ shared/pagos/* (5 archivos)
+Historia Clínica Shared (24)
+ shared/historia-clinica/* (3 archivos)
+Notificaciones (25)
+ shared/notificaciones/* (6 archivos)
+Representantes (26)
+ shared/representantes/* (8 archivos)
+Pacientes Especiales (27)
+ shared/pacientes-especiales/* (8 archivos)
+Usuarios (28)
+ shared/usuarios/* (4 archivos)
+Parte 29-30: Emails
+ emails/* (10 archivos)
+Parte 31: Errors ✅ COMPLETADO
+ errors/404.blade.php
+ errors/500.blade.php
+ errors/403.blade.php
+Parte 32-33: Components
+ components/forms/* (5 archivos)
+ components/tables/* (2 archivos)
+ components/cards/* (2 archivos)
+ components/modals/* (2 archivos)
+ components/filters/* (2 archivos)

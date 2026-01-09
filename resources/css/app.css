@@ -1,0 +1,586 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply font-sans antialiased bg-gray-50 text-gray-900;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-display;
+    }
+}
+
+@layer components {
+
+    /* Glassmorphism Effects */
+    .glass {
+        @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-glass;
+    }
+
+    .glass-dark {
+        @apply bg-gray-900/70 backdrop-blur-md border border-white/10 shadow-glass;
+    }
+
+    /* Buttons */
+    .btn {
+        @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    }
+
+    .btn-primary {
+        @apply bg-gradient-to-r from-medical-600 to-medical-500 text-white hover:from-medical-700 hover:to-medical-600 focus:ring-medical-500 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+    }
+
+    .btn-secondary {
+        @apply bg-gradient-to-r from-premium-600 to-premium-500 text-white hover:from-premium-700 hover:to-premium-600 focus:ring-premium-500 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+    }
+
+    .btn-success {
+        @apply bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-700 hover:to-emerald-600 focus:ring-emerald-500 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+    }
+
+    .btn-danger {
+        @apply bg-gradient-to-r from-rose-600 to-rose-500 text-white hover:from-rose-700 hover:to-rose-600 focus:ring-rose-500 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+    }
+
+    .btn-warning {
+        @apply bg-gradient-to-r from-amber-600 to-amber-500 text-white hover:from-amber-700 hover:to-amber-600 focus:ring-amber-500 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+    }
+
+    .btn-outline {
+        @apply border-2 border-medical-500 text-medical-600 hover:bg-medical-50 focus:ring-medical-500;
+    }
+
+    /* Cards */
+    .card {
+        @apply bg-white rounded-xl shadow-soft border border-gray-100 overflow-hidden;
+    }
+
+    .card-hover {
+        @apply transition-all duration-300 hover:shadow-medium hover:-translate-y-1;
+    }
+
+    /* Form Inputs */
+    .input {
+        @apply block w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:border-medical-500 focus:ring-2 focus:ring-medical-500/20 transition-all duration-200;
+    }
+
+    .input-error {
+        @apply border-rose-500 focus:border-rose-500 focus:ring-rose-500/20;
+    }
+
+    /* Badges */
+    .badge {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
+
+    .badge-primary {
+        @apply bg-medical-100 text-medical-700;
+    }
+
+    .badge-success {
+        @apply bg-emerald-100 text-emerald-700;
+    }
+
+    .badge-warning {
+        @apply bg-amber-100 text-amber-700;
+    }
+
+    .badge-danger {
+        @apply bg-rose-100 text-rose-700;
+    }
+
+    .badge-info {
+        @apply bg-cyan-100 text-cyan-700;
+    }
+
+    /* Gradients */
+    .gradient-medical {
+        @apply bg-gradient-to-b from-medical-900 via-medical-800 to-medical-900;
+    }
+
+    .gradient-premium {
+        @apply bg-gradient-to-br from-premium-600 via-premium-500 to-purple-400;
+    }
+
+    .gradient-mesh {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
+    }
+
+    /* Tables */
+    .table {
+        @apply w-full text-sm text-left border-collapse;
+    }
+
+    .table thead {
+        @apply bg-gradient-to-r from-medical-600 to-medical-500 text-white;
+    }
+
+    .table thead th {
+        @apply px-6 py-4 font-semibold uppercase tracking-wider;
+    }
+
+    .table tbody tr {
+        @apply border-b border-gray-200 transition-colors duration-150;
+    }
+
+    .table tbody td {
+        @apply px-6 py-4;
+    }
+
+    .table-hover tbody tr {
+        @apply hover:bg-medical-50;
+    }
+
+    .table-striped tbody tr:nth-child(odd) {
+        @apply bg-gray-50;
+    }
+
+    .table-bordered {
+        @apply border border-gray-300 rounded-lg overflow-hidden;
+    }
+
+    .table-bordered th,
+    .table-bordered td {
+        @apply border-r border-gray-200 last:border-r-0;
+    }
+
+    .table-sm thead th {
+        @apply px-4 py-2;
+    }
+
+    .table-sm tbody td {
+        @apply px-4 py-2;
+    }
+
+    /* Modals */
+    .modal-overlay {
+        @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in;
+    }
+
+    .modal-container {
+        @apply bg-white rounded-2xl shadow-hard max-w-2xl w-full max-h-[90vh] overflow-hidden animate-slide-in-up;
+    }
+
+    .modal-container-glass {
+        @apply glass rounded-2xl shadow-glass max-w-2xl w-full max-h-[90vh] overflow-hidden animate-slide-in-up;
+    }
+
+    .modal-header {
+        @apply px-6 py-4 border-b border-gray-200 flex items-center justify-between;
+    }
+
+    .modal-title {
+        @apply text-xl font-display font-semibold text-gray-900;
+    }
+
+    .modal-body {
+        @apply px-6 py-6 overflow-y-auto scrollbar-thin;
+    }
+
+    .modal-footer {
+        @apply px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50;
+    }
+
+    /* Navigation */
+    .sidebar {
+        @apply fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-medical-700 to-medical-900 text-white shadow-hard overflow-y-auto scrollbar-thin z-40;
+    }
+
+    .sidebar-item {
+        @apply flex items-center gap-3 px-6 py-3 text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 border-l-4 border-transparent hover:border-medical-300;
+    }
+
+    .sidebar-item-active {
+        @apply bg-white/15 text-white border-l-4 border-medical-300 font-semibold;
+    }
+
+    .navbar {
+        @apply sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm;
+    }
+
+    .breadcrumb {
+        @apply flex items-center gap-2 text-sm text-gray-600;
+    }
+
+    .breadcrumb-item {
+        @apply hover:text-medical-600 transition-colors duration-150;
+    }
+
+    .breadcrumb-separator {
+        @apply text-gray-400;
+    }
+
+    .tabs {
+        @apply flex border-b border-gray-200;
+    }
+
+    .tab-item {
+        @apply px-6 py-3 font-medium text-gray-600 hover:text-medical-600 hover:border-b-2 hover:border-medical-600 transition-all duration-200 cursor-pointer;
+    }
+
+    .tab-item-active {
+        @apply text-medical-600 border-b-2 border-medical-600;
+    }
+
+    /* Alerts */
+    .alert {
+        @apply p-4 rounded-lg border flex items-start gap-3 animate-slide-in-down;
+    }
+
+    .alert-success {
+        @apply bg-success-50 border-success-200 text-success-800;
+    }
+
+    .alert-warning {
+        @apply bg-warning-50 border-warning-200 text-warning-800;
+    }
+
+    .alert-danger {
+        @apply bg-danger-50 border-danger-200 text-danger-800;
+    }
+
+    .alert-info {
+        @apply bg-info-50 border-info-200 text-info-800;
+    }
+
+    .alert-icon {
+        @apply flex-shrink-0 w-5 h-5;
+    }
+
+    /* Tooltips */
+    .tooltip {
+        @apply absolute hidden group-hover:block bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg z-50 animate-fade-in;
+    }
+
+    .tooltip::before {
+        content: '';
+        @apply absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900;
+    }
+
+    /* Dropdowns */
+    .dropdown {
+        @apply relative inline-block;
+    }
+
+    .dropdown-menu {
+        @apply absolute top-full right-0 mt-2 min-w-[200px] bg-white rounded-lg shadow-medium border border-gray-200 py-2 z-50 hidden animate-slide-in-down;
+    }
+
+    .dropdown.active .dropdown-menu {
+        @apply block;
+    }
+
+    .dropdown-item {
+        @apply block px-4 py-2 text-sm text-gray-700 hover:bg-medical-50 hover:text-medical-600 transition-colors duration-150 cursor-pointer;
+    }
+
+    .dropdown-divider {
+        @apply my-2 h-px bg-gray-200;
+    }
+
+    /* Pagination */
+    .pagination {
+        @apply flex items-center gap-2;
+    }
+
+    .pagination-item {
+        @apply w-10 h-10 flex items-center justify-center rounded-lg border border-gray-300 text-gray-700 hover:bg-medical-50 hover:border-medical-500 hover:text-medical-600 transition-all duration-200 cursor-pointer;
+    }
+
+    .pagination-item-active {
+        @apply bg-gradient-to-r from-medical-600 to-medical-500 text-white border-medical-600 shadow-md;
+    }
+
+    .pagination-item-disabled {
+        @apply opacity-50 cursor-not-allowed hover:bg-transparent hover:border-gray-300 hover:text-gray-700;
+    }
+
+    /* Loading States */
+    .spinner {
+        @apply inline-block w-8 h-8 border-4 border-gray-200 border-t-medical-600 rounded-full animate-spin;
+    }
+
+    .spinner-sm {
+        @apply w-5 h-5 border-2;
+    }
+
+    .spinner-lg {
+        @apply w-12 h-12 border-4;
+    }
+
+    .skeleton {
+        @apply bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 bg-[length:200%_100%] animate-pulse rounded;
+    }
+
+    .skeleton-text {
+        @apply h-4 skeleton mb-2;
+    }
+
+    .skeleton-circle {
+        @apply rounded-full skeleton;
+    }
+
+    .progress-bar {
+        @apply w-full h-2 bg-gray-200 rounded-full overflow-hidden;
+    }
+
+    .progress-fill {
+        @apply h-full bg-gradient-to-r from-medical-600 to-medical-400 transition-all duration-500;
+    }
+
+    /* Form Groups */
+    .form-group {
+        @apply mb-4;
+    }
+
+    .form-label {
+        @apply block text-sm font-semibold text-gray-700 mb-2;
+    }
+
+    .form-label-required::after {
+        content: '*';
+        @apply text-danger-500 ml-1;
+    }
+
+    .form-select {
+        @apply input appearance-none bg-no-repeat bg-right pr-10;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.5rem center;
+        background-size: 1.5em 1.5em;
+    }
+
+    .form-textarea {
+        @apply input resize-y min-h-[100px];
+    }
+
+    .form-checkbox,
+    .form-radio {
+        @apply w-4 h-4 text-medical-600 border-gray-300 rounded focus:ring-medical-500 focus:ring-2 transition-all duration-200;
+    }
+
+    .form-radio {
+        @apply rounded-full;
+    }
+
+    .form-switch {
+        @apply relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-medical-500 focus:ring-offset-2;
+    }
+
+    .form-switch input:checked+span {
+        @apply translate-x-6;
+    }
+
+    .form-help {
+        @apply mt-1 text-xs text-gray-500;
+    }
+
+    .form-error {
+        @apply mt-1 text-xs text-danger-600;
+    }
+}
+
+@layer utilities {
+
+    /* Custom Scrollbar */
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+        @apply bg-gray-100 rounded-full;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        @apply bg-gray-400 rounded-full hover:bg-gray-500;
+    }
+
+    /* Text Gradients */
+    .text-gradient {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-medical-600 to-premium-600;
+    }
+
+    /* Animations */
+    .animate-on-scroll {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+
+    .animate-on-scroll.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-10px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(10px);
+    }
+}
+
+@keyframes slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slide-in-up {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slide-in-down {
+    from {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scale-in {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse-soft {
+
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Animation Classes */
+.animate-shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+.animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-slide-in-up {
+    animation: slide-in-up 0.4s ease-out;
+}
+
+.animate-slide-in-down {
+    animation: slide-in-down 0.3s ease-out;
+}
+
+.animate-fade-in {
+    animation: fade-in 0.5s ease-out;
+}
+
+.animate-scale-in {
+    animation: scale-in 0.3s ease-out;
+}
+
+.animate-pulse-soft {
+    animation: pulse-soft 4s ease-in-out infinite;
+}
+
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Input success/error states */
+.input-success {
+    @apply border-success-500 bg-success-50/30 focus:border-success-500 focus:ring-success-500/20;
+}
+
+.input-warning {
+    @apply border-warning-500 bg-warning-50/30 focus:border-warning-500 focus:ring-warning-500/20;
+}

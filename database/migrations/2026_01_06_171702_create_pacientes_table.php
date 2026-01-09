@@ -1,0 +1,49 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('pacientes', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->nullable()->unique()->constrained('usuarios')->onDelete('set null');
+            
+            $table->string('primer_nombre', 100);
+            $table->string('segundo_nombre', 100)->nullable();
+            $table->string('primer_apellido', 100);
+            $table->string('segundo_apellido', 100)->nullable();
+            $table->enum('tipo_documento', ['V', 'E', 'P', 'J'])->nullable();
+            $table->string('numero_documento', 20)->nullable();
+            $table->date('fecha_nac')->nullable();
+            
+            $table->unsignedBigInteger('estado_id')->nullable();
+            $table->unsignedBigInteger('ciudad_id')->nullable();
+            $table->unsignedBigInteger('municipio_id')->nullable();
+            $table->unsignedBigInteger('parroquia_id')->nullable();
+            $table->text('direccion_detallada')->nullable();
+            
+            $table->enum('prefijo_tlf', ['+58', '+57', '+1', '+34'])->nullable();
+            $table->string('numero_tlf', 15)->nullable();
+            $table->string('genero', 20)->nullable();
+            
+            $table->string('ocupacion', 150)->nullable();
+            $table->string('estado_civil', 50)->nullable();
+            $table->boolean('status')->default(true);
+            $table->timestamps();
+            
+            $table->foreign('estado_id')->references('id_estado')->on('estados')->onDelete('set null');
+            $table->foreign('ciudad_id')->references('id_ciudad')->on('ciudades')->onDelete('set null');
+            $table->foreign('municipio_id')->references('id_municipio')->on('municipios')->onDelete('set null');
+            $table->foreign('parroquia_id')->references('id_parroquia')->on('parroquias')->onDelete('set null');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('pacientes');
+    }
+};
