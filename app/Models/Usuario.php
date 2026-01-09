@@ -16,7 +16,13 @@ class Usuario extends Authenticatable
         'rol_id',
         'correo',
         'password',
-        'status'
+        'status',
+        'email_verified_at',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'status' => 'boolean',
     ];
 
     protected $hidden = [

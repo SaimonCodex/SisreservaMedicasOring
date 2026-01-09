@@ -4,48 +4,53 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Faker\Factory as Faker;
 
 class CitasTableSeeder extends Seeder
 {
     public function run(): void
     {
-        $citas = [
-            [
-                'paciente_id' => 1,
-                'medico_id' => 1,
-                'especialidad_id' => 1, // Cardiología
-                'consultorio_id' => 1,
-                'fecha_cita' => now()->addDays(5)->format('Y-m-d'),
-                'hora_inicio' => '09:00:00',
-                'hora_fin' => '09:30:00',
-                'duracion_minutos' => 30,
-                'tarifa' => 50.00,
-                'tipo_consulta' => 'Presencial',
-                'estado_cita' => 'Programada',
-                'observaciones' => 'Control cardíaco rutinario',
-            ],
-            [
-                'paciente_id' => 2,
-                'medico_id' => 2,
-                'especialidad_id' => 2, // Pediatría
-                'consultorio_id' => 1,
-                'fecha_cita' => now()->addDays(3)->format('Y-m-d'),
-                'hora_inicio' => '15:00:00',
-                'hora_fin' => '15:45:00',
-                'duracion_minutos' => 45,
-                'tarifa' => 40.00,
-                'tipo_consulta' => 'Presencial',
-                'estado_cita' => 'Confirmada',
-                'observaciones' => 'Consulta pediátrica de control',
-            ],
-        ];
+        $faker = Faker::create('es_VE');
+        $now = now();
+        $citas = [];
 
-        foreach ($citas as $cita) {
-            DB::table('citas')->insert(array_merge($cita, [
+        // Generar 150 citas
+        for ($i = 0; $i < 150; $i++) {
+            // Fecha aleatoria: últimos 2 meses a próximos 2 meses
+            $fecha = $faker->dateTimeBetween('-2 months', '+2 months');
+            $horaInicio = $faker->randomElement(['08:00:00', '09:00:00', '10:00:00', '11:00:00', '14:00:00', '15:00:00', '16:00:00']);
+            
+            // Calcular hora fin (30 min después)
+            $horaFin = date('H:i:s', strtotime($horaInicio) + 1800);
+            
+            // Estado basado en fecha
+            if ($fecha < $now) {
+                $estado = $faker->randomElement(['Completada', 'Cancelada', 'No Asistió']);
+            } else {
+                $estado = $faker->randomElement(['Programada', 'Confirmada']);
+            }
+
+            $citas[] = [
+                'paciente_id' => $faker->numberBetween(1, 30),
+                'medico_id' => $faker->numberBetween(1, 20),
+                'especialidad_id' => $faker->numberBetween(1, 20),
+                'consultorio_id' => $faker->numberBetween(1, 8),
+                'fecha_cita' => $fecha->format('Y-m-d'),
+                'hora_inicio' => $horaInicio,
+                'hora_fin' => $horaFin,
+                'duracion_minutos' => 30,
+                'tarifa' => $faker->randomFloat(2, 20, 100),
+                'tipo_consulta' => $faker->randomElement(['Presencial', 'Online']),
+                'estado_cita' => $estado,
+                'observaciones' => $faker->sentence,
                 'status' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]));
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        foreach (array_chunk($citas, 50) as $chunk) {
+            DB::table('citas')->insert($chunk);
         }
     }
 }

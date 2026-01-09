@@ -4,23 +4,38 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Faker\Factory as Faker;
 
 class TasasDolarTableSeeder extends Seeder
 {
     public function run(): void
     {
-        $tasas = [
-            ['fuente' => 'BCV', 'valor' => 35.50, 'fecha_tasa' => now()->format('Y-m-d')],
-            ['fuente' => 'BCV', 'valor' => 35.20, 'fecha_tasa' => now()->subDays(1)->format('Y-m-d')],
-            ['fuente' => 'BCV', 'valor' => 34.80, 'fecha_tasa' => now()->subDays(2)->format('Y-m-d')],
-        ];
+        $faker = Faker::create();
+        $now = now();
+        $tasas = [];
+        $valorActual = 35.50; // Valor base
 
-        foreach ($tasas as $tasa) {
-            DB::table('tasas_dolar')->insert(array_merge($tasa, [
+        // Generar tasas para los últimos 60 días
+        for ($i = 60; $i >= 0; $i--) {
+            // Fluctación aleatoria pequeña
+            $fluctuacion = $faker->randomFloat(2, -0.5, 0.8);
+            $valorActual += $fluctuacion;
+            
+            // Asegurar que no sea negativo ni demasiado bajo
+            if ($valorActual < 20) $valorActual = 20;
+
+            $tasas[] = [
+                'fuente' => 'BCV',
+                'valor' => number_format($valorActual, 2, '.', ''),
+                'fecha_tasa' => now()->subDays($i)->format('Y-m-d'),
                 'status' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]));
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        foreach (array_chunk($tasas, 50) as $chunk) {
+            DB::table('tasas_dolar')->insert($chunk);
         }
     }
 }

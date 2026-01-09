@@ -22,7 +22,7 @@ return new class extends Migration
             $table->smallInteger('duracion_minutos')->nullable();
             
             $table->decimal('tarifa', 10, 2)->default(0.00);
-            $table->enum('tipo_consulta', ['Presencial', 'Telemedicina', 'Domicilio'])->default('Presencial');
+            $table->enum('tipo_consulta', ['Presencial', 'Online', 'Domicilio'])->default('Presencial');
             $table->enum('estado_cita', ['Programada', 'Confirmada', 'En Progreso', 'Completada', 'Cancelada', 'No Asistió'])->default('Programada');
             $table->text('observaciones')->nullable();
             
