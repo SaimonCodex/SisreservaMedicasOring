@@ -65,4 +65,28 @@ class Usuario extends Authenticatable
     {
         return $this->hasMany(HistorialPassword::class, 'user_id');
     }
+
+    public function getNombreCompletoAttribute()
+    {
+        if ($this->administrador) {
+            return $this->administrador->primer_nombre . ' ' . $this->administrador->primer_apellido;
+        } elseif ($this->medico) {
+            return $this->medico->primer_nombre . ' ' . $this->medico->primer_apellido;
+        } elseif ($this->paciente) {
+            return $this->paciente->primer_nombre . ' ' . $this->paciente->primer_apellido;
+        }
+        return 'Usuario del Sistema';
+    }
+
+    public function getCedulaAttribute()
+    {
+        if ($this->administrador) {
+            return $this->administrador->tipo_documento . '-' . $this->administrador->numero_documento;
+        } elseif ($this->medico) {
+            return $this->medico->tipo_documento . '-' . $this->medico->numero_documento;
+        } elseif ($this->paciente) {
+            return $this->paciente->tipo_documento . '-' . $this->paciente->numero_documento;
+        }
+        return 'N/A';
+    }
 }
