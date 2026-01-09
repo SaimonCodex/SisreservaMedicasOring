@@ -55,7 +55,6 @@ class MedicoController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'nullable|exists:usuarios,id|unique:medicos,user_id',
             'primer_nombre' => 'required|max:100',
             'primer_apellido' => 'required|max:100',
             'tipo_documento' => 'nullable|in:V,E,P,J',
@@ -70,21 +69,44 @@ class MedicoController extends Controller
             'genero' => 'nullable|max:20',
             'nro_colegiatura' => 'nullable|max:50',
             'especialidades' => 'required|array',
-            'especialidades.*' => 'exists:especialidades,id'
+            'especialidades.*' => 'exists:especialidades,id',
+            // User credentials
+            'correo' => 'required|email|unique:usuarios,correo',
+            'password' => 'required|min:8|confirmed'
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $medico = Medico::create($request->except('especialidades'));
-        
-        // Asignar especialidades
-        if ($request->has('especialidades')) {
-            $medico->especialidades()->attach($request->especialidades);
-        }
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+                // 1. Create User
+                $usuario = Usuario::create([
+                    'rol_id' => 2, // Medico
+                    'correo' => $request->correo,
+                    'password' => $request->password,
+                    'status' => $request->has('status')
+                ]);
 
-        return redirect()->route('medicos.index')->with('success', 'Médico creado exitosamente');
+                // 2. Create Medico Profile
+                $medicoData = $request->except(['correo', 'password', 'password_confirmation', 'especialidades', 'status']);
+                $medicoData['user_id'] = $usuario->id;
+                $medicoData['status'] = $request->has('status');
+
+                $medico = Medico::create($medicoData);
+                
+                // 3. Assign Specialties
+                if ($request->has('especialidades')) {
+                    $medico->especialidades()->attach($request->especialidades);
+                }
+            });
+
+            return redirect()->route('medicos.index')->with('success', 'Médico creado exitosamente');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al crear el médico: ' . $e->getMessage())->withInput();
+        }
     }
 
     public function show($id)

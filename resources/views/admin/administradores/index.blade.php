@@ -119,37 +119,16 @@
                         </div>
                     </td>
                     <td class="px-6 py-4">
-                        <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <a href="{{ route('administradores.show', $admin->id) }}" 
-                               class="btn btn-sm btn-ghost hover:bg-medical-50 text-medical-600 tooltip" 
-                               title="Ver Detalles">
-                                <i class="bi bi-eye text-lg"></i>
+                        <div class="flex gap-2">
+                            <a href="{{ route('administradores.show', $admin->id) }}" class="btn btn-sm btn-outline" title="Ver Detalles">
+                                <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{{ route('administradores.edit', $admin->id) }}" 
-                               class="btn btn-sm btn-ghost hover:bg-warning-50 text-warning-600 tooltip" 
-                               title="Editar">
-                                <i class="bi bi-pencil text-lg"></i>
+                            <a href="{{ route('administradores.edit', $admin->id) }}" class="btn btn-sm btn-outline" title="Editar">
+                                <i class="bi bi-pencil"></i>
                             </a>
-                            
-                            @if($admin->status)
-                            <form action="{{ route('administradores.destroy', $admin->id) }}" 
-                                  method="POST" class="inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" 
-                                        class="btn btn-sm btn-ghost hover:bg-danger-50 text-danger-600 tooltip" 
-                                        title="Desactivar Cuenta"
-                                        onclick="return confirm('¿Desea desactivar este administrador? No podrá acceder al sistema.')">
-                                    <i class="bi bi-person-x text-lg"></i>
-                                </button>
-                            </form>
-                            @else
-                            <button type="button" 
-                                    class="btn btn-sm btn-ghost hover:bg-success-50 text-success-600 tooltip" 
-                                    title="Usuario Inactivo" disabled>
-                                <i class="bi bi-person-slash text-lg opacity-50"></i>
+                            <button onclick="toggleStatus({{ $admin->id }}, {{ $admin->status }})" class="btn btn-sm btn-outline {{ $admin->status ? 'text-rose-600' : 'text-emerald-600' }}" title="{{ $admin->status ? 'Desactivar' : 'Activar' }}">
+                                <i class="bi {{ $admin->status ? 'bi-x-circle' : 'bi-check-circle' }}"></i>
                             </button>
-                            @endif
                         </div>
                     </td>
                 </tr>
@@ -185,4 +164,114 @@
     </div>
     @endif
 </div>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity opacity-0" id="modalBackdrop"></div>
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" id="modalPanel">
+                <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start transition-all">
+                        <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 sm:mx-0 sm:h-10 sm:w-10" id="modalIconBg">
+                            <i class="bi bi-exclamation-triangle text-amber-600 text-xl" id="modalIcon"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                            <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">Confirmar acción</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500" id="modal-message">¿Estás seguro de continuar con esta acción?</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                    <button type="button" id="confirmButton" class="inline-flex w-full justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto transition-colors">
+                        Confirmar
+                    </button>
+                    <button type="button" onclick="closeModal()" class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto transition-colors">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentId = null;
+const modal = document.getElementById('confirmationModal');
+const backdrop = document.getElementById('modalBackdrop');
+const panel = document.getElementById('modalPanel');
+const confirmBtn = document.getElementById('confirmButton');
+const titleElem = document.getElementById('modal-title');
+const msgElem = document.getElementById('modal-message');
+const iconElem = document.getElementById('modalIcon');
+const iconBgElem = document.getElementById('modalIconBg');
+
+function toggleStatus(id, currentStatus) {
+    currentId = id;
+    
+    // Configurar modal
+    if (currentStatus) {
+        // Va a desactivar
+        titleElem.innerText = 'Desactivar Administrador';
+        msgElem.innerText = '¿Deseas desactivar este administrador? Perderá el acceso al sistema.';
+        confirmBtn.className = 'inline-flex w-full justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-colors';
+        confirmBtn.innerText = 'Sí, desactivar';
+        iconBgElem.className = 'mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10';
+        iconElem.className = 'bi bi-person-x-fill text-red-600 text-xl';
+    } else {
+        // Va a activar
+        titleElem.innerText = 'Activar Administrador';
+        msgElem.innerText = '¿Deseas reactivar este administrador? Recobrará el acceso al sistema.';
+        confirmBtn.className = 'inline-flex w-full justify-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 sm:ml-3 sm:w-auto transition-colors';
+        confirmBtn.innerText = 'Sí, activar';
+        iconBgElem.className = 'mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 sm:mx-0 sm:h-10 sm:w-10';
+        iconElem.className = 'bi bi-person-check-fill text-emerald-600 text-xl';
+    }
+
+    // Show Modal
+    modal.classList.remove('hidden');
+    
+    // Animate in
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        panel.classList.remove('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+        panel.classList.add('opacity-100', 'translate-y-0', 'sm:scale-100');
+    }, 10);
+}
+
+function closeModal() {
+    backdrop.classList.add('opacity-0');
+    panel.classList.remove('opacity-100', 'translate-y-0', 'sm:scale-100');
+    panel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        currentId = null;
+    }, 300);
+}
+
+confirmBtn.addEventListener('click', function() {
+    if (currentId) {
+        confirmBtn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Procesando...';
+        confirmBtn.disabled = true;
+        
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{{ route('administradores.toggle-status', ':id') }}".replace(':id', currentId);
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+});
+
+backdrop.addEventListener('click', closeModal);
+</script>
 @endsection

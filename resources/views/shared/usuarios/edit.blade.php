@@ -204,8 +204,11 @@
 
                     <div class="space-y-4">
                         <div>
-                            <label class="form-label form-label-required">Email</label>
-                            <input type="email" name="correo" class="input" placeholder="usuario@ejemplo.com" value="{{ old('correo', $usuario->correo) }}" required>
+                            <label class="form-label">Email</label>
+                            <input type="email" class="input bg-gray-100 text-gray-500 cursor-not-allowed" 
+                                   value="{{ $usuario->correo }}" 
+                                   readonly disabled>
+                            <p class="text-xs text-gray-400 mt-1">El correo no es modificable</p>
                         </div>
 
                         <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl mb-4">

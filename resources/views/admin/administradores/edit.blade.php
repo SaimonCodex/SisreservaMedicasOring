@@ -11,9 +11,33 @@
     <p class="text-gray-500 mt-1">Actualiza los datos de {{ $administrador->primer_nombre }} {{ $administrador->primer_apellido }}</p>
 </div>
 
-<form method="POST" action="{{ route('administradores.update', $administrador->id) }}">
+<form id="editAdminForm" method="POST" action="{{ route('administradores.update', $administrador->id) }}">
     @csrf
     @method('PUT')
+
+    {{-- Global Error Alerts --}}
+    @if(session('error'))
+        <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700">
+            <div class="flex items-center gap-3">
+                <i class="bi bi-exclamation-octagon-fill text-xl"></i>
+                <span class="font-semibold">{{ session('error') }}</span>
+            </div>
+        </div>
+    @endif
+
+    @if ($errors->any())
+        <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700">
+            <div class="flex items-center gap-3 mb-2">
+                <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+                <span class="font-semibold">Por favor corrige los siguientes errores:</span>
+            </div>
+            <ul class="list-disc list-inside ml-8 text-sm">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
     
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Columna Principal: Datos Personales -->
@@ -148,14 +172,89 @@
                     </div>
 
                     <div class="form-group md:col-span-2">
-                        <label for="correo" class="form-label form-label-required">Correo Electrónico</label>
-                        <input type="email" name="correo" id="correo" 
-                               class="input @error('correo') input-error @enderror" 
-                               value="{{ old('correo', $administrador->usuario->correo) }}" required>
-                        <p class="form-help">Cambiar el correo afectará el acceso al sistema</p>
-                        @error('correo')
-                            <p class="form-error">{{ $message }}</p>
-                        @enderror
+                        <label for="correo" class="form-label">Correo Electrónico</label>
+                        <input type="email" id="correo" 
+                               class="input bg-gray-100 text-gray-500 cursor-not-allowed" 
+                               value="{{ $administrador->usuario->correo }}" 
+                               readonly disabled>
+                        <p class="form-help text-xs text-gray-400">El correo electrónico no se puede modificar por seguridad</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ubicación -->
+            <div class="card p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <i class="bi bi-geo-alt text-medical-600"></i>
+                    Ubicación
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="estado_id" class="form-label">Estado</label>
+                        <select name="estado_id" id="estado_id" class="form-select">
+                            <option value="">Seleccionar...</option>
+                            @foreach($estados as $estado)
+                            <option value="{{ $estado->id_estado }}" {{ old('estado_id', $administrador->estado_id) == $estado->id_estado ? 'selected' : '' }}>
+                                {{ $estado->estado }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ciudad_id" class="form-label">Ciudad</label>
+                        <select name="ciudad_id" id="ciudad_id" class="form-select" {{ old('estado_id', $administrador->estado_id) ? '' : 'disabled' }}>
+                            <option value="">Seleccione un Estado primero</option>
+                            @if(old('ciudad_id', $administrador->ciudad_id))
+                                @foreach($ciudades as $ciudad)
+                                    @if($ciudad->id_estado == old('estado_id', $administrador->estado_id))
+                                    <option value="{{ $ciudad->id_ciudad }}" {{ old('ciudad_id', $administrador->ciudad_id) == $ciudad->id_ciudad ? 'selected' : '' }}>
+                                        {{ $ciudad->ciudad }}
+                                    </option>
+                                    @endif
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="municipio_id" class="form-label">Municipio</label>
+                        <select name="municipio_id" id="municipio_id" class="form-select" {{ old('estado_id', $administrador->estado_id) ? '' : 'disabled' }}>
+                            <option value="">Seleccione un Estado primero</option>
+                            @if(old('municipio_id', $administrador->municipio_id))
+                                @foreach($municipios as $municipio)
+                                    @if($municipio->id_estado == old('estado_id', $administrador->estado_id))
+                                    <option value="{{ $municipio->id_municipio }}" {{ old('municipio_id', $administrador->municipio_id) == $municipio->id_municipio ? 'selected' : '' }}>
+                                        {{ $municipio->municipio }}
+                                    </option>
+                                    @endif
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="parroquia_id" class="form-label">Parroquia</label>
+                        <select name="parroquia_id" id="parroquia_id" class="form-select" {{ old('municipio_id', $administrador->municipio_id) ? '' : 'disabled' }}>
+                            <option value="">Seleccione un Municipio primero</option>
+                            @if(old('parroquia_id', $administrador->parroquia_id))
+                                @foreach($parroquias as $parroquia)
+                                    @if($parroquia->id_municipio == old('municipio_id', $administrador->municipio_id))
+                                    <option value="{{ $parroquia->id_parroquia }}" {{ old('parroquia_id', $administrador->parroquia_id) == $parroquia->id_parroquia ? 'selected' : '' }}>
+                                        {{ $parroquia->parroquia }}
+                                    </option>
+                                    @endif
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+
+                    <div class="form-group md:col-span-2">
+                        <label for="direccion_detallada" class="form-label">Dirección Detallada</label>
+                        <textarea name="direccion_detallada" id="direccion_detallada" 
+                                  class="input resize-none" rows="2" 
+                                  placeholder="Avenida, Calle, Nro. Casa/Edificio">{{ old('direccion_detallada', $administrador->direccion_detallada) }}</textarea>
                     </div>
                 </div>
             </div>
@@ -226,3 +325,271 @@
     </div>
 </form>
 @endsection
+
+<!-- Error Modal -->
+<div id="errorModal" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity opacity-0" id="errorModalBackdrop"></div>
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" id="errorModalPanel">
+                <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <i class="bi bi-exclamation-triangle text-red-600 text-xl"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                            <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">No se puede actualizar el administrador</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500 mb-3">
+                                    Por favor, corrija los siguientes errores antes de continuar:
+                                </p>
+                                <ul id="errorList" class="text-sm text-red-600 list-disc list-inside space-y-1 bg-red-50 p-3 rounded-lg border border-red-100">
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                    <button type="button" id="closeErrorModal" class="inline-flex w-full justify-center rounded-xl bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black sm:ml-3 sm:w-auto transition-colors">
+                        Entendido
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Location Logic
+        const estadoSelect = document.getElementById('estado_id');
+        const ciudadSelect = document.getElementById('ciudad_id');
+        const municipioSelect = document.getElementById('municipio_id');
+        const parroquiaSelect = document.getElementById('parroquia_id');
+
+        if(estadoSelect) {
+            estadoSelect.addEventListener('change', function() {
+                const estadoId = this.value;
+                ciudadSelect.innerHTML = '<option value="">Cargando...</option>';
+                municipioSelect.innerHTML = '<option value="">Cargando...</option>';
+                parroquiaSelect.innerHTML = '<option value="">Seleccione un Municipio primero</option>';
+                ciudadSelect.disabled = true;
+                municipioSelect.disabled = true;
+                parroquiaSelect.disabled = true;
+
+                if (estadoId) {
+                    fetch(`{{ url('admin/get-ciudades') }}/${estadoId}`)
+                        .then(r => r.json())
+                        .then(d => {
+                            ciudadSelect.innerHTML = '<option value="">Seleccionar Ciudad...</option>';
+                            d.forEach(i => ciudadSelect.innerHTML += `<option value="${i.id_ciudad}">${i.ciudad}</option>`);
+                            ciudadSelect.disabled = false;
+                        });
+
+                    fetch(`{{ url('admin/get-municipios') }}/${estadoId}`)
+                        .then(r => r.json())
+                        .then(d => {
+                            municipioSelect.innerHTML = '<option value="">Seleccionar Municipio...</option>';
+                            d.forEach(i => municipioSelect.innerHTML += `<option value="${i.id_municipio}">${i.municipio}</option>`);
+                            municipioSelect.disabled = false;
+                        });
+                } else {
+                    ciudadSelect.innerHTML = '<option value="">Seleccione un Estado primero</option>';
+                    municipioSelect.innerHTML = '<option value="">Seleccione un Estado primero</option>';
+                }
+            });
+
+            municipioSelect.addEventListener('change', function() {
+                const municipioId = this.value;
+                parroquiaSelect.innerHTML = '<option value="">Cargando...</option>';
+                parroquiaSelect.disabled = true;
+                if (municipioId) {
+                    fetch(`{{ url('admin/get-parroquias') }}/${municipioId}`)
+                        .then(r => r.json())
+                        .then(d => {
+                            parroquiaSelect.innerHTML = '<option value="">Seleccionar Parroquia...</option>';
+                            d.forEach(i => parroquiaSelect.innerHTML += `<option value="${i.id_parroquia}">${i.parroquia}</option>`);
+                            parroquiaSelect.disabled = false;
+                        });
+                } else {
+                    parroquiaSelect.innerHTML = '<option value="">Seleccione un Municipio primero</option>';
+                }
+            });
+        }
+
+        // Validation Logic
+        const form = document.getElementById('editAdminForm');
+        const errorModal = document.getElementById('errorModal');
+        const errorModalBackdrop = document.getElementById('errorModalBackdrop');
+        const errorModalPanel = document.getElementById('errorModalPanel');
+        const errorList = document.getElementById('errorList');
+        const closeErrorModalBtn = document.getElementById('closeErrorModal');
+
+        // Validation Rules
+        const validations = {
+            primer_nombre: { 
+                required: true, 
+                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 
+                message: 'Ingrese un nombre válido (solo letras)' 
+            },
+            segundo_nombre: { 
+                required: false, 
+                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 
+                message: 'El segundo nombre solo debe contener letras' 
+            },
+            primer_apellido: { 
+                required: true, 
+                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 
+                message: 'Ingrese un apellido válido (solo letras)' 
+            },
+            segundo_apellido: { 
+                required: false, 
+                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 
+                message: 'El segundo apellido solo debe contener letras' 
+            },
+            tipo_documento: { required: true, message: 'Seleccione un tipo de documento' },
+            numero_documento: { 
+                required: true, 
+                pattern: /^\d+$/, 
+                message: 'El número de documento debe contener solo dígitos' 
+            },
+            fecha_nac: { required: true, message: 'Ingrese la fecha de nacimiento' },
+            genero: { required: true, message: 'Seleccione el género' },
+            prefijo_tlf: { required: true, message: 'Seleccione un prefijo' },
+            numero_tlf: {
+                required: true,
+                pattern: /^\d+$/, 
+                message: 'El teléfono debe contener solo dígitos'
+            },
+            estado_id: { required: true, message: 'Seleccione un estado' },
+            ciudad_id: { required: true, message: 'Seleccione una ciudad' },
+            municipio_id: { required: true, message: 'Seleccione un municipio' },
+            parroquia_id: { required: true, message: 'Seleccione una parroquia' },
+            direccion_detallada: { required: false },
+            password: { 
+                required: false, 
+                minLength: 8, 
+                message: 'La contraseña debe tener al menos 8 caracteres' 
+            },
+            password_confirmation: { 
+                required: false, 
+                custom: (val) => {
+                    const pass = form.querySelector('[name="password"]').value;
+                    if(pass && !val) return false; // If pass exists, strict check
+                    return val === pass;
+                }, 
+                message: 'Las contraseñas no coinciden' 
+            }
+        };
+
+        // Helper to find where to append error message
+        function getErrorContainer(input) {
+            const parent = input.parentElement;
+            if (parent.classList.contains('flex') || parent.classList.contains('gap-2')) {
+                return parent.parentElement;
+            }
+            return parent;
+        }
+
+        // Real-time validation
+        Object.keys(validations).forEach(fieldName => {
+            const input = form.querySelector(`[name="${fieldName}"]`);
+            if (!input) return;
+
+            const events = input.tagName === 'SELECT' ? ['change', 'blur'] : ['input', 'blur'];
+
+            events.forEach(event => {
+                input.addEventListener(event, () => validateField(input, validations[fieldName]));
+            });
+        });
+
+        function validateField(input, rules) {
+            const value = input.value.trim();
+            let isValid = true;
+            let errorMessage = '';
+
+            input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+            
+            const errorContainer = getErrorContainer(input);
+            const existingError = errorContainer.querySelector('.validation-error-msg');
+            if (existingError) existingError.remove();
+
+            if (rules.required && !value) {
+                isValid = false;
+                errorMessage = rules.message || 'Este campo es obligatorio';
+            } else if (value && rules.pattern && !rules.pattern.test(value)) {
+                isValid = false;
+                errorMessage = rules.message;
+            } else if (value && rules.minLength && value.length < rules.minLength) {
+                isValid = false;
+                errorMessage = rules.message;
+            } else if (rules.custom && !rules.custom(value)) {
+                isValid = false;
+                errorMessage = rules.message;
+            }
+
+            if (!isValid) {
+                input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+                const msg = document.createElement('p');
+                msg.className = 'validation-error-msg text-xs text-red-500 mt-1 font-semibold animate-pulse';
+                msg.textContent = errorMessage;
+                errorContainer.appendChild(msg);
+            }
+            return isValid;
+        }
+
+        form.addEventListener('submit', function(e) {
+            let errors = [];
+            
+            Object.keys(validations).forEach(fieldName => {
+                const input = form.querySelector(`[name="${fieldName}"]`);
+                if (input) {
+                    const rule = validations[fieldName];
+                    // Skip validation if input is disabled (e.g., dependent dropdowns not yet active)
+                    if (!input.disabled) {
+                         if (!validateField(input, rule)) {
+                            let msg = rule.message || 'Error de validación';
+                            const label = input.closest('.form-group')?.querySelector('label')?.textContent || fieldName;
+                            if(rule.required && !input.value.trim()) msg = `El campo ${label} es obligatorio`;
+                            errors.push(msg);
+                        }
+                    }
+                }
+            });
+
+            if (errors.length > 0) {
+                e.preventDefault();
+                showErrorModal(errors);
+            }
+        });
+
+        function showErrorModal(errors) {
+            errorList.innerHTML = '';
+            const uniqueErrors = [...new Set(errors)];
+            uniqueErrors.forEach(err => {
+                const li = document.createElement('li');
+                li.textContent = err;
+                errorList.appendChild(li);
+            });
+
+            errorModal.classList.remove('hidden');
+            setTimeout(() => {
+                errorModalBackdrop.classList.remove('opacity-0');
+                errorModalPanel.classList.remove('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+                errorModalPanel.classList.add('opacity-100', 'translate-y-0', 'sm:scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            errorModalBackdrop.classList.add('opacity-0');
+            errorModalPanel.classList.remove('opacity-100', 'translate-y-0', 'sm:scale-100');
+            errorModalPanel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+            setTimeout(() => errorModal.classList.add('hidden'), 300);
+        }
+
+        closeErrorModalBtn.addEventListener('click', closeModal);
+        errorModalBackdrop.addEventListener('click', closeModal);
+    });
+</script>
+@endpush

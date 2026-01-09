@@ -83,6 +83,7 @@ Route::middleware(['auth'])->group(function () {
         
         // Administradores
         Route::resource('administradores', AdministradorController::class);
+        Route::post('administradores/{id}/toggle-status', [AdministradorController::class, 'toggleStatus'])->name('administradores.toggle-status');
         
         // Ubicaciones (selects dependientes)
         Route::get('get-ciudades/{estadoId}', [AdministradorController::class, 'getCiudades'])->name('admin.get-ciudades');
