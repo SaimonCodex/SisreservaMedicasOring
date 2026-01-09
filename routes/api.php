@@ -54,3 +54,7 @@ Route::get('/health', function () {
         'environment' => app()->environment()
     ]);
 });
+
+// Rutas para citas (acceso sin autenticación para AJAX del frontend)
+Route::get('/citas/medicos-por-especialidad/{especialidadId}', [\App\Http\Controllers\CitaController::class, 'getMedicosPorEspecialidad']);
+Route::get('/citas/consultorios-por-medico/{medicoId}', [\App\Http\Controllers\CitaController::class, 'getConsultoriosPorMedico']);

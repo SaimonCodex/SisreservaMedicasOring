@@ -16,21 +16,81 @@ class PacienteController extends Controller
     public function dashboard()
     {
         $paciente = auth()->user()->paciente;
-        $citasProximas = \App\Models\Cita::where('paciente_id', $paciente->id)
+        
+        // Manejar caso donde no existe paciente aún
+        if (!$paciente) {
+            return view('paciente.dashboard', [
+                'citas_proximas' => collect(),
+                'historial_reciente' => collect(),
+                'recetas_activas' => collect(),
+                'stats' => [
+                    'citas_proximás' => 0,
+                    'historias' => 0,
+                    'recetas_activas' => 0,
+                    'consultas_mes' => 0
+                ]
+            ]);
+        }
+        
+        $citas_proximas = \App\Models\Cita::where('paciente_id', $paciente->id)
                                        ->where('fecha_cita', '>=', today())
                                        ->where('status', true)
                                        ->orderBy('fecha_cita')
                                        ->limit(5)
                                        ->get();
 
-        $historialCitas = \App\Models\Cita::where('paciente_id', $paciente->id)
+        $historial_reciente = \App\Models\Cita::where('paciente_id', $paciente->id)
                                          ->where('fecha_cita', '<', today())
                                          ->where('status', true)
                                          ->orderBy('fecha_cita', 'desc')
                                          ->limit(10)
                                          ->get();
 
-        return view('paciente.dashboard', compact('citasProximas', 'historialCitas'));
+        $recetas_activas = collect();
+
+        // Estadísticas
+        $stats = [
+            'citas_proximás' => $citas_proximas->count(),
+            'historias' => $historial_reciente->count(),
+            'recetas_activas' => 0,
+            'consultas_mes' => \App\Models\Cita::where('paciente_id', $paciente->id)
+                                              ->whereMonth('fecha_cita', now()->month)
+                                              ->whereYear('fecha_cita', now()->year)
+                                              ->count()
+        ];
+
+        return view('paciente.dashboard', compact('citas_proximas', 'historial_reciente', 'recetas_activas', 'stats'));
+    }
+
+    public function historial()
+    {
+        $paciente = auth()->user()->paciente;
+        
+        if (!$paciente) {
+            return redirect()->route('paciente.dashboard')->with('error', 'No se encontró el perfil de paciente');
+        }
+
+        $historial = \App\Models\Cita::where('paciente_id', $paciente->id)
+                                     ->where('status', true)
+                                     ->orderBy('fecha_cita', 'desc')
+                                     ->paginate(20);
+
+        return view('paciente.historial', compact('historial', 'paciente'));
+    }
+
+    public function pagos()
+    {
+        $paciente = auth()->user()->paciente;
+        
+        if (!$paciente) {
+            return redirect()->route('paciente.dashboard')->with('error', 'No se encontró el perfil de paciente');
+        }
+
+        $pagos = \App\Models\FacturaPaciente::where('paciente_id', $paciente->id)
+                                            ->orderBy('created_at', 'desc')
+                                            ->paginate(20);
+
+        return view('paciente.pagos', compact('pagos', 'paciente'));
     }
 
     public function index()

@@ -40,7 +40,7 @@
             </div>
 
             <!-- Content -->
-            <div class="w-full max-w-sm mx-auto pt-10">
+            <div class="w-full @yield('form-width', 'max-w-lg') mx-auto pt-10">
                 @yield('auth-content')
             </div>
 
