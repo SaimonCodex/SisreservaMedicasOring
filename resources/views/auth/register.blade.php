@@ -431,48 +431,127 @@
         window.currentStep = step;
     };
 
+    // Validation Rules
+    const validationRules = {
+        'primer_nombre': { required: true, regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, msg: 'Solo letras permitidas' },
+        'segundo_nombre': { required: true, regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, msg: 'Solo letras permitidas' },
+        'primer_apellido': { required: true, regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, msg: 'Solo letras permitidas' },
+        'segundo_apellido': { required: true, regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, msg: 'Solo letras permitidas' },
+        'numero_documento': { required: true, regex: /^\d+$/, minLen: 6, maxLen: 12, msg: 'Solo números (6-12 dígitos)' },
+        'fecha_nac': { required: true, msg: 'Fecha requerida' },
+        'genero': { required: true, msg: 'Seleccione una opción' },
+        'numero_tlf': { required: true, regex: /^\d+$/, minLen: 10, maxLen: 15, msg: 'Solo números válidos' },
+        'estado_id': { required: true, msg: 'Seleccione un estado' },
+        'municipio_id': { required: true, msg: 'Seleccione un municipio' },
+        'parroquia_id': { required: true, msg: 'Seleccione una parroquia' },
+        'direccion': { required: true, msg: 'Dirección requerida' },
+        'correo': { required: true, email: true, msg: 'Correo inválido' },
+        'password': { required: true, password: true, msg: 'Verifique requisitos' },
+        'password_confirmation': { required: true, match: 'password', msg: 'Las contraseñas no coinciden' },
+        'pregunta_seguridad_1': { required: true },
+        'pregunta_seguridad_2': { required: true },
+        'pregunta_seguridad_3': { required: true },
+        'respuesta_seguridad_1': { required: true },
+        'respuesta_seguridad_2': { required: true },
+        'respuesta_seguridad_3': { required: true }
+    };
+
+    function validateField(id, value, eventType = 'blur') {
+        const rule = validationRules[id];
+        if(!rule) return true;
+
+        let valid = true;
+        let errorMsg = '';
+
+        // Input-time validation (loose format checks)
+        if (eventType === 'input') {
+             if (rule.regex && value && !rule.regex.test(value)) {
+                // If it's a strongly enforced regex (like numbers only), we might fix the value or show error
+                // For names, we show error immediately if invalid char typed
+                valid = false;
+                errorMsg = rule.msg;
+            }
+            if (id === 'password') {
+                // Password strength is handled by its own listener checkPasswordStrength
+                return true; 
+            }
+        }
+
+        // Blur-time validation (strict required/length checks)
+        if (eventType === 'blur' || eventType === 'submit') {
+            if (rule.required && !value.trim()) {
+                valid = false;
+                errorMsg = 'Campo requerido';
+            } else if (rule.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                valid = false;
+                errorMsg = 'Formato de correo inválido';
+            } else if (rule.minLen && value.length < rule.minLen) {
+                valid = false;
+                errorMsg = `Mínimo ${rule.minLen} caracteres`;
+            } else if (rule.match) {
+                const otherVal = document.getElementById(rule.match).value;
+                if (value !== otherVal) {
+                    valid = false;
+                    errorMsg = rule.msg;
+                }
+            } else if (rule.regex && !rule.regex.test(value)) {
+                 valid = false;
+                 errorMsg = rule.msg;
+            }
+        }
+
+        if(!valid && errorMsg) {
+             showError(id, errorMsg);
+        } else {
+             clearError(id);
+        }
+        return valid;
+    }
+
+    // Attach listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        Object.keys(validationRules).forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.addEventListener('input', (e) => validateField(id, e.target.value, 'input'));
+                el.addEventListener('blur', (e) => validateField(id, e.target.value, 'blur'));
+            }
+        });
+    });
+
     window.validateStep = function(step) {
-        clearAllErrors();
+        // Validation now delegates to individual checks
         let isValid = true;
+        let idsToCheck = [];
 
         if (step === 1) {
-            const fields = [
-                {id: 'primer_nombre', msg: 'El primer nombre es requerido', regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, regexMsg: 'Solo debe contener letras'},
-                {id: 'segundo_nombre', msg: 'El segundo nombre es requerido', regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, regexMsg: 'Solo debe contener letras'},
-                {id: 'primer_apellido', msg: 'El primer apellido es requerido', regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, regexMsg: 'Solo debe contener letras'},
-                {id: 'segundo_apellido', msg: 'El segundo apellido es requerido', regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, regexMsg: 'Solo debe contener letras'},
-                {id: 'numero_documento', msg: 'La cédula es requerida', minLen: 6, maxLen: 12, minMsg: 'La cédula debe tener entre 6 y 12 dígitos', regex: /^\d+$/, regexMsg: 'La cédula solo debe contener números'},
-                {id: 'fecha_nac', msg: 'La fecha de nacimiento es requerida'},
-                {id: 'genero', msg: 'El sexo es requerido'},
-                {id: 'numero_tlf', msg: 'El teléfono es requerido', regex: /^\d+$/, regexMsg: 'El teléfono solo debe contener números'}
-            ];
+            idsToCheck = ['primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'numero_documento', 'fecha_nac', 'genero', 'numero_tlf'];
+        } else if (step === 2) {
+             idsToCheck = ['estado_id', 'municipio_id', 'parroquia_id', 'direccion'];
+        } else if (step === 3) {
+             idsToCheck = ['correo', 'password', 'password_confirmation', 
+                           'pregunta_seguridad_1', 'respuesta_seguridad_1',
+                           'pregunta_seguridad_2', 'respuesta_seguridad_2',
+                           'pregunta_seguridad_3', 'respuesta_seguridad_3'];
+        }
 
-            fields.forEach(f => {
-                const el = document.getElementById(f.id);
-                if (!el) return;
-                const val = el.value.trim();
-
-                if (!val) {
-                    showError(f.id, f.msg);
-                    isValid = false;
-                } else if (f.regex && !f.regex.test(val)) {
-                    showError(f.id, f.regexMsg);
-                    isValid = false;
-                } else if (f.minLen && val.length < f.minLen) {
-                    showError(f.id, f.minMsg);
-                    isValid = false;
-                } else if (f.maxLen && val.length > f.maxLen) {
-                    showError(f.id, f.minMsg);
+        idsToCheck.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                if(!validateField(id, el.value, 'submit')) {
                     isValid = false;
                 }
-            });
-        }
-        
-        if (step === 2) {
-             const estado = document.getElementById('estado_id');
-             if(!estado || !estado.value) {
-                 showError('estado_id', 'Selecciona un Estado');
+            }
+        });
+
+        // Special check for password strength only on step 3 submit attempt
+        if (step === 3) {
+             const p1 = document.getElementById('password').value;
+             const strength = window.checkPasswordStrength(p1);
+             if (!strength.valid) {
                  isValid = false;
+                 // Error is already shown by strength meter visual, but we ensure field is red
+                 showError('password', 'Contraseña débil');
              }
         }
 

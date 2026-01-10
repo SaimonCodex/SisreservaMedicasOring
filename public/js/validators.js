@@ -69,7 +69,7 @@ export function validatePhone(phone) {
 
 // Validar solo letras y espacios (para nombres/apellidos)
 export function validateText(text, type = 'name') {
-    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
     const valid = nameRegex.test(text);
 
     return {
@@ -191,7 +191,7 @@ export function preventInvalidInput(input, validationType) {
 
             case 'text':
                 // Solo letras, espacios y acentos
-                if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/.test(char)) {
+                if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/.test(char)) {
                     e.preventDefault();
                 }
                 break;
