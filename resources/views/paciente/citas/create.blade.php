@@ -584,12 +584,38 @@
         } else {
             campoDoc.classList.add('hidden');
             infoGenerado.classList.remove('hidden');
-            // Mostrar preview del documento generado
-            const tipoDoc = document.getElementById('rep_tipo_documento').value;
-            const numDoc = document.getElementById('rep_numero_documento').value;
-            document.getElementById('doc-generado-preview').textContent = tipoDoc + '-' + numDoc + '-01';
+            actualizarPreviewDocumento();
         }
     }
+
+    async function actualizarPreviewDocumento() {
+        const tipoDoc = document.getElementById('rep_tipo_documento').value;
+        const numDoc = document.getElementById('rep_numero_documento').value;
+        const preview = document.getElementById('doc-generado-preview');
+        
+        if (!numDoc) {
+            preview.textContent = 'Documento no disponible';
+            return;
+        }
+
+        preview.textContent = 'Generando...';
+        
+        try {
+            const response = await fetch(BASE_URL + '/ajax/citas/get-next-sequence/' + numDoc);
+            if (!response.ok) throw new Error('Error en API');
+            
+            const data = await response.json();
+            // Data.full_id trae "12345678-02", le agregamos el tipo
+            preview.textContent = tipoDoc + '-' + data.full_id;
+        } catch(e) {
+            console.error('Error obteniendo secuencia:', e);
+            preview.textContent = tipoDoc + '-' + numDoc + '-01'; // Fallback
+        }
+    }
+
+    // Listeners para actualizar si cambia el representante (aunque sea readonly para el paciente actual, es bueno tenerlo)
+    document.getElementById('rep_numero_documento')?.addEventListener('change', actualizarPreviewDocumento);
+    document.getElementById('rep_tipo_documento')?.addEventListener('change', actualizarPreviewDocumento);
 
     function toggleDireccionPaciente() {
         const checkbox = document.getElementById('misma_direccion');

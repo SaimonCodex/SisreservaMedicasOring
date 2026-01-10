@@ -243,11 +243,7 @@ class CitaController extends Controller
                     } else {
                         // Generar documento basado en representante
                         $pacTipoDoc = $request->rep_tipo_documento;
-                        
-                        // Contar cuántos pacientes especiales ya existen con este patrón
-                        $countPacientes = PacienteEspecial::where('numero_documento', 'LIKE', $request->rep_numero_documento . '-%')
-                            ->count();
-                        $pacNumeroDoc = $request->rep_numero_documento . '-' . str_pad($countPacientes + 1, 2, '0', STR_PAD_LEFT);
+                        $pacNumeroDoc = $this->calculateNextId($request->rep_numero_documento);
                     }
                     
                     Log::info('Documento paciente especial', ['tipo' => $pacTipoDoc, 'numero' => $pacNumeroDoc]);
@@ -627,7 +623,46 @@ class CitaController extends Controller
     {
         $inicio = Carbon::createFromFormat('H:i', $horaInicio);
         $fin = Carbon::createFromFormat('H:i', $horaFin);
-        return $inicio->diffInMinutes($fin);
+        return $fin->diffInMinutes($inicio);
+    }
+    
+    // API Public para obtener siguiente secuencia
+    public function getNextSequence($numero_documento)
+    {
+        $nextId = $this->calculateNextId($numero_documento);
+        // Extraer solo la secuencia (últimos 2 dígitos)
+        $parts = explode('-', $nextId);
+        $sequence = end($parts);
+        
+        return response()->json([
+            'sequence' => $sequence,
+            'full_id' => $nextId
+        ]);
+    }
+
+    private function calculateNextId($baseDocumento)
+    {
+        // Buscar todos los documentos que empiecen con el documento base y tengan un sufijo
+        // Formato esperado en DB: 12345678-01, 12345678-02, etc.
+        $existing = PacienteEspecial::where('numero_documento', 'LIKE', $baseDocumento . '-%')
+                                    ->pluck('numero_documento');
+        
+        if ($existing->isEmpty()) {
+            return $baseDocumento . '-01';
+        }
+
+        $maxSequence = 0;
+        foreach ($existing as $doc) {
+            // Intentar extraer el sufijo numérico al final
+            if (preg_match('/-(\d+)$/', $doc, $matches)) {
+                $seq = intval($matches[1]);
+                if ($seq > $maxSequence) {
+                    $maxSequence = $seq;
+                }
+            }
+        }
+
+        return $baseDocumento . '-' . str_pad($maxSequence + 1, 2, '0', STR_PAD_LEFT);
     }
 
     private function obtenerDiaSemana($fecha)
