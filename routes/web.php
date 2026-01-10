@@ -135,6 +135,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::resource('citas', CitaController::class);
     Route::post('citas/{id}/cambiar-estado', [CitaController::class, 'cambiarEstado'])->name('citas.cambiar-estado');
+    Route::post('citas/{id}/solicitar-cancelacion', [CitaController::class, 'solicitarCancelacion'])->name('citas.solicitar-cancelacion');
     Route::get('buscar-disponibilidad', [CitaController::class, 'buscarDisponibilidad'])->name('citas.buscar-disponibilidad');
     
     // =========================================================================

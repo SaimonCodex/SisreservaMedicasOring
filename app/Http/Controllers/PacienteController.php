@@ -146,11 +146,64 @@ class PacienteController extends Controller
             return redirect()->route('paciente.dashboard')->with('error', 'No se encontró el perfil de paciente');
         }
 
-        $pagos = \App\Models\FacturaPaciente::where('paciente_id', $paciente->id)
+        // 1. Pagos propios
+        $pagosPropios = \App\Models\FacturaPaciente::where('paciente_id', $paciente->id)
                                             ->orderBy('created_at', 'desc')
-                                            ->paginate(20);
+                                            ->get()
+                                            ->map(function($pago) {
+                                                $pago->tipo_pago_display = 'propia';
+                                                $pago->paciente_especial_info = null;
+                                                return $pago;
+                                            });
 
-        return view('paciente.pagos', compact('pagos', 'paciente'));
+        // 2. Buscar si este paciente es representante de pacientes especiales
+        $representante = \App\Models\Representante::where('tipo_documento', $paciente->tipo_documento)
+                                      ->where('numero_documento', $paciente->numero_documento)
+                                      ->first();
+        
+        $pagosTerceros = collect();
+        $pacientesEspeciales = collect();
+        
+        if ($representante) {
+            // Obtener pacientes especiales de este representante
+            $pacientesEspeciales = $representante->pacientesEspeciales()->with(['paciente'])->get();
+            
+            // Obtener pagos de los pacientes asociados
+            $pacienteIds = $pacientesEspeciales->pluck('paciente_id')->filter();
+            
+            if ($pacienteIds->isNotEmpty()) {
+                $pagosTerceros = \App\Models\FacturaPaciente::whereIn('paciente_id', $pacienteIds)
+                                     ->orderBy('created_at', 'desc')
+                                     ->get()
+                                     ->map(function($pago) use ($pacientesEspeciales) {
+                                         $pago->tipo_pago_display = 'terceros';
+                                         // Buscar info del paciente especial
+                                         $pe = $pacientesEspeciales->firstWhere('paciente_id', $pago->paciente_id);
+                                         $pago->paciente_especial_info = $pe;
+                                         return $pago;
+                                     });
+            }
+        }
+
+        // Combinar todo
+        $pagos = $pagosPropios->concat($pagosTerceros)->sortByDesc('created_at');
+        
+        // Paginación manual
+        $page = request()->get('page', 1);
+        $perPage = 20;
+        $pagosPaginados = new \Illuminate\Pagination\LengthAwarePaginator(
+            $pagos->forPage($page, $perPage),
+            $pagos->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        return view('paciente.pagos', [
+            'pagos' => $pagosPaginados, 
+            'paciente' => $paciente,
+            'pacientesEspeciales' => $pacientesEspeciales
+        ]);
     }
 
     public function index()

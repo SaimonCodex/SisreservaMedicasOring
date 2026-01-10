@@ -8,6 +8,7 @@
     <p class="text-gray-600 mt-1">Todas tus consultas y procedimientos</p>
 </div>
 
+@if(isset($pacientesEspeciales) && $pacientesEspeciales->count() > 0)
 <!-- Filtros -->
 <div class="card p-4 mb-6">
     <div class="flex flex-wrap items-center gap-4">
@@ -31,6 +32,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="card">
     @if($historial && $historial->count() > 0)
