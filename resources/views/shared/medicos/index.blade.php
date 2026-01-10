@@ -36,10 +36,11 @@
             <label class="form-label">Especialidad</label>
             <select name="especialidad_id" class="form-select">
                 <option value="">Todas</option>
-                <!-- Simulación de opciones -->
-                <option value="1" {{ request('especialidad_id') == '1' ? 'selected' : '' }}>Cardiología</option>
-                <option value="2" {{ request('especialidad_id') == '2' ? 'selected' : '' }}>Pediatría</option>
-                <option value="3" {{ request('especialidad_id') == '3' ? 'selected' : '' }}>Traumatología</option>
+                @foreach($especialidades as $especialidad)
+                    <option value="{{ $especialidad->id }}" {{ request('especialidad_id') == $especialidad->id ? 'selected' : '' }}>
+                        {{ $especialidad->nombre }}
+                    </option>
+                @endforeach
             </select>
         </div>
 
@@ -48,8 +49,8 @@
             <label class="form-label">Estado</label>
             <select name="status" class="form-select">
                 <option value="">Todos</option>
-                <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>Activos</option>
-                <option value="0" {{ request('status') == '0' ? 'selected' : '' }}>Inactivos</option>
+                <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Activos</option>
+                <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactivos</option>
             </select>
         </div>
 
@@ -73,7 +74,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Total Médicos</p>
-                <p class="text-2xl font-bold text-gray-900">24</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $totalMedicos }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-medical-50 flex items-center justify-center">
                 <i class="bi bi-person-badge text-medical-600 text-2xl"></i>
@@ -85,7 +86,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Activos</p>
-                <p class="text-2xl font-bold text-gray-900">22</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $medicosActivos }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-success-50 flex items-center justify-center">
                 <i class="bi bi-check-circle text-success-600 text-2xl"></i>
@@ -97,7 +98,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Consultas Hoy</p>
-                <p class="text-2xl font-bold text-gray-900">47</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $citasHoyCount }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-warning-50 flex items-center justify-center">
                 <i class="bi bi-calendar-check text-warning-600 text-2xl"></i>
@@ -109,7 +110,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Especialidades</p>
-                <p class="text-2xl font-bold text-gray-900">12</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $totalEspecialidades }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-info-50 flex items-center justify-center">
                 <i class="bi bi-bookmark text-info-600 text-2xl"></i>
@@ -133,150 +134,71 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-                <!-- Ejemplo de fila 1 -->
+                @forelse($medicos as $medico)
                 <tr class="hover:bg-medical-50 transition-colors">
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center text-white font-bold">
-                                JP
+                                {{ substr($medico->primer_nombre, 0, 1) }}{{ substr($medico->primer_apellido, 0, 1) }}
                             </div>
                             <div>
-                                <p class="font-semibold text-gray-900">Dr. Juan Pérez</p>
-                                <p class="text-xs text-gray-500">V-12345678</p>
+                                <p class="font-semibold text-gray-900">{{ $medico->primer_nombre }} {{ $medico->primer_apellido }}</p>
+                                <p class="text-xs text-gray-500">{{ $medico->tipo_documento }}-{{ $medico->numero_documento }}</p>
                             </div>
                         </div>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="badge badge-primary">Cardiología</span>
+                        @if($medico->especialidades->count() > 0)
+                            @foreach($medico->especialidades as $esp)
+                                <span class="badge badge-primary">{{ $esp->nombre }}</span>
+                            @endforeach
+                        @else
+                            <span class="text-gray-400 italic">Sin especialidad</span>
+                        @endif
                     </td>
                     <td class="px-6 py-4">
-                        <span class="font-mono text-gray-600">98765</span>
+                        <span class="font-mono text-gray-600">{{ $medico->nro_colegiatura ?? 'N/A' }}</span>
                     </td>
                     <td class="px-6 py-4">
-                        <p class="text-gray-900">0414-1234567</p>
-                        <p class="text-xs text-gray-500">juan.perez@example.com</p>
+                        <p class="text-gray-900">{{ $medico->prefijo_tlf }} {{ $medico->numero_tlf }}</p>
+                        <p class="text-xs text-gray-500">{{ $medico->usuario->correo ?? 'Sin usuario' }}</p>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="badge badge-success">Activo</span>
+                        @if($medico->status)
+                            <span class="badge badge-success">Activo</span>
+                        @else
+                            <span class="badge badge-gray">Inactivo</span>
+                        @endif
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex items-center justify-center gap-2">
-                            <a href="{{ route('medicos.show', 1) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver detalles">
+                            <a href="{{ route('medicos.show', $medico->id) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver detalles">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{{ route('medicos.horarios', 1) }}" class="btn btn-sm btn-ghost text-info-600" title="Horarios">
+                            <a href="{{ route('medicos.index') }}" class="btn btn-sm btn-ghost text-info-600" title="Horarios (Próximamente)">
                                 <i class="bi bi-clock"></i>
                             </a>
-                            <a href="{{ route('medicos.edit', 1) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
+                            <a href="{{ route('medicos.edit', $medico->id) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
                         </div>
                     </td>
                 </tr>
-
-                <!-- Ejemplo de fila 2 -->
-                <tr class="hover:bg-medical-50 transition-colors">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-danger-500 to-danger-600 flex items-center justify-center text-white font-bold">
-                                MG
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-900">Dra. María González</p>
-                                <p class="text-xs text-gray-500">V-23456789</p>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="badge badge-warning">Pediatría</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="font-mono text-gray-600">87654</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="text-gray-900">0424-9876543</p>
-                        <p class="text-xs text-gray-500">maria.gonzalez@example.com</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="badge badge-success">Activo</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center justify-center gap-2">
-                            <a href="{{ route('medicos.show', 2) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver detalles">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ route('medicos.horarios', 2) }}" class="btn btn-sm btn-ghost text-info-600" title="Horarios">
-                                <i class="bi bi-clock"></i>
-                            </a>
-                            <a href="{{ route('medicos.edit', 2) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                        </div>
+                @empty
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                        <i class="bi bi-inbox text-4xl mb-3 block"></i>
+                        No se encontraron médicos registrados
                     </td>
                 </tr>
-
-                <!-- Ejemplo de fila 3 -->
-                <tr class="hover:bg-medical-50 transition-colors">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-success-500 to-success-600 flex items-center justify-center text-white font-bold">
-                                CL
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-900">Dr. Carlos López</p>
-                                <p class="text-xs text-gray-500">V-34567890</p>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="badge badge-info">Traumatología</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="font-mono text-gray-600">76543</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="text-gray-900">0412-8765432</p>
-                        <p class="text-xs text-gray-500">carlos.lopez@example.com</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="badge badge-gray">Inactivo</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center justify-center gap-2">
-                            <a href="{{ route('medicos.show', 3) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver detalles">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ route('medicos.horarios', 3) }}" class="btn btn-sm btn-ghost text-info-600" title="Horarios">
-                                <i class="bi bi-clock"></i>
-                            </a>
-                            <a href="{{ route('medicos.edit', 3) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
 
     <!-- Paginación -->
     <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
-        <div class="flex items-center justify-between">
-            <p class="text-sm text-gray-600">
-                Mostrando <span class="font-semibold">1</span> a <span class="font-semibold">3</span> de <span class="font-semibold">24</span> médicos
-            </p>
-            <div class="flex gap-2">
-                <button class="btn btn-sm btn-outline" disabled>
-                    <i class="bi bi-chevron-left"></i>
-                </button>
-                <button class="btn btn-sm bg-medical-600 text-white">1</button>
-                <button class="btn btn-sm btn-outline">2</button>
-                <button class="btn btn-sm btn-outline">3</button>
-                <button class="btn btn-sm btn-outline">
-                    <i class="bi bi-chevron-right"></i>
-                </button>
-            </div>
-        </div>
+        {{ $medicos->links() }}
     </div>
 </div>
 @endsection
