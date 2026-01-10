@@ -15,8 +15,11 @@ class Kernel extends ConsoleKernel
     // Enviar recordatorios diarios a las 8:00 AM
     $schedule->command('citas:enviar-recordatorios')->dailyAt('08:00');
     
-    // Actualizar tasas de dólar cada hora
-    $schedule->command('tasas:actualizar')->hourly();
+    // Actualizar tasas de dólar (Mañana)
+    $schedule->command('tasas:actualizar')->dailyAt('09:00');
+    
+    // Actualizar tasas de dólar (Tarde)
+    $schedule->command('tasas:actualizar')->dailyAt('17:00');
     
     // Limpiar notificaciones antiguas semanalmente
     $schedule->command('notificaciones:limpiar')->weekly();

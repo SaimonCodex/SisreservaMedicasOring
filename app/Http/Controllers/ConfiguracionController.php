@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use App\Models\Configuracion;
+use App\Services\DollarExchangeService;
 
 class ConfiguracionController extends Controller
 {
@@ -156,7 +158,16 @@ class ConfiguracionController extends Controller
                           ->orderBy('fecha_tasa', 'desc')
                           ->paginate(20);
 
-        return view('admin.configuracion.tasas', compact('tasas'));
+        $autoUpdate = Configuracion::where('key', 'auto_update_tasa')->value('value');
+        
+        $impuestos = [
+            'iva_general' => Configuracion::where('key', 'iva_general')->value('value') ?? '16.00',
+            'exento_consultas' => Configuracion::where('key', 'exento_consultas')->value('value') ?? '1',
+            'exento_emergencias' => Configuracion::where('key', 'exento_emergencias')->value('value') ?? '1',
+            'exento_laboratorio' => Configuracion::where('key', 'exento_laboratorio')->value('value') ?? '0',
+        ];
+
+        return view('admin.configuracion.tasas', compact('tasas', 'autoUpdate', 'impuestos'));
     }
 
     public function guardarTasa(Request $request)
@@ -184,6 +195,47 @@ class ConfiguracionController extends Controller
         TasaDolar::create($request->all());
 
         return redirect()->back()->with('success', 'Tasa de cambio guardada exitosamente');
+    }
+
+    public function actualizarConfiguracionTasa(Request $request)
+    {
+        $value = $request->has('auto_update_tasa') ? '1' : '0';
+
+        Configuracion::updateOrCreate(
+            ['key' => 'auto_update_tasa'],
+            ['value' => $value]
+        );
+
+        $estado = ($value == '1') ? 'activada' : 'desactivada';
+        return redirect()->back()->with('success', "Actualización automática {$estado} exitosamente");
+    }
+
+    public function actualizarImpuestos(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'iva_general' => 'required|numeric|min:0|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator);
+        }
+
+        Configuracion::updateOrCreate(['key' => 'iva_general'], ['value' => $request->iva_general]);
+        
+        Configuracion::updateOrCreate(['key' => 'exento_consultas'], ['value' => $request->has('exento_consultas') ? '1' : '0']);
+        Configuracion::updateOrCreate(['key' => 'exento_emergencias'], ['value' => $request->has('exento_emergencias') ? '1' : '0']);
+        Configuracion::updateOrCreate(['key' => 'exento_laboratorio'], ['value' => $request->has('exento_laboratorio') ? '1' : '0']);
+
+        return redirect()->back()->with('success', 'Configuración de impuestos actualizada exitosamente');
+    }
+
+    public function sincronizarTasa(DollarExchangeService $service)
+    {
+        if ($service->syncRate()) {
+            return redirect()->back()->with('success', 'Tasa sincronizada exitosamente con el BCV');
+        }
+
+        return redirect()->back()->with('error', 'No se pudo sincronizar la tasa. Intente nuevamente.');
     }
 
     public function actualizarTasa(Request $request, $id)
