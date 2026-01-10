@@ -13,6 +13,8 @@ class Cita extends Model
     protected $primaryKey = 'id';
     protected $fillable = [
         'paciente_id',
+        'paciente_especial_id',
+        'representante_id',
         'medico_id',
         'especialidad_id',
         'consultorio_id',
@@ -21,8 +23,10 @@ class Cita extends Model
         'hora_fin',
         'duracion_minutos',
         'tarifa',
+        'tarifa_extra',
         'tipo_consulta',
         'estado_cita',
+        'motivo',
         'observaciones',
         'status'
     ];
@@ -30,6 +34,16 @@ class Cita extends Model
     public function paciente()
     {
         return $this->belongsTo(Paciente::class, 'paciente_id');
+    }
+
+    public function pacienteEspecial()
+    {
+        return $this->belongsTo(PacienteEspecial::class, 'paciente_especial_id');
+    }
+
+    public function representante()
+    {
+        return $this->belongsTo(Representante::class, 'representante_id');
     }
 
     public function medico()
@@ -71,4 +85,11 @@ class Cita extends Model
     {
         return $this->hasMany(SolicitudHistorial::class, 'cita_id');
     }
+    
+    // Calcular tarifa total
+    public function getTarifaTotalAttribute()
+    {
+        return ($this->tarifa ?? 0) + ($this->tarifa_extra ?? 0);
+    }
 }
+

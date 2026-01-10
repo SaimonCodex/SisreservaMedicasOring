@@ -56,6 +56,17 @@ Route::prefix('ubicacion')->group(function () {
 // Rutas públicas para búsqueda de médicos
 Route::get('buscar-medicos-publico', [MedicoController::class, 'buscar'])->name('medicos.buscar.publico');
 
+// =========================================================================
+// RUTAS AJAX PARA SISTEMA DE CITAS (sin autenticación para AJAX del frontend)
+// =========================================================================
+Route::prefix('ajax/citas')->group(function () {
+    Route::get('/consultorios-por-estado/{estadoId}', [CitaController::class, 'getConsultoriosPorEstado']);
+    Route::get('/especialidades-por-consultorio/{consultorioId}', [CitaController::class, 'getEspecialidadesPorConsultorio']);
+    Route::get('/consultorios-por-especialidad/{especialidadId}', [CitaController::class, 'getConsultoriosPorEspecialidad']);
+    Route::get('/medicos', [CitaController::class, 'getMedicosPorEspecialidadConsultorio']);
+    Route::get('/horarios-disponibles', [CitaController::class, 'getHorariosDisponibles']);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Rutas Protegidas (Requieren Autenticación)

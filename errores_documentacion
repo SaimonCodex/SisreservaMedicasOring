@@ -39,7 +39,7 @@ solucionado3)  botones: de <!-- Health Stats Mini --> linea 23 hasta </div>linea
     al preionar el boton pagos se debe redirigir a la pagina de pagos del paciente.
 solucionado 4) lo mismo para los botones de la seccion de menu rapido. <!-- Accesos Directos --> desde la linea 283 hasta </div> linea 319
 solucionado 5) boton de la seccion historial medico recientes el boton ver historial completo debe redirigir a la pagina de historial del paciente.  <!-- Historial Reciente --> desde la linea 144 hasta </div> linea 187
-6) problema principal: cuando se presiona lso botones +solicitar cita y el boton de la seccion mis proximas citas estos redirige al usuario con rol paciente al dashboard del administrador. cosas que no puede pasar. porque cada rol tiene sus vistas y los procesos y tareas que pueden realizar.
+solucionado6) problema principal: cuando se presiona lso botones +solicitar cita y el boton de la seccion mis proximas citas estos redirige al usuario con rol paciente al dashboard del administrador. cosas que no puede pasar. porque cada rol tiene sus vistas y los procesos y tareas que pueden realizar.
     
 archivo: resources\views\dashboard.blade.php
 

@@ -55,6 +55,19 @@ Route::get('/health', function () {
     ]);
 });
 
-// Rutas para citas (acceso sin autenticación para AJAX del frontend)
-Route::get('/citas/medicos-por-especialidad/{especialidadId}', [\App\Http\Controllers\CitaController::class, 'getMedicosPorEspecialidad']);
-Route::get('/citas/consultorios-por-medico/{medicoId}', [\App\Http\Controllers\CitaController::class, 'getConsultoriosPorMedico']);
+// =========================================================================
+// RUTAS PARA SISTEMA DE CITAS (sin autenticación para AJAX del frontend)
+// =========================================================================
+
+// Consultorios
+Route::get('/citas/consultorios-por-estado/{estadoId}', [\App\Http\Controllers\CitaController::class, 'getConsultoriosPorEstado']);
+Route::get('/citas/consultorios-por-especialidad/{especialidadId}', [\App\Http\Controllers\CitaController::class, 'getConsultoriosPorEspecialidad']);
+
+// Especialidades
+Route::get('/citas/especialidades-por-consultorio/{consultorioId}', [\App\Http\Controllers\CitaController::class, 'getEspecialidadesPorConsultorio']);
+
+// Médicos
+Route::get('/citas/medicos', [\App\Http\Controllers\CitaController::class, 'getMedicosPorEspecialidadConsultorio']);
+
+// Horarios
+Route::get('/citas/horarios-disponibles', [\App\Http\Controllers\CitaController::class, 'getHorariosDisponibles']);

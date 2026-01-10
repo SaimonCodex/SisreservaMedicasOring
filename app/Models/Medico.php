@@ -62,7 +62,7 @@ class Medico extends Model
     public function especialidades()
     {
         return $this->belongsToMany(Especialidad::class, 'medico_especialidad', 'medico_id', 'especialidad_id')
-                    ->withPivot('tarifa', 'anos_experiencia', 'status');
+                    ->withPivot('tarifa', 'atiende_domicilio', 'tarifa_extra_domicilio', 'anos_experiencia', 'status');
     }
 
     public function consultorios()

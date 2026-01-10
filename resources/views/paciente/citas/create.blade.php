@@ -94,7 +94,7 @@
                             </div>
                         </div>
                         <div>
-                            <label class="form-label form-label-required">Teléfono</label>
+                            <label class="form-label">Teléfono</label>
                             <div class="flex gap-2">
                                 <select name="tercero_prefijo_tlf" class="form-select w-24">
                                     <option value="+58">+58</option>
@@ -135,21 +135,56 @@
                     </div>
                 </div>
 
-                <!-- Especialidad y Médico -->
+                <!-- Ubicación y Consultorio -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="bi bi-geo-alt text-purple-600"></i>
+                        Ubicación y Consultorio
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-4">Puedes buscar por estado, por especialidad, o seleccionar directamente el consultorio.</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Buscar por Estado -->
+                        <div>
+                            <label class="form-label">Buscar por Estado</label>
+                            <select id="estado_busqueda" class="form-select">
+                                <option value="">Todos los estados...</option>
+                                @foreach($estados ?? [] as $estado)
+                                <option value="{{ $estado->id_estado }}">{{ $estado->estado }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Consultorio -->
+                        <div>
+                            <label class="form-label form-label-required">Consultorio</label>
+                            <select name="consultorio_id" id="consultorio_id" class="form-select" required>
+                                <option value="">Seleccionar consultorio...</option>
+                                @foreach($consultorios ?? [] as $consultorio)
+                                <option value="{{ $consultorio->id }}" 
+                                        data-estado="{{ $consultorio->estado_id }}"
+                                        data-direccion="{{ $consultorio->direccion_detallada }}">
+                                    {{ $consultorio->nombre }}
+                                </option>
+                                @endforeach
+                            </select>
+                            <p id="consultorio-direccion" class="text-xs text-gray-500 mt-1 hidden"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Especialidad -->
                 <div class="card p-6">
                     <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <i class="bi bi-hospital text-blue-600"></i>
                         Especialidad y Médico
                     </h3>
 
-                    <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label form-label-required">Especialidad</label>
-                            <select name="especialidad_id" id="especialidad_id" class="form-select" required>
-                                <option value="">Seleccionar especialidad...</option>
-                                @foreach($especialidades ?? [] as $especialidad)
-                                <option value="{{ $especialidad->id }}">{{ $especialidad->nombre }}</option>
-                                @endforeach
+                            <select name="especialidad_id" id="especialidad_id" class="form-select" required disabled>
+                                <option value="">Primero seleccione un consultorio...</option>
                             </select>
                         </div>
 
@@ -158,7 +193,7 @@
                             <select name="medico_id" id="medico_id" class="form-select" required disabled>
                                 <option value="">Primero seleccione una especialidad...</option>
                             </select>
-                            <p class="form-help">Seleccione primero la especialidad para ver los médicos disponibles</p>
+                            <p id="medico-info" class="text-xs text-gray-500 mt-1 hidden"></p>
                         </div>
                     </div>
                 </div>
@@ -173,47 +208,55 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label form-label-required">Fecha</label>
-                            <input type="date" name="fecha_cita" id="fecha_cita" class="input" min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" required>
+                            <input type="date" name="fecha_cita" id="fecha_cita" class="input" min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" required disabled>
+                            <p class="form-help">Seleccione primero médico y consultorio</p>
                         </div>
 
                         <div>
-                            <label class="form-label form-label-required">Hora</label>
-                            <select name="hora_inicio" id="hora_inicio" class="form-select" required>
-                                <option value="">Seleccionar hora...</option>
-                                @for($h = 7; $h <= 18; $h++)
-                                    <option value="{{ sprintf('%02d:00', $h) }}">{{ sprintf('%02d:00', $h) }}</option>
-                                    <option value="{{ sprintf('%02d:30', $h) }}">{{ sprintf('%02d:30', $h) }}</option>
-                                @endfor
-                            </select>
+                            <label class="form-label form-label-required">Hora Disponible</label>
+                            <div id="horarios-container" class="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                                <p class="col-span-4 text-center text-gray-500 text-sm py-4">Seleccione fecha para ver horarios</p>
+                            </div>
+                            <input type="hidden" name="hora_inicio" id="hora_inicio" required>
                         </div>
                     </div>
                 </div>
 
-                <!-- Consultorio y Tipo -->
+                <!-- Tipo de Consulta -->
                 <div class="card p-6">
                     <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <i class="bi bi-building text-purple-600"></i>
-                        Consultorio y Tipo de Consulta
+                        <i class="bi bi-building text-amber-600"></i>
+                        Tipo de Consulta
                     </h3>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="form-label">Consultorio</label>
-                            <select name="consultorio_id" id="consultorio_id" class="form-select">
-                                <option value="">Seleccionar consultorio...</option>
-                                @foreach($consultorios ?? [] as $consultorio)
-                                <option value="{{ $consultorio->id }}">{{ $consultorio->nombre }}</option>
-                                @endforeach
-                            </select>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-blue-500 transition-colors tipo-consulta-option" data-tipo="Consultorio">
+                                <input type="radio" name="tipo_consulta" value="Consultorio" class="w-5 h-5 text-blue-600" checked>
+                                <div>
+                                    <span class="font-semibold text-gray-900">En Consultorio</span>
+                                    <p class="text-sm text-gray-500">Asistir al consultorio médico</p>
+                                </div>
+                            </label>
+                            
+                            <label id="opcion-domicilio" class="flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-emerald-500 transition-colors tipo-consulta-option hidden" data-tipo="Domicilio">
+                                <input type="radio" name="tipo_consulta" value="Domicilio" class="w-5 h-5 text-emerald-600">
+                                <div>
+                                    <span class="font-semibold text-gray-900">A Domicilio</span>
+                                    <p class="text-sm text-gray-500">El médico visita tu hogar</p>
+                                </div>
+                            </label>
                         </div>
-                        
-                        <div>
-                            <label class="form-label form-label-required">Tipo de Consulta</label>
-                            <select name="tipo_consulta" class="form-select" required>
-                                <option value="Presencial">Presencial</option>
-                                <option value="Telemedicina">Telemedicina</option>
-                                <option value="Domicilio">Domicilio</option>
-                            </select>
+
+                        <!-- Aviso de tarifa extra -->
+                        <div id="aviso-domicilio" class="p-4 bg-amber-50 border border-amber-200 rounded-xl hidden">
+                            <div class="flex gap-3">
+                                <i class="bi bi-exclamation-triangle text-amber-600 text-xl"></i>
+                                <div>
+                                    <p class="font-semibold text-amber-800">Consulta a Domicilio</p>
+                                    <p class="text-sm text-amber-700">Las consultas a domicilio suelen tener tarifa extra o cargos adicionales. El costo adicional es: <strong id="tarifa-extra-valor">$0.00</strong></p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -221,7 +264,7 @@
                 <!-- Motivo -->
                 <div class="card p-6">
                     <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <i class="bi bi-chat-left-text text-amber-600"></i>
+                        <i class="bi bi-chat-left-text text-rose-600"></i>
                         Motivo de Consulta
                     </h3>
 
@@ -233,32 +276,64 @@
                 </div>
             </div>
 
-            <!-- Sidebar -->
+            <!-- Sidebar - Resumen -->
             <div class="space-y-6">
-                <!-- Resumen -->
                 <div class="card p-6 sticky top-24">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Resumen de Cita</h3>
+                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="bi bi-receipt text-blue-600"></i>
+                        Resumen de Cita
+                    </h3>
+                    
                     <div class="space-y-3 text-sm">
+                        <!-- Tipo de Cita -->
                         <div class="p-3 bg-gray-50 rounded-lg">
-                            <p class="text-xs text-gray-600 mb-1">Tipo de Cita</p>
+                            <p class="text-xs text-gray-500 mb-1">Tipo de Cita</p>
                             <p class="font-semibold text-gray-900" id="resumen-tipo">-</p>
                         </div>
+                        
+                        <!-- Tipo Consulta -->
                         <div class="p-3 bg-blue-50 rounded-lg">
-                            <p class="text-xs text-gray-600 mb-1">Especialidad</p>
+                            <p class="text-xs text-gray-500 mb-1">Modalidad</p>
+                            <p class="font-semibold text-gray-900" id="resumen-modalidad">En Consultorio</p>
+                        </div>
+                        
+                        <!-- Especialidad -->
+                        <div class="p-3 bg-purple-50 rounded-lg">
+                            <p class="text-xs text-gray-500 mb-1">Especialidad</p>
                             <p class="font-semibold text-gray-900" id="resumen-especialidad">-</p>
                         </div>
+                        
+                        <!-- Médico -->
                         <div class="p-3 bg-emerald-50 rounded-lg">
-                            <p class="text-xs text-gray-600 mb-1">Médico</p>
+                            <p class="text-xs text-gray-500 mb-1">Médico</p>
                             <p class="font-semibold text-gray-900" id="resumen-medico">-</p>
                         </div>
-                        <div class="p-3 bg-purple-50 rounded-lg">
-                            <p class="text-xs text-gray-600 mb-1">Fecha y Hora</p>
+                        
+                        <!-- Consultorio -->
+                        <div class="p-3 bg-amber-50 rounded-lg">
+                            <p class="text-xs text-gray-500 mb-1">Consultorio</p>
+                            <p class="font-semibold text-gray-900" id="resumen-consultorio">-</p>
+                            <p class="text-xs text-gray-500 mt-1" id="resumen-consultorio-direccion"></p>
+                        </div>
+                        
+                        <!-- Fecha y Hora -->
+                        <div class="p-3 bg-sky-50 rounded-lg">
+                            <p class="text-xs text-gray-500 mb-1">Fecha y Hora</p>
                             <p class="font-semibold text-gray-900" id="resumen-fecha">-</p>
+                        </div>
+                        
+                        <!-- Tarifa -->
+                        <div class="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                            <p class="text-xs text-gray-500 mb-1">Tarifa Total</p>
+                            <div class="flex items-baseline gap-2">
+                                <p class="text-2xl font-bold text-green-700" id="resumen-tarifa">$0.00</p>
+                                <span class="text-xs text-gray-500" id="resumen-tarifa-detalle"></span>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="mt-6 space-y-3">
-                        <button type="submit" class="btn btn-success w-full">
+                        <button type="submit" class="btn btn-success w-full text-lg py-3">
                             <i class="bi bi-check-lg"></i>
                             Confirmar Cita
                         </button>
@@ -275,7 +350,7 @@
                         <i class="bi bi-info-circle text-blue-600 text-xl"></i>
                         <div>
                             <h4 class="font-semibold text-gray-900 mb-1">Importante</h4>
-                            <p class="text-sm text-gray-600">Recibirás una confirmación por email una vez que tu cita sea aprobada por el sistema.</p>
+                            <p class="text-sm text-gray-600">Recibirás una confirmación por email una vez que tu cita sea registrada en el sistema.</p>
                         </div>
                     </div>
                 </div>
@@ -286,6 +361,14 @@
 
 @push('scripts')
 <script>
+    // URL base de la aplicación (incluye index.php si es necesario)
+    const BASE_URL = '{{ url("") }}';
+    
+    // Variables globales para almacenar datos del médico seleccionado
+    let medicoActual = null;
+    let tarifaBase = 0;
+    let tarifaExtra = 0;
+
     function selectTipoCita(tipo) {
         document.getElementById('tipo_cita').value = tipo;
         document.getElementById('step-tipo').classList.add('hidden');
@@ -295,12 +378,10 @@
             document.getElementById('datos-propios').classList.remove('hidden');
             document.getElementById('datos-tercero').classList.add('hidden');
             document.getElementById('resumen-tipo').textContent = 'Cita Propia';
-            document.getElementById('btn-propia').classList.add('border-blue-500', 'bg-blue-50');
         } else {
             document.getElementById('datos-propios').classList.add('hidden');
             document.getElementById('datos-tercero').classList.remove('hidden');
             document.getElementById('resumen-tipo').textContent = 'Cita para Terceros';
-            document.getElementById('btn-terceros').classList.add('border-emerald-500', 'bg-emerald-50');
         }
     }
     
@@ -309,20 +390,85 @@
         document.getElementById('citaForm').classList.add('hidden');
         document.getElementById('datos-propios').classList.add('hidden');
         document.getElementById('datos-tercero').classList.add('hidden');
-        document.getElementById('btn-propia').classList.remove('border-blue-500', 'bg-blue-50');
-        document.getElementById('btn-terceros').classList.remove('border-emerald-500', 'bg-emerald-50');
     }
 
-    // Cargar médicos por especialidad
+    // Filtrar consultorios por estado
+    document.getElementById('estado_busqueda')?.addEventListener('change', function() {
+        const estadoId = this.value;
+        const consultorioSelect = document.getElementById('consultorio_id');
+        const opciones = consultorioSelect.querySelectorAll('option');
+        
+        opciones.forEach(opt => {
+            if (!opt.value) return; // Skip placeholder
+            if (!estadoId || opt.dataset.estado == estadoId) {
+                opt.style.display = '';
+            } else {
+                opt.style.display = 'none';
+            }
+        });
+        
+        consultorioSelect.value = '';
+    });
+
+    // Cuando se selecciona consultorio, cargar especialidades
+    document.getElementById('consultorio_id')?.addEventListener('change', async function() {
+        const consultorioId = this.value;
+        const selectedOption = this.options[this.selectedIndex];
+        const direccion = selectedOption?.dataset?.direccion || '';
+        
+        // Mostrar dirección
+        const dirEl = document.getElementById('consultorio-direccion');
+        if (direccion) {
+            dirEl.textContent = '📍 ' + direccion;
+            dirEl.classList.remove('hidden');
+        } else {
+            dirEl.classList.add('hidden');
+        }
+        
+        // Actualizar resumen
+        document.getElementById('resumen-consultorio').textContent = selectedOption?.text || '-';
+        document.getElementById('resumen-consultorio-direccion').textContent = direccion;
+        
+        const especialidadSelect = document.getElementById('especialidad_id');
+        
+        if (!consultorioId) {
+            especialidadSelect.disabled = true;
+            especialidadSelect.innerHTML = '<option value="">Primero seleccione un consultorio...</option>';
+            return;
+        }
+        
+        especialidadSelect.disabled = false;
+        especialidadSelect.innerHTML = '<option value="">Cargando especialidades...</option>';
+        
+        try {
+            const response = await fetch(BASE_URL + '/ajax/citas/especialidades-por-consultorio/' + consultorioId);
+            const especialidades = await response.json();
+            
+            especialidadSelect.innerHTML = '<option value="">Seleccionar especialidad...</option>';
+            especialidades.forEach(esp => {
+                const option = document.createElement('option');
+                option.value = esp.id;
+                option.textContent = esp.nombre;
+                especialidadSelect.appendChild(option);
+            });
+        } catch (e) {
+            console.error('Error cargando especialidades:', e);
+            especialidadSelect.innerHTML = '<option value="">Error al cargar</option>';
+        }
+    });
+
+    // Cuando se selecciona especialidad, cargar médicos
     document.getElementById('especialidad_id')?.addEventListener('change', async function() {
         const especialidadId = this.value;
+        const consultorioId = document.getElementById('consultorio_id').value;
+        
+        document.getElementById('resumen-especialidad').textContent = this.options[this.selectedIndex]?.text || '-';
+        
         const medicoSelect = document.getElementById('medico_id');
         
-        document.getElementById('resumen-especialidad').textContent = this.options[this.selectedIndex].text;
-        
-        if (!especialidadId) {
+        if (!especialidadId || !consultorioId) {
             medicoSelect.disabled = true;
-            medicoSelect.innerHTML = '<option value="">Primero seleccione una especialidad...</option>';
+            medicoSelect.innerHTML = '<option value="">Primero seleccione especialidad...</option>';
             return;
         }
         
@@ -330,44 +476,175 @@
         medicoSelect.innerHTML = '<option value="">Cargando médicos...</option>';
         
         try {
-            const response = await fetch('{{ url("api/citas/medicos-por-especialidad") }}/' + especialidadId);
+            const response = await fetch(`${BASE_URL}/ajax/citas/medicos?especialidad_id=${especialidadId}&consultorio_id=${consultorioId}`);
             const medicos = await response.json();
             
             medicoSelect.innerHTML = '<option value="">Seleccionar médico...</option>';
-            medicos.forEach(medico => {
+            medicos.forEach(med => {
                 const option = document.createElement('option');
-                option.value = medico.id;
-                option.textContent = medico.nombre;
+                option.value = med.id;
+                option.textContent = med.nombre + ' - $' + parseFloat(med.tarifa).toFixed(2);
+                option.dataset.tarifa = med.tarifa;
+                option.dataset.atiendeDomicilio = med.atiende_domicilio ? '1' : '0';
+                option.dataset.tarifaExtra = med.tarifa_extra_domicilio || 0;
                 medicoSelect.appendChild(option);
             });
+            
+            if (medicos.length === 0) {
+                medicoSelect.innerHTML = '<option value="">No hay médicos disponibles</option>';
+            }
         } catch (e) {
             console.error('Error cargando médicos:', e);
-            medicoSelect.innerHTML = '<option value="">Error al cargar médicos</option>';
+            medicoSelect.innerHTML = '<option value="">Error al cargar</option>';
         }
     });
 
+    // Cuando se selecciona médico
     document.getElementById('medico_id')?.addEventListener('change', function() {
-        document.getElementById('resumen-medico').textContent = this.options[this.selectedIndex].text || '-';
+        const selectedOption = this.options[this.selectedIndex];
+        
+        if (!selectedOption || !selectedOption.value) {
+            document.getElementById('fecha_cita').disabled = true;
+            return;
+        }
+        
+        // Guardar datos del médico
+        medicoActual = {
+            id: selectedOption.value,
+            nombre: selectedOption.text.split(' - ')[0],
+            tarifa: parseFloat(selectedOption.dataset.tarifa) || 0,
+            atiendeDomicilio: selectedOption.dataset.atiendeDomicilio === '1',
+            tarifaExtra: parseFloat(selectedOption.dataset.tarifaExtra) || 0
+        };
+        
+        tarifaBase = medicoActual.tarifa;
+        tarifaExtra = 0;
+        
+        // Actualizar resumen
+        document.getElementById('resumen-medico').textContent = medicoActual.nombre;
+        actualizarResumenTarifa();
+        
+        // Mostrar/ocultar opción de domicilio
+        const opcionDomicilio = document.getElementById('opcion-domicilio');
+        if (medicoActual.atiendeDomicilio) {
+            opcionDomicilio.classList.remove('hidden');
+            document.getElementById('tarifa-extra-valor').textContent = '$' + medicoActual.tarifaExtra.toFixed(2);
+        } else {
+            opcionDomicilio.classList.add('hidden');
+            // Reset a consultorio si estaba en domicilio
+            document.querySelector('input[value="Consultorio"]').checked = true;
+            document.getElementById('aviso-domicilio').classList.add('hidden');
+        }
+        
+        // Habilitar fecha
+        document.getElementById('fecha_cita').disabled = false;
     });
 
-    document.getElementById('fecha_cita')?.addEventListener('change', function() {
-        const hora = document.getElementById('hora_inicio').value;
-        updateResumenFecha(this.value, hora);
+    // Cuando cambia el tipo de consulta
+    document.querySelectorAll('input[name="tipo_consulta"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const avisoEl = document.getElementById('aviso-domicilio');
+            
+            if (this.value === 'Domicilio') {
+                avisoEl.classList.remove('hidden');
+                tarifaExtra = medicoActual?.tarifaExtra || 0;
+                document.getElementById('resumen-modalidad').textContent = 'A Domicilio';
+            } else {
+                avisoEl.classList.add('hidden');
+                tarifaExtra = 0;
+                document.getElementById('resumen-modalidad').textContent = 'En Consultorio';
+            }
+            
+            actualizarResumenTarifa();
+        });
     });
-    
-    document.getElementById('hora_inicio')?.addEventListener('change', function() {
-        const fecha = document.getElementById('fecha_cita').value;
-        updateResumenFecha(fecha, this.value);
-    });
-    
-    function updateResumenFecha(fecha, hora) {
-        if (fecha) {
-            const formattedDate = new Date(fecha + 'T12:00:00').toLocaleDateString('es-ES', {
+
+    // Cuando se selecciona fecha, cargar horarios disponibles
+    document.getElementById('fecha_cita')?.addEventListener('change', async function() {
+        const fecha = this.value;
+        const medicoId = document.getElementById('medico_id').value;
+        const consultorioId = document.getElementById('consultorio_id').value;
+        
+        if (!fecha || !medicoId) return;
+        
+        const container = document.getElementById('horarios-container');
+        container.innerHTML = '<p class="col-span-4 text-center text-gray-500 text-sm py-4">Cargando horarios...</p>';
+        
+        try {
+            const response = await fetch(`${BASE_URL}/ajax/citas/horarios-disponibles?medico_id=${medicoId}&consultorio_id=${consultorioId}&fecha=${fecha}`);
+            const data = await response.json();
+            
+            if (!data.disponible) {
+                container.innerHTML = `<p class="col-span-4 text-center text-amber-600 text-sm py-4">${data.mensaje}</p>`;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            data.horarios.forEach(slot => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = slot.hora;
+                btn.className = 'p-2 text-sm rounded-lg font-medium transition-all ';
+                
+                if (slot.disponible) {
+                    btn.className += 'bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer';
+                    btn.onclick = () => selectHorario(slot.hora, btn);
+                } else {
+                    btn.className += 'bg-red-100 text-red-400 cursor-not-allowed';
+                    btn.disabled = true;
+                    btn.title = 'Horario ocupado';
+                }
+                
+                container.appendChild(btn);
+            });
+            
+            if (data.horarios.length === 0) {
+                container.innerHTML = '<p class="col-span-4 text-center text-gray-500 text-sm py-4">No hay horarios configurados</p>';
+            }
+            
+            // Actualizar resumen de fecha
+            const fechaFormateada = new Date(fecha + 'T12:00:00').toLocaleDateString('es-ES', {
+                weekday: 'long',
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric'
             });
-            document.getElementById('resumen-fecha').textContent = formattedDate + (hora ? ' - ' + hora : '');
+            document.getElementById('resumen-fecha').textContent = fechaFormateada;
+            
+        } catch (e) {
+            console.error('Error cargando horarios:', e);
+            container.innerHTML = '<p class="col-span-4 text-center text-red-500 text-sm py-4">Error al cargar horarios</p>';
+        }
+    });
+
+    function selectHorario(hora, btn) {
+        // Quitar selección anterior
+        document.querySelectorAll('#horarios-container button').forEach(b => {
+            b.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-100');
+        });
+        
+        // Marcar seleccionado
+        btn.classList.add('ring-2', 'ring-blue-500', 'bg-blue-100');
+        
+        // Guardar hora
+        document.getElementById('hora_inicio').value = hora;
+        
+        // Actualizar resumen
+        const fechaEl = document.getElementById('resumen-fecha');
+        const fechaActual = fechaEl.textContent.split(' - ')[0];
+        fechaEl.textContent = fechaActual + ' - ' + hora;
+    }
+
+    function actualizarResumenTarifa() {
+        const total = tarifaBase + tarifaExtra;
+        document.getElementById('resumen-tarifa').textContent = '$' + total.toFixed(2);
+        
+        if (tarifaExtra > 0) {
+            document.getElementById('resumen-tarifa-detalle').textContent = 
+                `($${tarifaBase.toFixed(2)} + $${tarifaExtra.toFixed(2)} domicilio)`;
+        } else {
+            document.getElementById('resumen-tarifa-detalle').textContent = '';
         }
     }
 </script>
