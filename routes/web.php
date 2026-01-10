@@ -65,6 +65,7 @@ Route::prefix('ajax/citas')->group(function () {
     Route::get('/consultorios-por-especialidad/{especialidadId}', [CitaController::class, 'getConsultoriosPorEspecialidad']);
     Route::get('/medicos', [CitaController::class, 'getMedicosPorEspecialidadConsultorio']);
     Route::get('/horarios-disponibles', [CitaController::class, 'getHorariosDisponibles']);
+    Route::get('/get-next-sequence/{numero_documento}', [CitaController::class, 'getNextSequence']);
 });
 
 /*
