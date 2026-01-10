@@ -465,22 +465,22 @@
         const validations = {
             primer_nombre: { 
                 required: true, 
-                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 
+                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 
                 message: 'Ingrese un nombre válido (solo letras)' 
             },
             segundo_nombre: { 
                 required: false, 
-                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 
+                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 
                 message: 'El segundo nombre solo debe contener letras' 
             },
             primer_apellido: { 
                 required: true, 
-                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 
+                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 
                 message: 'Ingrese un apellido válido (solo letras)' 
             },
             segundo_apellido: { 
                 required: false, 
-                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 
+                pattern: /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, 
                 message: 'El segundo apellido solo debe contener letras' 
             },
             tipo_documento: { required: true, message: 'Seleccione un tipo de documento' },

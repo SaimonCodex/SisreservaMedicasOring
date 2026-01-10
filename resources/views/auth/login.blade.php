@@ -57,23 +57,7 @@
 <form method="POST" action="{{ route('login') }}" id="loginForm" class="space-y-6">
     @csrf
 
-    @if (session('error'))
-        <div class="rounded-md bg-red-50 p-4 border border-red-200 animate-fade-in-down">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="bi bi-x-circle-fill text-red-400"></i>
-                </div>
-                <div class="ml-3">
-                    <h3 class="text-sm font-medium text-red-800">
-                        Error de inicio de sesión
-                    </h3>
-                    <div class="mt-2 text-sm text-red-700">
-                        <p>{{ session('error') }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
+
     
     <div class="space-y-5">
         <!-- Email -->

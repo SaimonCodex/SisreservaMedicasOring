@@ -466,4 +466,11 @@ class AuthController extends Controller
             Log::error('Error enviando email de confirmación de cambio: ' . $e->getMessage());
         }
     }
+    public function verificarCorreo(Request $request)
+    {
+        $correo = $request->correo;
+        $existe = Usuario::where('correo', $correo)->exists();
+        
+        return response()->json(['existe' => $existe]);
+    }
 }
