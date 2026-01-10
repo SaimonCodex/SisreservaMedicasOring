@@ -13,11 +13,11 @@
             <p class="text-gray-500 mt-1">Información completa del profesional</p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ route('medicos.horarios', 1) }}" class="btn btn-outline">
+            <a href="{{ route('medicos.horarios', $medico->id) }}" class="btn btn-outline">
                 <i class="bi bi-clock mr-2"></i>
                 Horarios
             </a>
-            <a href="{{ route('medicos.edit', 1) }}" class="btn btn-primary">
+            <a href="{{ route('medicos.edit', $medico->id) }}" class="btn btn-primary">
                 <i class="bi bi-pencil mr-2"></i>
                 Editar
             </a>
@@ -29,19 +29,27 @@
     <!-- Columna Principal -->
     <div class="lg:col-span-2 space-y-6">
         
-        <!-- Información Personal -->
+        <!-- Información Personal Header -->
         <div class="card p-0 overflow-hidden">
             <div class="bg-gradient-to-r from-medical-600 to-medical-500 p-6">
                 <div class="flex items-center gap-6">
                     <div class="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-4xl font-bold border-4 border-white/30">
-                        JP
+                        {{ strtoupper(substr($medico->primer_nombre, 0, 1) . substr($medico->primer_apellido, 0, 1)) }}
                     </div>
                     <div class="text-white">
-                        <h3 class="text-2xl font-bold mb-1">Dr. Juan Pérez</h3>
-                        <p class="text-white/90 mb-2">Cardiología • MPPS: 98765</p>
+                        <h3 class="text-2xl font-bold mb-1">Dr. {{ $medico->primer_nombre }} {{ $medico->primer_apellido }}</h3>
+                        <p class="text-white/90 mb-2">
+                            @forelse($medico->especialidades as $especialidad)
+                                {{ $especialidad->nombre }}{{ !$loop->last ? ' • ' : '' }}
+                            @empty
+                                Sin especialidad registrada
+                            @endforelse
+                        </p>
                         <div class="flex gap-2">
-                            <span class="badge bg-white/20 text-white border border-white/30">Activo</span>
-                            <span class="badge bg-white/20 text-white border border-white/30">Senior</span>
+                            <span class="badge bg-white/20 text-white border border-white/30">{{ $medico->status ? 'Activo' : 'Inactivo' }}</span>
+                            @if($medico->nro_colegiatura)
+                                <span class="badge bg-white/20 text-white border border-white/30">MPPS: {{ $medico->nro_colegiatura }}</span>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -50,20 +58,22 @@
             <div class="p-6">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-medical-600 mb-1">245</p>
+                        <p class="text-3xl font-bold text-medical-600 mb-1">{{ $medico->citas ? $medico->citas->count() : 0 }}</p>
                         <p class="text-sm text-gray-500">Consultas</p>
                     </div>
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-success-600 mb-1">4.8</p>
+                        <p class="text-3xl font-bold text-success-600 mb-1">N/A</p>
                         <p class="text-sm text-gray-500">Calificación</p>
                     </div>
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-warning-600 mb-1">12</p>
-                        <p class="text-sm text-gray-500">Años Exp.</p>
+                        <p class="text-3xl font-bold text-warning-600 mb-1">
+                             {{ \Carbon\Carbon::parse($medico->created_at)->diffInYears(now()) }}
+                        </p>
+                        <p class="text-sm text-gray-500">Años Registrado</p>
                     </div>
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-info-600 mb-1">98%</p>
-                        <p class="text-sm text-gray-500">Asistencia</p>
+                        <p class="text-3xl font-bold text-info-600 mb-1">{{ $medico->status ? '100%' : '0%' }}</p>
+                        <p class="text-sm text-gray-500">Estatus</p>
                     </div>
                 </div>
             </div>
@@ -78,19 +88,26 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Documento de Identidad</p>
-                    <p class="font-semibold text-gray-900">V-12345678</p>
+                    <p class="font-semibold text-gray-900">{{ $medico->tipo_documento }}-{{ $medico->numero_documento }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Fecha de Nacimiento</p>
-                    <p class="font-semibold text-gray-900">15/03/1985 (38 años)</p>
+                    <p class="font-semibold text-gray-900">
+                        @if($medico->fecha_nac)
+                            {{ \Carbon\Carbon::parse($medico->fecha_nac)->format('d/m/Y') }} 
+                            ({{ \Carbon\Carbon::parse($medico->fecha_nac)->age }} años)
+                        @else
+                            No registrada
+                        @endif
+                    </p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Género</p>
-                    <p class="font-semibold text-gray-900">Masculino</p>
+                    <p class="font-semibold text-gray-900">{{ $medico->genero ?? 'No registrado' }}</p>
                 </div>
                 <div>
-                    <p class="text-sm text-gray-500 mb-1">Estado Civil</p>
-                    <p class="font-semibold text-gray-900">Casado</p>
+                    <p class="text-sm text-gray-500 mb-1">Usuario del Sistema</p>
+                    <p class="font-semibold text-gray-900">{{ optional($medico->usuario)->correo ?? 'Sin usuario asignado' }}</p>
                 </div>
             </div>
         </div>
@@ -104,28 +121,46 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Registro MPPS</p>
-                    <p class="font-semibold text-gray-900">98765</p>
+                    <p class="font-semibold text-gray-900">{{ $medico->nro_colegiatura ?? 'No registrado' }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Colegio de Médicos (CMG)</p>
-                    <p class="font-semibold text-gray-900">54321</p>
+                    <p class="font-semibold text-gray-900">{{ $medico->cmg ?? 'No registrado' }}</p>
                 </div>
-                <div>
-                    <p class="text-sm text-gray-500 mb-1">Especialidad Principal</p>
-                    <p class="font-semibold text-gray-900">Cardiología</p>
+                <!-- Especialidades (Iterar si hay más de una, o mostrar principal) -->
+                 <div class="md:col-span-2">
+                    <p class="text-sm text-gray-500 mb-1">Especialidades</p>
+                    <div class="flex flex-wrap gap-2">
+                        @forelse($medico->especialidades as $especialidad)
+                             <span class="badge badge-primary">{{ $especialidad->nombre }}</span>
+                        @empty
+                             <span class="text-gray-500 italic">Sin especialidades registradas</span>
+                        @endforelse
+                    </div>
                 </div>
-                <div>
-                    <p class="text-sm text-gray-500 mb-1">Subespecialidad</p>
-                    <p class="font-semibold text-gray-900">Electrofisiología</p>
-                </div>
+                
                 <div class="md:col-span-2">
-                    <p class="text-sm text-gray-500 mb-1">Consultorio Asignado</p>
-                    <p class="font-semibold text-gray-900">Consultorio 205 - Piso 2</p>
+                    <p class="text-sm text-gray-500 mb-1">Consultorios Asignados</p>
+                    <div class="flex flex-wrap gap-2">
+                         @forelse($medico->consultorios as $consultorio)
+                             <span class="badge badge-outline">{{ $consultorio->nombre ?? 'Consultorio #'.$consultorio->id }}</span>
+                        @empty
+                             <span class="text-gray-500 italic">No tiene consultorios asignados (Configurar en Horarios)</span>
+                        @endforelse
+                    </div>
                 </div>
+
                 <div class="md:col-span-2">
-                    <p class="text-sm text-gray-500 mb-2">Biografía</p>
-                    <p class="text-gray-700 text-sm leading-relaxed">
-                        Médico cardiólogo con más de 12 años de experiencia en diagnóstico y tratamiento de enfermedades cardiovasculares. Especializado en electrofisiología y arritmias cardíacas. Miembro activo de la Sociedad Venezolana de Cardiología.
+                    <p class="text-sm text-gray-500 mb-2">Formación Académica</p>
+                    <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
+                        {{ $medico->formacion_academica ?? 'No registrada.' }}
+                    </p>
+                </div>
+
+                <div class="md:col-span-2">
+                    <p class="text-sm text-gray-500 mb-2">Biografía / Experiencia</p>
+                    <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
+                        {{ $medico->experiencia_profesional ?? 'Sin biografía registrada.' }}
                     </p>
                 </div>
             </div>
@@ -140,67 +175,36 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Teléfono Principal</p>
-                    <p class="font-semibold text-gray-900">0414-1234567</p>
+                    <p class="font-semibold text-gray-900">
+                        {{ $medico->prefijo_tlf }} {{ $medico->numero_tlf }}
+                    </p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Teléfono Secundario</p>
-                    <p class="font-semibold text-gray-900">0212-9876543</p>
+                    <p class="font-semibold text-gray-900">{{ $medico->telefono_secundario ?? 'N/A' }}</p>
                 </div>
                 <div class="md:col-span-2">
-                    <p class="text-sm text-gray-500 mb-1">Correo Electrónico</p>
-                    <p class="font-semibold text-gray-900">juan.perez@clinica.com</p>
+                    <p class="text-sm text-gray-500 mb-1">Correo Electrónico (Contacto)</p>
+                    <p class="font-semibold text-gray-900">{{ optional($medico->usuario)->correo }}</p>
                 </div>
                 <div class="md:col-span-2">
                     <p class="text-sm text-gray-500 mb-1">Dirección</p>
-                    <p class="font-semibold text-gray-900">Av. Principal, Urb. Los Palos Grandes, Caracas</p>
+                    <p class="font-semibold text-gray-900">
+                        {{ $medico->direccion_detallada ?? '' }}
+                        @if($medico->parroquia || $medico->municipio || $medico->ciudad || $medico->estado)
+                            <br>
+                            <span class="text-sm font-normal text-gray-600">
+                                {{ optional($medico->parroquia)->parroquia }}, 
+                                {{ optional($medico->municipio)->municipio }}, 
+                                {{ optional($medico->ciudad)->ciudad }} - 
+                                {{ optional($medico->estado)->estado }}
+                            </span>
+                        @endif
+                    </p>
                 </div>
             </div>
         </div>
 
-        <!-- Horario de Atención -->
-        <div class="card p-6">
-            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <i class="bi bi-calendar-week text-warning-600"></i>
-                Horario de Atención
-            </h3>
-            <div class="space-y-2">
-                <div class="flex items-center justify-between p-3 bg-medical-50 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <span class="w-12 text-sm font-semibold text-gray-700">Lunes</span>
-                        <span class="text-sm text-gray-600">08:00 AM - 12:00 PM, 02:00 PM - 06:00 PM</span>
-                    </div>
-                    <span class="badge badge-success text-xs">Activo</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <span class="w-12 text-sm font-semibold text-gray-700">Martes</span>
-                        <span class="text-sm text-gray-600">08:00 AM - 12:00 PM, 02:00 PM - 06:00 PM</span>
-                    </div>
-                    <span class="badge badge-success text-xs">Activo</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <span class="w-12 text-sm font-semibold text-gray-700">Miércoles</span>
-                        <span class="text-sm text-gray-600">No disponible</span>
-                    </div>
-                    <span class="badge badge-gray text-xs">Inactivo</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-medical-50 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <span class="w-12 text-sm font-semibold text-gray-700">Jueves</span>
-                        <span class="text-sm text-gray-600">08:00 AM - 12:00 PM</span>
-                    </div>
-                    <span class="badge badge-success text-xs">Activo</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-medical-50 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <span class="w-12 text-sm font-semibold text-gray-700">Viernes</span>
-                        <span class="text-sm text-gray-600">08:00 AM - 12:00 PM, 02:00 PM - 06:00 PM</span>
-                    </div>
-                    <span class="badge badge-success text-xs">Activo</span>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Sidebar -->
@@ -211,67 +215,29 @@
             <div class="space-y-2">
                 <button class="btn btn-outline w-full justify-start">
                     <i class="bi bi-calendar-plus mr-2"></i>
-                    Nueva Cita
-                </button>
-                <button class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-file-medical mr-2"></i>
-                    Ver Historias
+                    Agendar Cita
                 </button>
                 <button class="btn btn-outline w-full justify-start">
                     <i class="bi bi-clock-history mr-2"></i>
-                    Historial Citas
-                </button>
-                <button class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-graph-up mr-2"></i>
-                    Estadísticas
+                    Ver Historial de Citas
                 </button>
             </div>
-        </div>
-
-        <!-- Estado del Sistema -->
-        <div class="card p-6">
-            <h4 class="font-bold text-gray-900 mb-4">Estado</h4>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Cuenta</span>
-                    <span class="badge badge-success">Activa</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Verificación</span>
-                    <span class="badge badge-success">Verificado</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Último acceso</span>
-                    <span class="text-sm font-medium text-gray-900">Hoy, 09:15 AM</span>
-                </div>
-                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <span class="text-sm text-gray-600">Registro</span>
-                    <span class="text-xs text-gray-500">Hace 2 años</span>
+            
+            <div class="mt-6 pt-6 border-t border-gray-100">
+                 <h4 class="font-bold text-gray-900 mb-4">Estado del Sistema</h4>
+                 <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-600">Cuenta de Usuario</span>
+                        <span class="badge {{ optional($medico->usuario)->status ? 'badge-success' : 'badge-danger' }}">
+                            {{ optional($medico->usuario)->status ? 'Activa' : 'Inactiva' }}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                        <span class="text-sm text-gray-600">Registrado el</span>
+                        <span class="text-xs text-gray-500">{{ $medico->created_at->format('d/m/Y') }}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Disponibilidad Hoy -->
-        <div class="card p-6 bg-gradient-to-br from-medical-50 to-info-50 border-medical-200">
-            <h4 class="font-bold text-gray-900 mb-4">Disponibilidad Hoy</h4>
-            <div class="space-y-2 mb-4">
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Citas programadas</span>
-                    <span class="font-bold text-gray-900">8</span>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Citas completadas</span>
-                    <span class="font-bold text-success-600">5</span>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Citas pendientes</span>
-                    <span class="font-bold text-warning-600">3</span>
-                </div>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-gradient-to-r from-medical-600 to-medical-400 h-2 rounded-full" style="width: 62%"></div>
-            </div>
-            <p class="text-xs text-gray-500 text-center mt-2">62% del día completado</p>
         </div>
     </div>
 </div>

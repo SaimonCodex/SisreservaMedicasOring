@@ -33,10 +33,45 @@ class MedicoController extends Controller
         return view('medico.dashboard', compact('citasHoy', 'proximasCitas'));
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $medicos = Medico::with(['usuario', 'especialidades', 'estado'])->where('status', true)->get();
-        return view('shared.medicos.index', compact('medicos'));
+        $query = Medico::with(['usuario', 'especialidades', 'estado']);
+
+        // Filtro de Búsqueda
+        if ($request->filled('buscar')) {
+            $busqueda = $request->buscar;
+            $query->where(function($q) use ($busqueda) {
+                $q->where('primer_nombre', 'like', "%$busqueda%")
+                  ->orWhere('segundo_nombre', 'like', "%$busqueda%")
+                  ->orWhere('primer_apellido', 'like', "%$busqueda%")
+                  ->orWhere('segundo_apellido', 'like', "%$busqueda%")
+                  ->orWhere('numero_documento', 'like', "%$busqueda%")
+                  ->orWhere('nro_colegiatura', 'like', "%$busqueda%");
+            });
+        }
+
+        // Filtro por Especialidad
+        if ($request->filled('especialidad_id')) {
+            $query->whereHas('especialidades', function($q) use ($request) {
+                $q->where('especialidades.id', $request->especialidad_id);
+            });
+        }
+
+        // Filtro por Estatus
+        if ($request->has('status') && $request->status !== null) {
+            $query->where('status', $request->status);
+        }
+
+        $medicos = $query->paginate(10)->withQueryString();
+        $especialidades = Especialidad::where('status', true)->get(); // Para el dropdown de filtro
+
+        // Estadísticas para las tarjetas
+        $totalMedicos = Medico::count();
+        $medicosActivos = Medico::where('status', true)->count();
+        $citasHoyCount = \App\Models\Cita::whereDate('fecha_cita', now())->where('status', true)->count();
+        $totalEspecialidades = Especialidad::where('status', true)->count();
+
+        return view('shared.medicos.index', compact('medicos', 'especialidades', 'totalMedicos', 'medicosActivos', 'citasHoyCount', 'totalEspecialidades'));
     }
 
     public function create()
@@ -68,6 +103,8 @@ class MedicoController extends Controller
             'numero_tlf' => 'nullable|max:15',
             'genero' => 'nullable|max:20',
             'nro_colegiatura' => 'nullable|max:50',
+            'formacion_academica' => 'nullable|string',
+            'experiencia_profesional' => 'nullable|string',
             'especialidades' => 'required|array',
             'especialidades.*' => 'exists:especialidades,id',
             // User credentials
@@ -145,6 +182,8 @@ class MedicoController extends Controller
             'numero_tlf' => 'nullable|max:15',
             'genero' => 'nullable|max:20',
             'nro_colegiatura' => 'nullable|max:50',
+            'formacion_academica' => 'nullable|string',
+            'experiencia_profesional' => 'nullable|string',
             'especialidades' => 'required|array',
             'especialidades.*' => 'exists:especialidades,id'
         ]);
@@ -154,7 +193,12 @@ class MedicoController extends Controller
         }
 
         $medico = Medico::findOrFail($id);
-        $medico->update($request->except('especialidades'));
+        
+        // Excluir datos sensibles y de relación de usuario
+        $data = $request->except(['especialidades', 'user_id', 'correo', 'password', 'password_confirmation']);
+        $data['status'] = $request->has('status'); // Si se envía status en el form
+
+        $medico->update($data);
         
         // Sincronizar especialidades
         if ($request->has('especialidades')) {
