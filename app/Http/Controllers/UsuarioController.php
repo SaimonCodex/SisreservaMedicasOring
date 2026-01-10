@@ -143,6 +143,19 @@ class UsuarioController extends Controller
                 }
             });
 
+
+
+            // Redirección especial para Médicos si se solicitó configurar horario
+            if ($request->rol_id == 2 && $request->has('configurar_horario')) {
+                // Recuperar el médico recién creado. 
+                // Buscamos por correo ya que es único, para obtener el ID del usuario y luego su relación medico
+                $usuario = Usuario::where('correo', $request->correo)->first();
+                if ($usuario && $usuario->medico) {
+                    return redirect()->route('medicos.horarios', $usuario->medico->id)
+                                   ->with('success', 'Médico creado. Configure los horarios de atención.');
+                }
+            }
+
             return redirect()->route('usuarios.index')->with('success', 'Usuario creado exitosamente con su perfil.');
 
         } catch (\Exception $e) {

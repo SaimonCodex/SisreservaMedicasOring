@@ -41,112 +41,231 @@
                     'sabado' => 'Sábado', 
                     'domingo' => 'Domingo'
                 ];
-                
-                // Helper para organizar horarios por dia y turno para facil acceso en la vista
-                $horariosMap = [];
-                foreach($horarios as $h) {
-                    // Normalizar clave de día (tildes)
-                    $dayKey = strtolower(str_replace(['á','é','í','ó','ú','Á','É','Í','Ó','Ú'], ['a','e','i','o','u','A','E','I','O','U'], $h->dia_semana));
-                    $horariosMap[$dayKey][$h->turno] = $h;
-                }
             @endphp
 
             @foreach($diasSemana as $key => $diaLabel)
                 @php
-                    $hManana = $horariosMap[$key]['mañana'] ?? null;
-                    $hTarde = $horariosMap[$key]['tarde'] ?? null;
+                    // Match by containing string (case-insensitive) to handle accents/encoding
+                    $dayRecords = $horarios->filter(function($h) use ($key, $diaLabel) {
+                        return stripos($h->dia_semana, $key) !== false 
+                            || stripos($h->dia_semana, $diaLabel) !== false;
+                    });
+
+                    // Match turno
+                    $hManana = $dayRecords->first(function($h) {
+                        return stripos($h->turno, 'm') === 0;
+                    });
+                    
+                    $hTarde = $dayRecords->first(function($h) {
+                        return stripos($h->turno, 't') === 0;
+                    });
+
                     $isActive = $hManana || $hTarde; 
                 @endphp
+                
+                @php
+                    // Helper to check if day has any schedule
+                    $hasSchedule = $hManana || $hTarde;
+                @endphp
 
-                <div class="card p-6 hover:shadow-md transition-shadow" x-data="{ 
-                    active: {{ $isActive ? 'true' : 'false' }},
-                    manana_active: {{ $hManana ? 'true' : 'false' }},
-                    tarde_active: {{ $hTarde ? 'true' : 'false' }} 
-                }">
-                    <div class="flex items-center justify-between mb-4">
+                <div class="card p-0 overflow-hidden hover:shadow-lg transition-shadow border border-gray-100 mb-4" 
+                     x-data="{ 
+                        editing: false,
+                        manana_active: {{ $hManana ? 'true' : 'false' }},
+                        tarde_active: {{ $hTarde ? 'true' : 'false' }},
+                        get active() { return this.manana_active || this.tarde_active; }
+                     }">
+                     
+                    <!-- Hidden Input for Active State (Calculated) -->
+                    <input type="hidden" name="horarios[{{ $key }}][activo]" 
+                           value="{{ $isActive ? 1 : 0 }}" 
+                           x-bind:value="active ? 1 : 0">
+                           
+                    <!-- Hidden Map for Shifts (Guarantees submission even if toggle is unchecked/UI hidden) -->
+                    <input type="hidden" name="horarios[{{ $key }}][manana_activa]" 
+                           value="{{ $hManana ? 1 : 0 }}" 
+                           x-bind:value="manana_active ? 1 : 0">
+                           
+                    <input type="hidden" name="horarios[{{ $key }}][tarde_activa]" 
+                           value="{{ $hTarde ? 1 : 0 }}" 
+                           x-bind:value="tarde_active ? 1 : 0">
+
+                    <!-- HEADER -->
+                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" name="horarios[{{ $key }}][activo]" value="1" 
-                                    class="form-checkbox text-medical-600 w-5 h-5" 
-                                    x-model="active">
-                            </label>
-                            <h3 class="text-lg font-bold text-gray-900">{{ $diaLabel }}</h3>
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow-sm"
+                                 :class="active ? 'bg-medical-500' : 'bg-gray-300'">
+                                {{ strtoupper(substr($diaLabel, 0, 1)) }}
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-800">{{ $diaLabel }}</h3>
                         </div>
-                        <span class="badge" :class="active ? 'badge-success' : 'badge-gray'" x-text="active ? 'Activo' : 'Inactivo'"></span>
+                        
+                        <!-- Actions -->
+                        <div>
+                            <template x-if="!editing && active">
+                                <button type="button" @click="editing = true" class="text-sm text-medical-600 hover:text-medical-800 font-medium flex items-center transition-colors">
+                                    <i class="bi bi-pencil-square mr-1"></i> Editar
+                                </button>
+                            </template>
+                            
+                            <template x-if="editing">
+                                <button type="button" @click="editing = false" class="text-sm text-gray-500 hover:text-gray-700 font-medium flex items-center transition-colors">
+                                    <i class="bi bi-check2-circle mr-1"></i> Listo
+                                </button>
+                            </template>
+                        </div>
                     </div>
-                    
-                    <div x-show="active" x-transition class="space-y-4">
-                        <!-- Turno Mañana -->
-                        <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                            <div class="flex items-center gap-2 mb-2">
-                                <input type="checkbox" name="horarios[{{ $key }}][manana_activa]" value="1" 
-                                    class="form-checkbox text-blue-600 rounded" 
-                                    x-model="manana_active">
-                                <span class="font-semibold text-blue-800 text-sm">Turno Mañana</span>
+
+                    <!-- CONTENT BODY -->
+                    <div class="p-6">
+                        
+                        <!-- STATE 1: SUMMARY (Saved & Not Editing) -->
+                        <div x-show="!editing && active" class="space-y-4">
+                            @if($hManana)
+                                <div class="flex items-start gap-3 p-3 rounded-lg bg-blue-50/50 border border-blue-100">
+                                    <div class="bg-blue-100 text-blue-600 p-2 rounded-md">
+                                        <i class="bi bi-sun-fill"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-blue-900">Mañana ({{ \Carbon\Carbon::parse($hManana->horario_inicio)->format('H:i') }} - {{ \Carbon\Carbon::parse($hManana->horario_fin)->format('H:i') }})</p>
+                                        <p class="text-xs text-blue-700 mt-1">
+                                            {{ $hManana->consultorio->nombre ?? 'Sin Consultorio' }} • {{ $hManana->especialidad->nombre ?? 'Sin Especialidad' }}
+                                        </p>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if($hTarde)
+                                <div class="flex items-start gap-3 p-3 rounded-lg bg-orange-50/50 border border-orange-100">
+                                    <div class="bg-orange-100 text-orange-600 p-2 rounded-md">
+                                        <i class="bi bi-sunset-fill"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-orange-900">Tarde ({{ \Carbon\Carbon::parse($hTarde->horario_inicio)->format('H:i') }} - {{ \Carbon\Carbon::parse($hTarde->horario_fin)->format('H:i') }})</p>
+                                        <p class="text-xs text-orange-700 mt-1">
+                                            {{ $hTarde->consultorio->nombre ?? 'Sin Consultorio' }} • {{ $hTarde->especialidad->nombre ?? 'Sin Especialidad' }}
+                                        </p>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- STATE 2: EMPTY (Not Active & Not Editing) -->
+                        <div x-show="!editing && !active" class="text-center py-4">
+                            <p class="text-gray-400 text-sm mb-3">No hay horario asignado para este día</p>
+                            <button type="button" @click="editing = true; manana_active = true" class="btn btn-outline-primary btn-sm rounded-full px-4">
+                                <i class="bi bi-plus-lg mr-1"></i> Asignar Horario
+                            </button>
+                        </div>
+
+                        <!-- STATE 3: EDITING FORM -->
+                        <div x-show="editing" x-transition class="space-y-6">
+                            
+                            <!-- Turno Mañana Toggle -->
+                            <div class="border-l-4 border-blue-500 pl-4">
+                                <label class="flex items-center gap-2 mb-3 cursor-pointer">
+                                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                        <input type="checkbox" name="horarios[{{ $key }}][manana_activa]" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer" 
+                                            value="1" x-model="manana_active" 
+                                            :class="{'right-0 border-blue-600': manana_active, 'right-auto border-gray-300': !manana_active}"/>
+                                        <div class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer"
+                                            :class="{'bg-blue-600': manana_active, 'bg-gray-300': !manana_active}"></div>
+                                    </div>
+                                    <span class="font-bold text-gray-700">Turno Mañana</span>
+                                </label>
+
+                                <div x-show="manana_active" class="grid grid-cols-1 md:grid-cols-2 gap-3 animate-fade-in-down">
+                                    <div>
+                                        <label class="form-label text-xs">Consultorio</label>
+                                        <select name="horarios[{{ $key }}][manana_consultorio_id]" class="form-select text-sm">
+                                            <option value="">Seleccione...</option>
+                                            @foreach($consultorios as $consultorio)
+                                                <option value="{{ $consultorio->id }}" {{ ($hManana && $hManana->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
+                                                    {{ $consultorio->nombre }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label text-xs">Especialidad</label>
+                                        <select name="horarios[{{ $key }}][manana_especialidad_id]" class="form-select text-sm">
+                                            <option value="">Seleccione...</option>
+                                            @foreach($medico->especialidades as $especialidad)
+                                                <option value="{{ $especialidad->id }}" {{ ($hManana && $hManana->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
+                                                    {{ $especialidad->nombre }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label text-xs">Inicio</label>
+                                        <input type="time" name="horarios[{{ $key }}][manana_inicio]" class="input text-sm" 
+                                            value="{{ $hManana ? \Carbon\Carbon::parse($hManana->horario_inicio)->format('H:i') : '08:00' }}">
+                                    </div>
+                                    <div>
+                                        <label class="form-label text-xs">Fin</label>
+                                        <input type="time" name="horarios[{{ $key }}][manana_fin]" class="input text-sm" 
+                                            value="{{ $hManana ? \Carbon\Carbon::parse($hManana->horario_fin)->format('H:i') : '12:00' }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Turno Tarde Toggle -->
+                            <div class="border-l-4 border-orange-500 pl-4">
+                                <label class="flex items-center gap-2 mb-3 cursor-pointer">
+                                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                        <input type="checkbox" name="horarios[{{ $key }}][tarde_activa]" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer" 
+                                            value="1" x-model="tarde_active"
+                                            :class="{'right-0 border-orange-600': tarde_active, 'right-auto border-gray-300': !tarde_active}"/>
+                                        <div class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer"
+                                            :class="{'bg-orange-600': tarde_active, 'bg-gray-300': !tarde_active}"></div>
+                                    </div>
+                                    <span class="font-bold text-gray-700">Turno Tarde</span>
+                                </label>
+                                
+                                <div x-show="tarde_active" class="grid grid-cols-1 md:grid-cols-2 gap-3 animate-fade-in-down">
+                                    <div>
+                                        <label class="form-label text-xs">Consultorio</label>
+                                        <select name="horarios[{{ $key }}][tarde_consultorio_id]" class="form-select text-sm">
+                                            <option value="">Seleccione...</option>
+                                            @foreach($consultorios as $consultorio)
+                                                <option value="{{ $consultorio->id }}" {{ ($hTarde && $hTarde->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
+                                                    {{ $consultorio->nombre }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label text-xs">Especialidad</label>
+                                        <select name="horarios[{{ $key }}][tarde_especialidad_id]" class="form-select text-sm">
+                                            <option value="">Seleccione...</option>
+                                            @foreach($medico->especialidades as $especialidad)
+                                                <option value="{{ $especialidad->id }}" {{ ($hTarde && $hTarde->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
+                                                    {{ $especialidad->nombre }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label text-xs">Inicio</label>
+                                        <input type="time" name="horarios[{{ $key }}][tarde_inicio]" class="input text-sm" 
+                                            value="{{ $hTarde ? \Carbon\Carbon::parse($hTarde->horario_inicio)->format('H:i') : '14:00' }}">
+                                    </div>
+                                    <div>
+                                        <label class="form-label text-xs">Fin</label>
+                                        <input type="time" name="horarios[{{ $key }}][tarde_fin]" class="input text-sm" 
+                                            value="{{ $hTarde ? \Carbon\Carbon::parse($hTarde->horario_fin)->format('H:i') : '18:00' }}">
+                                    </div>
+                                </div>
                             </div>
                             
-                            <div x-show="manana_active" class="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
-                                <div class="col-span-1 md:col-span-2">
-                                    <label class="form-label text-xs">Consultorio</label>
-                                    <select name="horarios[{{ $key }}][manana_consultorio_id]" class="form-select text-sm h-9">
-                                        <option value="">Seleccione...</option>
-                                        @foreach($consultorios as $consultorio)
-                                            <option value="{{ $consultorio->id }}" {{ ($hManana && $hManana->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
-                                                {{ $consultorio->nombre }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="form-label text-xs">Inicio</label>
-                                    <input type="time" name="horarios[{{ $key }}][manana_inicio]" class="input text-sm h-9" 
-                                        value="{{ $hManana ? \Carbon\Carbon::parse($hManana->horario_inicio)->format('H:i') : '08:00' }}">
-                                </div>
-                                <div>
-                                    <label class="form-label text-xs">Fin</label>
-                                    <input type="time" name="horarios[{{ $key }}][manana_fin]" class="input text-sm h-9" 
-                                        value="{{ $hManana ? \Carbon\Carbon::parse($hManana->horario_fin)->format('H:i') : '12:00' }}">
-                                </div>
+                            <div class="text-right">
+                                <button type="button" @click="editing = false" class="text-xs text-gray-400 hover:text-gray-600 underline">
+                                    Ocultar editor
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Turno Tarde -->
-                        <div class="bg-orange-50/50 p-3 rounded-lg border border-orange-100">
-                            <div class="flex items-center gap-2 mb-2">
-                                <input type="checkbox" name="horarios[{{ $key }}][tarde_activa]" value="1" 
-                                    class="form-checkbox text-orange-600 rounded" 
-                                    x-model="tarde_active">
-                                <span class="font-semibold text-orange-800 text-sm">Turno Tarde</span>
-                            </div>
-                            
-                            <div x-show="tarde_active" class="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
-                                <div class="col-span-1 md:col-span-2">
-                                    <label class="form-label text-xs">Consultorio</label>
-                                    <select name="horarios[{{ $key }}][tarde_consultorio_id]" class="form-select text-sm h-9">
-                                        <option value="">Seleccione...</option>
-                                        @foreach($consultorios as $consultorio)
-                                            <option value="{{ $consultorio->id }}" {{ ($hTarde && $hTarde->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
-                                                {{ $consultorio->nombre }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="form-label text-xs">Inicio</label>
-                                    <input type="time" name="horarios[{{ $key }}][tarde_inicio]" class="input text-sm h-9" 
-                                        value="{{ $hTarde ? \Carbon\Carbon::parse($hTarde->horario_inicio)->format('H:i') : '14:00' }}">
-                                </div>
-                                <div>
-                                    <label class="form-label text-xs">Fin</label>
-                                    <input type="time" name="horarios[{{ $key }}][tarde_fin]" class="input text-sm h-9" 
-                                        value="{{ $hTarde ? \Carbon\Carbon::parse($hTarde->horario_fin)->format('H:i') : '18:00' }}">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div x-show="!active" class="mt-2">
-                        <p class="text-sm text-gray-500 italic">No hay atención este día</p>
                     </div>
                 </div>
             @endforeach

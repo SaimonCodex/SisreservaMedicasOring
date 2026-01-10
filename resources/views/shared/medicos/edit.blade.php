@@ -468,6 +468,10 @@
                 </div>
                 
                  <div class="mt-4 pt-4 border-t border-gray-200">
+                    <a href="{{ route('medicos.horarios', $medico->id) }}" class="btn btn-secondary w-full mb-3">
+                        <i class="bi bi-clock-history mr-2"></i>
+                        Gestionar Horarios
+                    </a>
                     <button type="submit" class="btn btn-primary w-full shadow-lg mb-3">
                         <i class="bi bi-save mr-2"></i>
                         Guardar Cambios

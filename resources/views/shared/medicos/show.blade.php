@@ -204,6 +204,73 @@
             </div>
         </div>
 
+            </div>
+        </div>
+
+        <!-- Horarios de Atención -->
+        <div class="card p-6 border-l-4 border-l-purple-500">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <i class="bi bi-clock-history text-purple-600"></i>
+                Horarios de Atención
+            </h3>
+            
+            @if($medico->horarios->count() > 0)
+                <div class="space-y-4">
+                    @php
+                        // Ordenar días de la semana
+                        $ordenDias = ['lunes' => 1, 'martes' => 2, 'miercoles' => 3, 'jueves' => 4, 'viernes' => 5, 'sabado' => 6, 'domingo' => 7];
+                        
+                        $horariosAgrupados = $medico->horarios->groupBy(function($item) {
+                            return strtolower(\Illuminate\Support\Str::ascii($item->dia_semana));
+                        })->sortBy(function($items, $key) use ($ordenDias) {
+                            return $ordenDias[$key] ?? 8;
+                        });
+                    @endphp
+
+                    @foreach($horariosAgrupados as $dia => $turnos)
+                        <div class="flex flex-col sm:flex-row sm:items-start gap-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <!-- Día Header -->
+                            <div class="sm:w-32 flex-shrink-0">
+                                <span class="badge bg-purple-100 text-purple-700 font-bold uppercase tracking-wider w-full justify-center">
+                                    {{ ucfirst($dia) }}
+                                </span>
+                            </div>
+
+                            <!-- Turnos -->
+                            <div class="flex-grow space-y-2">
+                                @foreach($turnos as $turno)
+                                    <div class="flex items-center gap-3 text-sm">
+                                        <span class="font-semibold {{ stripos($turno->turno, 'm') === 0 ? 'text-blue-600' : 'text-orange-600' }}">
+                                            @if(stripos($turno->turno, 'm') === 0)
+                                                <i class="bi bi-sun-fill mr-1"></i> Mañana
+                                            @else
+                                                <i class="bi bi-sunset-fill mr-1"></i> Tarde
+                                            @endif
+                                        </span>
+                                        <span class="text-gray-700">
+                                            {{ \Carbon\Carbon::parse($turno->horario_inicio)->format('H:i') }} - {{ \Carbon\Carbon::parse($turno->horario_fin)->format('H:i') }}
+                                        </span>
+                                        <div class="hidden sm:block text-gray-400">|</div>
+                                        <div class="text-gray-500 flex flex-col sm:flex-row sm:gap-3">
+                                            <span title="Consultorio"><i class="bi bi-geo-alt"></i> {{ $turno->consultorio->nombre ?? 'N/A' }}</span>
+                                            @if($turno->especialidad)
+                                                <span title="Especialidad"><i class="bi bi-heart-pulse"></i> {{ $turno->especialidad->nombre }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="text-center py-6 bg-gray-50 rounded-lg">
+                    <i class="bi bi-calendar-x text-3xl text-gray-300 mb-2 block"></i>
+                    <p class="text-gray-500">Este médico aún no tiene horarios configurados.</p>
+                </div>
+            @endif
+        </div>
+
         <!-- Información de Contacto -->
         <div class="card p-6 border-l-4 border-l-info-500">
             <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">

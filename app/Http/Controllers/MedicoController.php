@@ -163,7 +163,15 @@ class MedicoController extends Controller
 
     public function show($id)
     {
-        $medico = Medico::with(['usuario', 'especialidades', 'consultorios', 'estado', 'ciudad'])->findOrFail($id);
+        $medico = Medico::with([
+            'usuario', 
+            'especialidades', 
+            'consultorios', 
+            'estado', 
+            'ciudad',
+            'horarios.consultorio',
+            'horarios.especialidad'
+        ])->findOrFail($id);
         return view('shared.medicos.show', compact('medico'));
     }
 
@@ -270,18 +278,15 @@ class MedicoController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
+        \Log::info('V2 UI Payload:', $request->all());
+
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id) {
-                // Limpiar horarios existentes para este médico para evitar conflictos/duplicados
-                // Opcional: Podríamos hacer updateOrCreate inteligente, pero un borrado y recreado limpio es más seguro para esta lógica compleja de UI
-                // Sin embargo, para mantener integridad si hay citas, lo mejor es updateOrCreate o delete careful.
-                // Estrategia: Delete de lo que NO viene en el request es complicado.
-                // Estrategia Simple: Borrar todo del médico y recrear. (Cuidado con FKs si hay citas ligadas a horario específico? No, citas ligan a medico y fecha).
+                // Limpiar horarios existentes
                 \App\Models\MedicoConsultorio::where('medico_id', $id)->delete();
 
                 $daysOfWeek = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
                 
-                // Mapear nombres de días a formato enum de BD si es necesario (La BD usa acentos: 'Martes', 'Miércoles')
                 $dbDays = [
                     'lunes' => 'Lunes',
                     'martes' => 'Martes',
@@ -308,6 +313,7 @@ class MedicoController extends Controller
                             \App\Models\MedicoConsultorio::create([
                                 'medico_id' => $id,
                                 'consultorio_id' => $dayData['manana_consultorio_id'],
+                                'especialidad_id' => $dayData['manana_especialidad_id'] ?? null,
                                 'dia_semana' => $diaSemanaDb,
                                 'turno' => 'mañana',
                                 'horario_inicio' => $dayData['manana_inicio'],
@@ -323,6 +329,7 @@ class MedicoController extends Controller
                              \App\Models\MedicoConsultorio::create([
                                 'medico_id' => $id,
                                 'consultorio_id' => $dayData['tarde_consultorio_id'],
+                                'especialidad_id' => $dayData['tarde_especialidad_id'] ?? null,
                                 'dia_semana' => $diaSemanaDb,
                                 'turno' => 'tarde',
                                 'horario_inicio' => $dayData['tarde_inicio'],
