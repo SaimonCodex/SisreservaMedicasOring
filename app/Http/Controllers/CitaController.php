@@ -91,30 +91,54 @@ class CitaController extends Controller
         
         Log::info('Creando cita', ['user_id' => $user->id, 'rol' => $user->rol_id, 'data' => $request->all()]);
         
-        $validator = Validator::make($request->all(), [
+        // Reglas de validación base
+        $rules = [
             'tipo_cita' => 'required|in:propia,terceros',
             'medico_id' => 'required|exists:medicos,id',
             'especialidad_id' => 'required|exists:especialidades,id',
             'consultorio_id' => 'required|exists:consultorios,id',
             'fecha_cita' => 'required|date|after_or_equal:today',
             'hora_inicio' => 'required',
-            'tipo_consulta' => 'required|in:Consultorio,Domicilio',
+            'tipo_consulta' => 'required|in:Consultorio,Domicilio,Presencial',
             'motivo' => 'nullable|string|max:1000',
-            // Datos para terceros
-            'tercero_primer_nombre' => 'required_if:tipo_cita,terceros|max:100',
-            'tercero_primer_apellido' => 'required_if:tipo_cita,terceros|max:100',
-            'tercero_tipo_documento' => 'required_if:tipo_cita,terceros|in:V,E,P,J',
-            'tercero_numero_documento' => 'required_if:tipo_cita,terceros|max:20',
-        ], [
+        ];
+        
+        // Reglas adicionales para terceros
+        if ($request->tipo_cita == 'terceros') {
+            $rules = array_merge($rules, [
+                // Representante
+                'rep_primer_nombre' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+                'rep_primer_apellido' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+                'rep_tipo_documento' => 'required|in:V,E,P,J',
+                'rep_numero_documento' => 'required|max:20',
+                'rep_parentesco' => 'required|in:Padre,Madre,Hijo/a,Hermano/a,Tío/a,Sobrino/a,Abuelo/a,Nieto/a,Primo/a,Amigo/a,Tutor,Otro',
+                // Paciente Especial
+                'pac_primer_nombre' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+                'pac_primer_apellido' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+                'pac_tiene_documento' => 'required|in:si,no',
+                'pac_tipo' => 'required|in:Menor de Edad,Discapacitado,Anciano,Incapacitado',
+            ]);
+            
+            // Si tiene documento, validar
+            if ($request->pac_tiene_documento == 'si') {
+                $rules['pac_tipo_documento'] = 'required|in:V,E,P,J';
+                $rules['pac_numero_documento'] = 'required|max:20';
+            }
+        }
+        
+        $messages = [
             'medico_id.required' => 'Debe seleccionar un médico',
             'especialidad_id.required' => 'Debe seleccionar una especialidad',
             'consultorio_id.required' => 'Debe seleccionar un consultorio',
             'fecha_cita.required' => 'Debe seleccionar una fecha',
-            'fecha_cita.after_or_equal' => 'La fecha debe ser hoy o posterior',
             'hora_inicio.required' => 'Debe seleccionar una hora',
-            'tercero_primer_nombre.required_if' => 'El nombre del paciente es requerido',
-            'tercero_primer_apellido.required_if' => 'El apellido del paciente es requerido',
-        ]);
+            'rep_primer_nombre.required' => 'El nombre del representante es requerido',
+            'rep_primer_apellido.required' => 'El apellido del representante es requerido',
+            'pac_primer_nombre.required' => 'El nombre del paciente es requerido',
+            'pac_primer_apellido.required' => 'El apellido del paciente es requerido',
+        ];
+        
+        $validator = Validator::make($request->all(), $rules, $messages);
 
         if ($validator->fails()) {
             Log::warning('Validación fallida al crear cita', $validator->errors()->toArray());
@@ -127,51 +151,134 @@ class CitaController extends Controller
                 $pacienteEspecialId = null;
                 $representanteId = null;
                 
-                // Si es cita propia del paciente
+                // Mapear tipo_consulta: Consultorio -> Presencial
+                $tipoConsulta = $request->tipo_consulta == 'Consultorio' ? 'Presencial' : $request->tipo_consulta;
+                
+                // ========================================
+                // CITA PROPIA
+                // ========================================
                 if ($request->tipo_cita == 'propia' && $user->rol_id == 3) {
                     $pacienteId = $user->paciente->id;
                 }
                 
-                // Si es cita para terceros
+                // ========================================
+                // CITA PARA TERCEROS (Paciente Especial)
+                // ========================================
                 if ($request->tipo_cita == 'terceros') {
-                    // Crear o buscar el paciente (como paciente normal primero)
-                    $paciente = Paciente::firstOrCreate(
+                    
+                    // 1. Crear o buscar REPRESENTANTE
+                    $representante = Representante::firstOrCreate(
                         [
-                            'tipo_documento' => $request->tercero_tipo_documento,
-                            'numero_documento' => $request->tercero_numero_documento
+                            'tipo_documento' => $request->rep_tipo_documento,
+                            'numero_documento' => $request->rep_numero_documento
                         ],
                         [
-                            'primer_nombre' => $request->tercero_primer_nombre,
-                            'segundo_nombre' => $request->tercero_segundo_nombre,
-                            'primer_apellido' => $request->tercero_primer_apellido,
-                            'segundo_apellido' => $request->tercero_segundo_apellido,
-                            'prefijo_tlf' => $request->tercero_prefijo_tlf,
-                            'numero_tlf' => $request->tercero_numero_tlf,
+                            'primer_nombre' => $request->rep_primer_nombre,
+                            'segundo_nombre' => $request->rep_segundo_nombre,
+                            'primer_apellido' => $request->rep_primer_apellido,
+                            'segundo_apellido' => $request->rep_segundo_apellido,
+                            'prefijo_tlf' => $request->rep_prefijo_tlf,
+                            'numero_tlf' => $request->rep_numero_tlf,
+                            'parentesco' => $request->rep_parentesco,
+                            'estado_id' => $request->rep_estado_id,
+                            'municipio_id' => $request->rep_municipio_id,
+                            'ciudad_id' => $request->rep_ciudad_id,
+                            'parroquia_id' => $request->rep_parroquia_id,
+                            'direccion_detallada' => $request->rep_direccion_detallada,
                             'status' => true
                         ]
                     );
+                    $representanteId = $representante->id;
                     
+                    Log::info('Representante creado/encontrado', ['id' => $representanteId]);
+                    
+                    // 2. Determinar documento del paciente especial
+                    $tieneDocumento = $request->pac_tiene_documento == 'si';
+                    $pacTipoDoc = null;
+                    $pacNumeroDoc = null;
+                    
+                    if ($tieneDocumento) {
+                        $pacTipoDoc = $request->pac_tipo_documento;
+                        $pacNumeroDoc = $request->pac_numero_documento;
+                    } else {
+                        // Generar documento basado en representante
+                        $pacTipoDoc = $request->rep_tipo_documento;
+                        
+                        // Contar cuántos pacientes especiales ya existen con este patrón
+                        $countPacientes = PacienteEspecial::where('numero_documento', 'LIKE', $request->rep_numero_documento . '-%')
+                            ->count();
+                        $pacNumeroDoc = $request->rep_numero_documento . '-' . str_pad($countPacientes + 1, 2, '0', STR_PAD_LEFT);
+                    }
+                    
+                    Log::info('Documento paciente especial', ['tipo' => $pacTipoDoc, 'numero' => $pacNumeroDoc]);
+                    
+                    // Determinar ubicación del paciente (propia o del representante)
+                    $usarMismaDireccion = $request->misma_direccion == 'on' || $request->misma_direccion == '1';
+                    $pacEstadoId = $usarMismaDireccion ? $representante->estado_id : $request->pac_estado_id;
+                    $pacCiudadId = $usarMismaDireccion ? $representante->ciudad_id : $request->pac_ciudad_id;
+                    $pacMunicipioId = $usarMismaDireccion ? $representante->municipio_id : $request->pac_municipio_id;
+                    $pacParroquiaId = $usarMismaDireccion ? $representante->parroquia_id : $request->pac_parroquia_id;
+                    $pacDireccion = $usarMismaDireccion ? $representante->direccion_detallada : $request->pac_direccion_detallada;
+                    
+                    // 3. Crear registro en tabla PACIENTES (datos principales)
+                    $paciente = Paciente::firstOrCreate(
+                        [
+                            'tipo_documento' => $pacTipoDoc,
+                            'numero_documento' => $pacNumeroDoc
+                        ],
+                        [
+                            'primer_nombre' => $request->pac_primer_nombre,
+                            'segundo_nombre' => $request->pac_segundo_nombre,
+                            'primer_apellido' => $request->pac_primer_apellido,
+                            'segundo_apellido' => $request->pac_segundo_apellido,
+                            'fecha_nac' => $request->pac_fecha_nac,
+                            'estado_id' => $pacEstadoId,
+                            'ciudad_id' => $pacCiudadId,
+                            'municipio_id' => $pacMunicipioId,
+                            'parroquia_id' => $pacParroquiaId,
+                            'direccion_detallada' => $pacDireccion,
+                            'status' => true
+                        ]
+                    );
                     $pacienteId = $paciente->id;
                     
-                    // Si el usuario actual es paciente, guardarlo como representante
-                    if ($user->rol_id == 3 && $user->paciente) {
-                        $representante = Representante::firstOrCreate(
-                            [
-                                'tipo_documento' => $user->paciente->tipo_documento,
-                                'numero_documento' => $user->paciente->numero_documento
-                            ],
-                            [
-                                'primer_nombre' => $user->paciente->primer_nombre,
-                                'segundo_nombre' => $user->paciente->segundo_nombre,
-                                'primer_apellido' => $user->paciente->primer_apellido,
-                                'segundo_apellido' => $user->paciente->segundo_apellido,
-                                'prefijo_tlf' => $user->paciente->prefijo_tlf,
-                                'numero_tlf' => $user->paciente->numero_tlf,
-                                'parentesco' => 'Representante',
-                                'status' => true
-                            ]
-                        );
-                        $representanteId = $representante->id;
+                    Log::info('Paciente creado/encontrado', ['id' => $pacienteId]);
+                    
+                    // 4. Crear registro en tabla PACIENTES_ESPECIALES (datos adicionales)
+                    $pacienteEspecial = PacienteEspecial::firstOrCreate(
+                        [
+                            'paciente_id' => $pacienteId,
+                            'tipo' => $request->pac_tipo
+                        ],
+                        [
+                            'primer_nombre' => $request->pac_primer_nombre,
+                            'segundo_nombre' => $request->pac_segundo_nombre,
+                            'primer_apellido' => $request->pac_primer_apellido,
+                            'segundo_apellido' => $request->pac_segundo_apellido,
+                            'tipo_documento' => $pacTipoDoc,
+                            'numero_documento' => $pacNumeroDoc,
+                            'fecha_nac' => $request->pac_fecha_nac,
+                            'tiene_documento' => $tieneDocumento,
+                            'estado_id' => $pacEstadoId,
+                            'ciudad_id' => $pacCiudadId,
+                            'municipio_id' => $pacMunicipioId,
+                            'parroquia_id' => $pacParroquiaId,
+                            'direccion_detallada' => $pacDireccion,
+                            'observaciones' => $request->pac_observaciones,
+                            'status' => true
+                        ]
+                    );
+                    $pacienteEspecialId = $pacienteEspecial->id;
+                    
+                    Log::info('PacienteEspecial creado/encontrado', ['id' => $pacienteEspecialId]);
+                    
+                    // 5. Vincular representante con paciente especial (tabla pivote)
+                    if (!$pacienteEspecial->representantes()->where('representante_id', $representanteId)->exists()) {
+                        $pacienteEspecial->representantes()->attach($representanteId, [
+                            'tipo_responsabilidad' => 'Principal',
+                            'status' => true
+                        ]);
+                        Log::info('Representante vinculado a paciente especial');
                     }
                 }
                 
@@ -185,7 +292,7 @@ class CitaController extends Controller
                 $tarifaExtra = 0;
                 
                 // Si es domicilio, agregar tarifa extra
-                if ($request->tipo_consulta == 'Domicilio' && $especialidadPivot) {
+                if ($tipoConsulta == 'Domicilio' && $especialidadPivot) {
                     $tarifaExtra = $especialidadPivot->pivot->tarifa_extra_domicilio ?? 0;
                 }
                 
@@ -215,7 +322,7 @@ class CitaController extends Controller
                     'fecha_cita' => $request->fecha_cita,
                     'hora_inicio' => $request->hora_inicio,
                     'hora_fin' => $horaFin,
-                    'tipo_consulta' => $request->tipo_consulta,
+                    'tipo_consulta' => $tipoConsulta,
                     'tarifa' => $tarifa,
                     'tarifa_extra' => $tarifaExtra,
                     'motivo' => $request->motivo,
@@ -224,7 +331,7 @@ class CitaController extends Controller
                     'status' => true
                 ]);
 
-                Log::info('Cita creada exitosamente', ['cita_id' => $cita->id]);
+                Log::info('Cita creada exitosamente', ['cita_id' => $cita->id, 'paciente_especial_id' => $pacienteEspecialId]);
 
                 // Enviar notificación
                 $this->enviarNotificacionCita($cita);
