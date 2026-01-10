@@ -259,7 +259,8 @@ class MedicoController extends Controller
     public function horarios($id)
     {
         $medico = Medico::findOrFail($id);
-        $consultorios = Consultorio::where('status', true)->get();
+        // Eager load especialidades to use in frontend filtering
+        $consultorios = Consultorio::with('especialidades')->where('status', true)->get();
         $horarios = \App\Models\MedicoConsultorio::where('medico_id', $id)->get();
 
         return view('shared.medicos.horarios', compact('medico', 'consultorios', 'horarios'));
@@ -280,24 +281,80 @@ class MedicoController extends Controller
 
         \Log::info('V2 UI Payload:', $request->all());
 
+        $input = $request->input('horarios', []);
+        $daysOfWeek = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+        
+        $dbDays = [
+            'lunes' => 'Lunes',
+            'martes' => 'Martes',
+            'miercoles' => 'Miércoles',
+            'jueves' => 'Jueves',
+            'viernes' => 'Viernes',
+            'sabado' => 'Sábado',
+            'domingo' => 'Domingo'
+        ];
+
+        // 1. Validación de Especialidades vs Consultorio
+        // Recopilamos todos los IDs de consultorios involucrados para cargar sus especialidades permitidas
+        $consultorioIds = [];
+        foreach ($daysOfWeek as $dayKey) {
+            if (!isset($input[$dayKey])) continue;
+            $dayData = $input[$dayKey];
+
+            if (isset($dayData['manana_activa']) && $dayData['manana_activa'] == '1' && !empty($dayData['manana_consultorio_id'])) {
+                $consultorioIds[] = $dayData['manana_consultorio_id'];
+            }
+            if (isset($dayData['tarde_activa']) && $dayData['tarde_activa'] == '1' && !empty($dayData['tarde_consultorio_id'])) {
+                $consultorioIds[] = $dayData['tarde_consultorio_id'];
+            }
+        }
+
+        if (!empty($consultorioIds)) {
+            $consultorios = Consultorio::with('especialidades')->findMany(array_unique($consultorioIds))->keyBy('id');
+
+            foreach ($daysOfWeek as $dayKey) {
+                if (!isset($input[$dayKey])) continue;
+                $dayData = $input[$dayKey];
+                $diaNombre = $dbDays[$dayKey];
+
+                // Validar Turno Mañana
+                if (isset($dayData['manana_activa']) && $dayData['manana_activa'] == '1') {
+                    if (!empty($dayData['manana_consultorio_id']) && !empty($dayData['manana_especialidad_id'])) {
+                        $consId = $dayData['manana_consultorio_id'];
+                        $espId = $dayData['manana_especialidad_id'];
+                        
+                        if ($consultorios->has($consId)) {
+                            $consultorio = $consultorios->get($consId);
+                            if (!$consultorio->especialidades->contains('id', $espId)) {
+                                $especialidadNombre = \App\Models\Especialidad::find($espId)->nombre ?? 'seleccionada';
+                                return redirect()->back()->with('error', "Error en {$diaNombre} (Mañana): El consultorio '{$consultorio->nombre}' no admite la especialidad '{$especialidadNombre}'.");
+                            }
+                        }
+                    }
+                }
+
+                // Validar Turno Tarde
+                if (isset($dayData['tarde_activa']) && $dayData['tarde_activa'] == '1') {
+                    if (!empty($dayData['tarde_consultorio_id']) && !empty($dayData['tarde_especialidad_id'])) {
+                        $consId = $dayData['tarde_consultorio_id'];
+                        $espId = $dayData['tarde_especialidad_id'];
+                        
+                        if ($consultorios->has($consId)) {
+                            $consultorio = $consultorios->get($consId);
+                            if (!$consultorio->especialidades->contains('id', $espId)) {
+                                $especialidadNombre = \App\Models\Especialidad::find($espId)->nombre ?? 'seleccionada';
+                                return redirect()->back()->with('error', "Error en {$diaNombre} (Tarde): El consultorio '{$consultorio->nombre}' no admite la especialidad '{$especialidadNombre}'.");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id, $input, $daysOfWeek, $dbDays) {
                 // Limpiar horarios existentes
                 \App\Models\MedicoConsultorio::where('medico_id', $id)->delete();
-
-                $daysOfWeek = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
-                
-                $dbDays = [
-                    'lunes' => 'Lunes',
-                    'martes' => 'Martes',
-                    'miercoles' => 'Miércoles',
-                    'jueves' => 'Jueves',
-                    'viernes' => 'Viernes',
-                    'sabado' => 'Sábado',
-                    'domingo' => 'Domingo'
-                ];
-
-                $input = $request->input('horarios', []);
 
                 foreach ($daysOfWeek as $dayKey) {
                     if (!isset($input[$dayKey]) || !isset($input[$dayKey]['activo'])) {
