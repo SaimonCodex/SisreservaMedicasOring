@@ -1,0 +1,1 @@
+print_r(DB::select('SHOW CREATE TABLE medico_consultorio')[0]- Table'}); 

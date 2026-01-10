@@ -288,7 +288,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                                 <div>
                                     <label class="form-label">Estado</label>
-                                    <select name="pac_estado_id" id="pac_estado_id" class="form-select" onchange="cargarMunicipiosPac()">
+                                    <select name="pac_estado_id" id="pac_estado_id" class="form-select" onchange="cargarMunicipiosPac(); cargarCiudadesPac();">
                                         <option value="">Seleccionar estado...</option>
                                         @foreach($estados ?? [] as $estado)
                                         <option value="{{ $estado->id_estado }}">{{ $estado->estado }}</option>
@@ -298,6 +298,12 @@
                                 <div>
                                     <label class="form-label">Municipio</label>
                                     <select name="pac_municipio_id" id="pac_municipio_id" class="form-select" onchange="cargarParroquiasPac()">
+                                        <option value="">Primero seleccione estado...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">Ciudad</label>
+                                    <select name="pac_ciudad_id" id="pac_ciudad_id" class="form-select">
                                         <option value="">Primero seleccione estado...</option>
                                     </select>
                                 </div>
@@ -584,12 +590,38 @@
         } else {
             campoDoc.classList.add('hidden');
             infoGenerado.classList.remove('hidden');
-            // Mostrar preview del documento generado
-            const tipoDoc = document.getElementById('rep_tipo_documento').value;
-            const numDoc = document.getElementById('rep_numero_documento').value;
-            document.getElementById('doc-generado-preview').textContent = tipoDoc + '-' + numDoc + '-01';
+            actualizarPreviewDocumento();
         }
     }
+
+    async function actualizarPreviewDocumento() {
+        const tipoDoc = document.getElementById('rep_tipo_documento').value;
+        const numDoc = document.getElementById('rep_numero_documento').value;
+        const preview = document.getElementById('doc-generado-preview');
+        
+        if (!numDoc) {
+            preview.textContent = 'Documento no disponible';
+            return;
+        }
+
+        preview.textContent = 'Generando...';
+        
+        try {
+            const response = await fetch(BASE_URL + '/ajax/citas/get-next-sequence/' + numDoc);
+            if (!response.ok) throw new Error('Error en API');
+            
+            const data = await response.json();
+            // Data.full_id trae "12345678-02", le agregamos el tipo
+            preview.textContent = tipoDoc + '-' + data.full_id;
+        } catch(e) {
+            console.error('Error obteniendo secuencia:', e);
+            preview.textContent = tipoDoc + '-' + numDoc + '-01'; // Fallback
+        }
+    }
+
+    // Listeners para actualizar si cambia el representante (aunque sea readonly para el paciente actual, es bueno tenerlo)
+    document.getElementById('rep_numero_documento')?.addEventListener('change', actualizarPreviewDocumento);
+    document.getElementById('rep_tipo_documento')?.addEventListener('change', actualizarPreviewDocumento);
 
     function toggleDireccionPaciente() {
         const checkbox = document.getElementById('misma_direccion');
@@ -605,6 +637,28 @@
         }
     }
 
+    // Cargar ciudades para paciente
+    async function cargarCiudadesPac() {
+        const estadoId = document.getElementById('pac_estado_id').value;
+        const ciudadSelect = document.getElementById('pac_ciudad_id');
+        
+        if (!estadoId) {
+            ciudadSelect.innerHTML = '<option value="">Primero seleccione estado...</option>';
+            return;
+        }
+        
+        try {
+            const response = await fetch(BASE_URL + '/ubicacion/get-ciudades/' + estadoId);
+            const ciudades = await response.json();
+            ciudadSelect.innerHTML = '<option value="">Seleccionar ciudad...</option>';
+            ciudades.forEach(c => {
+                ciudadSelect.innerHTML += `<option value="${c.id_ciudad}">${c.ciudad}</option>`;
+            });
+        } catch(e) {
+            console.error('Error cargando ciudades:', e);
+        }
+    }
+
     // Cargar municipios para paciente
     async function cargarMunicipiosPac() {
         const estadoId = document.getElementById('pac_estado_id').value;
@@ -616,7 +670,7 @@
         }
         
         try {
-            const response = await fetch(BASE_URL + '/api/ubicacion/municipios/' + estadoId);
+            const response = await fetch(BASE_URL + '/ubicacion/get-municipios/' + estadoId);
             const municipios = await response.json();
             municipioSelect.innerHTML = '<option value="">Seleccionar municipio...</option>';
             municipios.forEach(m => {
@@ -638,7 +692,7 @@
         }
         
         try {
-            const response = await fetch(BASE_URL + '/api/ubicacion/parroquias/' + municipioId);
+            const response = await fetch(BASE_URL + '/ubicacion/get-parroquias/' + municipioId);
             const parroquias = await response.json();
             parroquiaSelect.innerHTML = '<option value="">Seleccionar parroquia...</option>';
             parroquias.forEach(p => {

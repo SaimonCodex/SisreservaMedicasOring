@@ -67,6 +67,55 @@ class AuthController extends Controller
                 ->withInput();
         }
 
+        // VALIDACIÓN DE ACCESO POR PORTAL CORRECTO
+        // Mapeo de roles string a IDs
+        $mapaRoles = [
+            'admin' => 1,
+            'medico' => 2,
+            'paciente' => 3
+        ];
+        
+        $rolSolicitado = $request->input('rol');
+        
+        // Solo validamos si se especifica un rol en la URL de login
+        if ($rolSolicitado && isset($mapaRoles[$rolSolicitado])) {
+            $rolIdSolicitado = $mapaRoles[$rolSolicitado];
+            
+            // Si el usuario intenta entrar a un portal que no es el suyo
+            if ($usuario->rol_id !== $rolIdSolicitado) {
+                
+                // Determinar a dónde debería ir y cómo se llama su rol real
+                $rutaCorrecta = 'login';
+                $nombreRolReal = '';
+                $portalIntentado = '';
+                
+                switch ($usuario->rol_id) {
+                    case 1:
+                        $rutaCorrecta = route('login', ['rol' => 'admin']);
+                        $nombreRolReal = 'Administrador';
+                        break;
+                    case 2:
+                        $rutaCorrecta = route('login', ['rol' => 'medico']);
+                        $nombreRolReal = 'Médico';
+                        break;
+                    case 3:
+                        $rutaCorrecta = route('login', ['rol' => 'paciente']);
+                        $nombreRolReal = 'Paciente';
+                        break;
+                }
+                
+                // Nombre bonito del portal intentado
+                switch ($rolSolicitado) {
+                    case 'admin': $portalIntentado = 'Administradores'; break;
+                    case 'medico': $portalIntentado = 'Médicos'; break;
+                    case 'paciente': $portalIntentado = 'Pacientes'; break;
+                }
+                
+                return redirect($rutaCorrecta)
+                    ->with('error', "Usted es un $nombreRolReal y no puede iniciar sesión desde el portal de $portalIntentado. Por favor ingrese sus credenciales aquí.");
+            }
+        }
+
         // Verificar estado del perfil específico
         $perfilInactivo = false;
         
@@ -221,7 +270,7 @@ class AuthController extends Controller
     public function logout()
     {
         Auth::logout();
-        return redirect()->route('login')->with('success', 'Sesión cerrada exitosamente');
+        return redirect()->route('home')->with('success', 'Sesión cerrada exitosamente');
     }
 
     public function showRecovery()

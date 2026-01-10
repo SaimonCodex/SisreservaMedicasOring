@@ -56,6 +56,7 @@
 
 <form method="POST" action="{{ route('login') }}" id="loginForm" class="space-y-6">
     @csrf
+    <input type="hidden" name="rol" value="{{ $rol }}">
 
     @if (session('error'))
         <div class="rounded-md bg-red-50 p-4 border border-red-200 animate-fade-in-down">

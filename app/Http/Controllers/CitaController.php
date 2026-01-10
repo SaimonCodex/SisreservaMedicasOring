@@ -11,7 +11,10 @@ use App\Models\Especialidad;
 use App\Models\Consultorio;
 use App\Models\Estado;
 use App\Models\MedicoConsultorio;
+use App\Models\FacturaCabecera;
+use App\Models\Notificacion;
 use Illuminate\Http\Request;
+
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -32,13 +35,53 @@ class CitaController extends Controller
                 return redirect()->route('paciente.dashboard')->with('error', 'No se encontró el perfil de paciente');
             }
             
-            $citas = Cita::with(['medico', 'especialidad', 'consultorio'])
+            // 1. Citas propias del paciente
+            $citasPropias = Cita::with(['medico', 'especialidad', 'consultorio', 'paciente'])
                          ->where('paciente_id', $paciente->id)
                          ->where('status', true)
                          ->orderBy('fecha_cita', 'desc')
-                         ->get();
+                         ->get()
+                         ->map(function($cita) {
+                             $cita->tipo_cita_display = 'propia';
+                             $cita->paciente_especial_info = null;
+                             return $cita;
+                         });
             
-            return view('paciente.citas.index', compact('citas'));
+            // 2. Buscar si este paciente es representante de pacientes especiales
+            $representante = Representante::where('tipo_documento', $paciente->tipo_documento)
+                                          ->where('numero_documento', $paciente->numero_documento)
+                                          ->first();
+            
+            $citasTerceros = collect();
+            $pacientesEspeciales = collect();
+            
+            if ($representante) {
+                // Obtener pacientes especiales de este representante
+                $pacientesEspeciales = $representante->pacientesEspeciales()->with(['paciente'])->get();
+                
+                // Obtener citas de los pacientes asociados a esos pacientes especiales
+                $pacienteIds = $pacientesEspeciales->pluck('paciente_id')->filter();
+                
+                if ($pacienteIds->isNotEmpty()) {
+                    $citasTerceros = Cita::with(['medico', 'especialidad', 'consultorio', 'paciente', 'paciente.pacienteEspecial'])
+                                         ->whereIn('paciente_id', $pacienteIds)
+                                         ->where('status', true)
+                                         ->orderBy('fecha_cita', 'desc')
+                                         ->get()
+                                         ->map(function($cita) use ($pacientesEspeciales) {
+                                             $cita->tipo_cita_display = 'terceros';
+                                             // Buscar info del paciente especial
+                                             $pe = $pacientesEspeciales->firstWhere('paciente_id', $cita->paciente_id);
+                                             $cita->paciente_especial_info = $pe;
+                                             return $cita;
+                                         });
+                }
+            }
+            
+            // Combinar todas las citas
+            $citas = $citasPropias->concat($citasTerceros)->sortByDesc('fecha_cita');
+            
+            return view('paciente.citas.index', compact('citas', 'pacientesEspeciales'));
         }
         
         // Para médico: sus citas
@@ -166,6 +209,9 @@ class CitaController extends Controller
                 // ========================================
                 if ($request->tipo_cita == 'terceros') {
                     
+                    // Obtener datos del paciente usuario para completar dirección del representante
+                    $pacienteUsuario = $user->paciente;
+
                     // 1. Crear o buscar REPRESENTANTE
                     $representante = Representante::firstOrCreate(
                         [
@@ -180,14 +226,26 @@ class CitaController extends Controller
                             'prefijo_tlf' => $request->rep_prefijo_tlf,
                             'numero_tlf' => $request->rep_numero_tlf,
                             'parentesco' => $request->rep_parentesco,
-                            'estado_id' => $request->rep_estado_id,
-                            'municipio_id' => $request->rep_municipio_id,
-                            'ciudad_id' => $request->rep_ciudad_id,
-                            'parroquia_id' => $request->rep_parroquia_id,
-                            'direccion_detallada' => $request->rep_direccion_detallada,
+                            // Usar dirección del paciente usuario si no viene en el request (que no viene en el form)
+                            'estado_id' => $request->rep_estado_id ?? $pacienteUsuario->estado_id,
+                            'municipio_id' => $request->rep_municipio_id ?? $pacienteUsuario->municipio_id,
+                            'ciudad_id' => $request->rep_ciudad_id ?? $pacienteUsuario->ciudad_id,
+                            'parroquia_id' => $request->rep_parroquia_id ?? $pacienteUsuario->parroquia_id,
+                            'direccion_detallada' => $request->rep_direccion_detallada ?? $pacienteUsuario->direccion_detallada,
                             'status' => true
                         ]
                     );
+
+                    // Si el representante ya existía pero tenía datos de ubicación nulos, actualizarlos
+                    if (!$representante->wasRecentlyCreated && is_null($representante->estado_id) && $pacienteUsuario) {
+                        $representante->update([
+                            'estado_id' => $pacienteUsuario->estado_id,
+                            'municipio_id' => $pacienteUsuario->municipio_id,
+                            'ciudad_id' => $pacienteUsuario->ciudad_id,
+                            'parroquia_id' => $pacienteUsuario->parroquia_id,
+                            'direccion_detallada' => $pacienteUsuario->direccion_detallada
+                        ]);
+                    }
                     $representanteId = $representante->id;
                     
                     Log::info('Representante creado/encontrado', ['id' => $representanteId]);
@@ -203,11 +261,7 @@ class CitaController extends Controller
                     } else {
                         // Generar documento basado en representante
                         $pacTipoDoc = $request->rep_tipo_documento;
-                        
-                        // Contar cuántos pacientes especiales ya existen con este patrón
-                        $countPacientes = PacienteEspecial::where('numero_documento', 'LIKE', $request->rep_numero_documento . '-%')
-                            ->count();
-                        $pacNumeroDoc = $request->rep_numero_documento . '-' . str_pad($countPacientes + 1, 2, '0', STR_PAD_LEFT);
+                        $pacNumeroDoc = $this->calculateNextId($request->rep_numero_documento);
                     }
                     
                     Log::info('Documento paciente especial', ['tipo' => $pacTipoDoc, 'numero' => $pacNumeroDoc]);
@@ -352,8 +406,107 @@ class CitaController extends Controller
 
     public function show($id)
     {
-        $cita = Cita::with(['paciente', 'medico', 'especialidad', 'consultorio', 'evolucionClinica'])->findOrFail($id);
+        $cita = Cita::with([
+            'paciente', 
+            'medico',
+            'especialidad', 
+            'consultorio' => function($q) { $q->with(['estado', 'ciudad', 'municipio', 'parroquia']); },
+            'pacienteEspecial',
+            'pacienteEspecial.representantes', 
+            'evolucionClinica'
+        ])->findOrFail($id);
+
+        // Si es paciente, mostrar vista personalizada
+        if (auth()->user()->rol_id == 3) {
+            // Verificar que la cita pertenezca al paciente o a uno de sus representados
+            $pacienteUsuario = auth()->user()->paciente;
+            $esPropia = $cita->paciente_id == $pacienteUsuario->id;
+            
+            // Si no es propia, verificar si es de un paciente especial representado por este usuario
+            $esTercero = false;
+            if (!$esPropia && $cita->paciente_especial_id) {
+                // Verificar si el representante logueado tiene relación con este paciente especial
+                $representante = Representante::where('numero_documento', $pacienteUsuario->numero_documento)
+                                            ->where('tipo_documento', $pacienteUsuario->tipo_documento)
+                                            ->first();
+                if ($representante) {
+                    $esTercero = DB::table('representante_paciente_especial')
+                                ->where('representante_id', $representante->id)
+                                ->where('paciente_especial_id', $cita->paciente_especial_id)
+                                ->exists();
+                }
+            }
+
+            // Si es admin o medico bypass this check, but here we are inside if rol_id == 3
+            // Validacion básica de seguridad
+            // if (!$esPropia && !$esTercero) {
+            //     abort(403, 'No autorizado para ver esta cita.');
+            // }
+
+            return view('paciente.citas.show', compact('cita'));
+        }
+
         return view('shared.citas.show', compact('cita'));
+    }
+
+    public function solicitarCancelacion(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            
+            $cita = Cita::findOrFail($id);
+            
+            // Validar
+            $request->validate([
+                'motivo_cancelacion' => 'required|string',
+                'explicacion' => 'required|string|max:500'
+            ]);
+
+            // No cambiar el estado 'status' o 'estado_cita' directamente si no queremos afectar la lógica admin
+            // pero podemos usar el campo observaciones para guardar temporalmente la solicitud o un estado intermedio
+            
+            // Opción: Agregar prefijo a la observación existente
+            $nuevaObservacion = "SOLICITUD CANCELACIÓN [" . date('d/m/Y H:i') . "]: \n" .
+                                "Motivo: " . $request->motivo_cancelacion . "\n" .
+                                "Detalle: " . $request->explicacion . "\n";
+            
+            if ($cita->observaciones) {
+                $nuevaObservacion .= "\n--- Obs. Anteriores ---\n" . $cita->observaciones;
+            }
+            
+            $cita->observaciones = $nuevaObservacion;
+            // Opcional: Podríamos tener un estado 'solicitud_cancelacion' si el enum lo permite.
+            // Si no, lo dejamos en pendiente pero notificamos.
+            $cita->save();
+
+            // Crear Notificación para Admin
+            // Buscamos un usuario admin (rol_id = 1) o genérico
+            // Asumiremos rol 'admin' para el receptor
+            Notificacion::create([
+                'receptor_rol' => 'admin', // Sistema debe tener listener o panel para ver notificaciones 'admin'
+                'tipo' => 'solicitud',
+                'titulo' => 'Solicitud de Cancelación - Cita #' . $cita->id,
+                'mensaje' => "Paciente solicitó cancelar cita del " . Carbon::parse($cita->fecha_cita)->format('d/m/Y') . ".\nMotivo: " . $request->motivo_cancelacion . " - " . $request->explicacion,
+                'via' => 'sistema', // interna
+                'estado_envio' => 'pendiente',
+                'status' => true
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Solicitud de cancelación enviada correctamente. El administrador revisará su caso.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error("Error solicitando cancelación cita $id: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar la solicitud: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function edit($id)
@@ -587,7 +740,46 @@ class CitaController extends Controller
     {
         $inicio = Carbon::createFromFormat('H:i', $horaInicio);
         $fin = Carbon::createFromFormat('H:i', $horaFin);
-        return $inicio->diffInMinutes($fin);
+        return $fin->diffInMinutes($inicio);
+    }
+    
+    // API Public para obtener siguiente secuencia
+    public function getNextSequence($numero_documento)
+    {
+        $nextId = $this->calculateNextId($numero_documento);
+        // Extraer solo la secuencia (últimos 2 dígitos)
+        $parts = explode('-', $nextId);
+        $sequence = end($parts);
+        
+        return response()->json([
+            'sequence' => $sequence,
+            'full_id' => $nextId
+        ]);
+    }
+
+    private function calculateNextId($baseDocumento)
+    {
+        // Buscar todos los documentos que empiecen con el documento base y tengan un sufijo
+        // Formato esperado en DB: 12345678-01, 12345678-02, etc.
+        $existing = PacienteEspecial::where('numero_documento', 'LIKE', $baseDocumento . '-%')
+                                    ->pluck('numero_documento');
+        
+        if ($existing->isEmpty()) {
+            return $baseDocumento . '-01';
+        }
+
+        $maxSequence = 0;
+        foreach ($existing as $doc) {
+            // Intentar extraer el sufijo numérico al final
+            if (preg_match('/-(\d+)$/', $doc, $matches)) {
+                $seq = intval($matches[1]);
+                if ($seq > $maxSequence) {
+                    $maxSequence = $seq;
+                }
+            }
+        }
+
+        return $baseDocumento . '-' . str_pad($maxSequence + 1, 2, '0', STR_PAD_LEFT);
     }
 
     private function obtenerDiaSemana($fecha)

@@ -175,7 +175,7 @@
                             <a href="{{ route('medicos.show', $medico->id) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver detalles">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{{ route('medicos.index') }}" class="btn btn-sm btn-ghost text-info-600" title="Horarios (Próximamente)">
+                            <a href="{{ route('medicos.horarios', $medico->id) }}" class="btn btn-sm btn-ghost text-info-600" title="Horarios">
                                 <i class="bi bi-clock"></i>
                             </a>
                             <a href="{{ route('medicos.edit', $medico->id) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">

@@ -13,6 +13,7 @@ class MedicoConsultorio extends Model
 
     protected $fillable = [
         'medico_id',
+        'especialidad_id',
         'consultorio_id',
         'dia_semana',
         'turno',
@@ -24,6 +25,11 @@ class MedicoConsultorio extends Model
     public function medico()
     {
         return $this->belongsTo(Medico::class, 'medico_id');
+    }
+
+    public function especialidad()
+    {
+        return $this->belongsTo(Especialidad::class, 'especialidad_id');
     }
 
     public function consultorio()
