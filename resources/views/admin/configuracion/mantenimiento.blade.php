@@ -127,21 +127,21 @@
             <div class="space-y-4">
                 <div>
                     <div class="flex justify-between text-sm mb-1">
-                        <span class="text-gray-500">Uso de Memoria</span>
-                        <span class="font-medium">45MB / 512MB</span>
+                        <span class="text-gray-500">Uso de Memoria (Script)</span>
+                        <span class="font-medium">{{ $stats['memory_usage'] }} / {{ $stats['memory_limit'] }}</span>
                     </div>
                     <div class="w-full bg-gray-100 rounded-full h-2">
-                        <div class="bg-success-500 h-2 rounded-full" style="width: 15%"></div>
+                        <div class="bg-success-500 h-2 rounded-full" style="width: {{ $stats['memory_percentage'] }}%"></div>
                     </div>
                 </div>
 
                 <div>
                     <div class="flex justify-between text-sm mb-1">
-                        <span class="text-gray-500">Espacio en Disco</span>
-                        <span class="font-medium">25% Ocupado</span>
+                        <span class="text-gray-500">Espacio en Disco ({{ $stats['disk_used'] }} ocupado)</span>
+                        <span class="font-medium">{{ $stats['disk_percentage'] }}% Ocupado</span>
                     </div>
                     <div class="w-full bg-gray-100 rounded-full h-2">
-                        <div class="bg-medical-500 h-2 rounded-full" style="width: 25%"></div>
+                        <div class="bg-medical-500 h-2 rounded-full" style="width: {{ $stats['disk_percentage'] }}%"></div>
                     </div>
                 </div>
 

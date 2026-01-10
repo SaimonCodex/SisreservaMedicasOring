@@ -27,15 +27,22 @@ class ConfiguracionController extends Controller
 
     public function general()
     {
-        $configuraciones = [
-            'nombre_sistema' => config('app.name', 'Sistema Médico'),
-            'email_sistema' => config('mail.from.address', 'sistema@clinica.com'),
-            'telefono_sistema' => config('app.phone', ''),
-            'direccion_sistema' => config('app.address', ''),
-            'moneda_base' => config('app.currency', 'USD'),
-            'timezone' => config('app.timezone', 'America/Caracas'),
-            'log_level' => config('logging.default', 'stack')
+        $keys = [
+            'app_name', 'rif', 'telefono_principal', 'direccion', 
+            'email_contacto', 'sitio_web', 
+            'social_facebook', 'social_instagram', 'social_twitter', 'social_whatsapp',
+            'horario_lv', 'horario_sab', 'horario_dom'
         ];
+
+        $configuraciones = [];
+        foreach ($keys as $key) {
+            $configuraciones[$key] = Configuracion::where('key', $key)->value('value');
+        }
+
+        // Defaults from config if DB is empty for app_name
+        if (!$configuraciones['app_name']) {
+            $configuraciones['app_name'] = config('app.name', 'Sistema Médico');
+        }
 
         return view('admin.configuracion.general', compact('configuraciones'));
     }
@@ -43,23 +50,38 @@ class ConfiguracionController extends Controller
     public function actualizarGeneral(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nombre_sistema' => 'required|string|max:255',
-            'email_sistema' => 'required|email|max:150',
-            'telefono_sistema' => 'nullable|string|max:20',
-            'direccion_sistema' => 'nullable|string|max:500',
-            'moneda_base' => 'required|in:USD,BS,EUR',
-            'timezone' => 'required|timezone',
-            'log_level' => 'required|in:emergency,alert,critical,error,warning,notice,info,debug'
+            'app_name' => 'required|string|max:255',
+            'email_contacto' => 'nullable|email|max:150',
+            'telefono_principal' => 'nullable|string|max:20',
+            'rif' => 'nullable|string|max:20',
+            'direccion' => 'nullable|string|max:500',
+            'sitio_web' => 'nullable|url|max:255',
+            'social_facebook' => 'nullable|url|max:255',
+            'social_instagram' => 'nullable|url|max:255',
+            'social_twitter' => 'nullable|url|max:255',
+            'social_whatsapp' => 'nullable|string|max:20',
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        // Aquí se actualizarían las configuraciones del sistema
-        // Normalmente esto se haría actualizando el archivo .env o una tabla de configuraciones
+        $fields = [
+            'app_name', 'rif', 'telefono_principal', 'direccion', 
+            'email_contacto', 'sitio_web', 
+            'social_facebook', 'social_instagram', 'social_twitter', 'social_whatsapp',
+            'horario_lv', 'horario_sab', 'horario_dom'
+        ];
 
-        // Por ahora, solo mostramos un mensaje de éxito
+        foreach ($fields as $field) {
+            if ($request->has($field)) {
+                Configuracion::updateOrCreate(
+                    ['key' => $field],
+                    ['value' => $request->input($field)]
+                );
+            }
+        }
+
         return redirect()->back()->with('success', 'Configuración general actualizada exitosamente');
     }
 
@@ -381,64 +403,7 @@ class ConfiguracionController extends Controller
         }
     }
 
-    // =========================================================================
-    // MANTENIMIENTO DEL SISTEMA
-    // =========================================================================
 
-    public function mantenimiento()
-    {
-        return view('admin.configuracion.mantenimiento');
-    }
-
-    public function ejecutarMantenimiento(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'accion' => 'required|in:limpiar_cache,optimizar,limpiar_logs,migrar,seed'
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator);
-        }
-
-        try {
-            switch ($request->accion) {
-                case 'limpiar_cache':
-                    Artisan::call('cache:clear');
-                    Artisan::call('config:clear');
-                    Artisan::call('route:clear');
-                    Artisan::call('view:clear');
-                    $mensaje = 'Caché del sistema limpiado exitosamente';
-                    break;
-
-                case 'optimizar':
-                    Artisan::call('optimize');
-                    $mensaje = 'Sistema optimizado exitosamente';
-                    break;
-
-                case 'limpiar_logs':
-                    Artisan::call('log:clear');
-                    $mensaje = 'Archivos de log limpiados exitosamente';
-                    break;
-
-                case 'migrar':
-                    Artisan::call('migrate', ['--force' => true]);
-                    $mensaje = 'Migraciones ejecutadas exitosamente';
-                    break;
-
-                case 'seed':
-                    Artisan::call('db:seed', ['--force' => true]);
-                    $mensaje = 'Seeders ejecutados exitosamente';
-                    break;
-
-                default:
-                    $mensaje = 'Acción ejecutada exitosamente';
-            }
-
-            return redirect()->back()->with('success', $mensaje);
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error al ejecutar mantenimiento: ' . $e->getMessage());
-        }
-    }
 
     public function backup()
     {
@@ -559,5 +524,101 @@ class ConfiguracionController extends Controller
         ];
 
         return view('admin.configuracion.servidor', compact('info'));
+    }
+    // =========================================================================
+    // MANTENIMIENTO DEL SISTEMA
+    // =========================================================================
+
+    public function mantenimiento()
+    {
+        // Cálculo de espacio en disco (Windows compatible)
+        $diskTotal = disk_total_space('/'); // Bytes
+        $diskFree = disk_free_space('/');   // Bytes
+        $diskUsed = $diskTotal - $diskFree;
+        $diskPercentage = ($diskUsed / $diskTotal) * 100;
+
+        // Formateo de bytes
+        $formatBytes = function ($bytes, $precision = 2) {
+            $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            $bytes = max($bytes, 0);
+            $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+            $pow = min($pow, count($units) - 1);
+            $bytes /= pow(1024, $pow);
+            return round($bytes, $precision) . ' ' . $units[$pow];
+        };
+
+        // Estimación de memoria (PHP limit vs Real usage)
+        $memoryLimit = ini_get('memory_limit');
+        $memoryUsage = memory_get_usage(true);
+        
+        // Convertir memory_limit a bytes para el cálculo de porcentaje
+        $memoryLimitBytes = $this->returnBytes($memoryLimit);
+        $memoryPercentage = ($memoryLimitBytes > 0) ? ($memoryUsage / $memoryLimitBytes) * 100 : 0;
+
+        $stats = [
+            'disk_total' => $formatBytes($diskTotal),
+            'disk_free' => $formatBytes($diskFree),
+            'disk_used' => $formatBytes($diskUsed),
+            'disk_percentage' => round($diskPercentage),
+            'memory_limit' => $memoryLimit,
+            'memory_usage' => $formatBytes($memoryUsage),
+            'memory_percentage' => round($memoryPercentage)
+        ];
+
+        return view('admin.configuracion.mantenimiento', compact('stats'));
+    }
+
+    private function returnBytes($val) {
+        $val = trim($val);
+        $last = strtolower($val[strlen($val)-1]);
+        $val = (int)$val;
+        switch($last) {
+            case 'g': $val *= 1024;
+            case 'm': $val *= 1024;
+            case 'k': $val *= 1024;
+        }
+        return $val;
+    }
+
+    public function ejecutarMantenimiento(Request $request)
+    {
+        $request->validate([
+            'accion' => 'required|in:limpiar_cache,optimizar,limpiar_logs,migrar,seed'
+        ]);
+
+        try {
+            switch ($request->accion) {
+                case 'limpiar_cache':
+                    Artisan::call('optimize:clear');
+                    $mensaje = 'Caché del sistema limpiada exitosamente.';
+                    break;
+                case 'optimizar':
+                    Artisan::call('optimize');
+                    $mensaje = 'Sistema optimizado correctamente.';
+                    break;
+                case 'limpiar_logs':
+                    $files = glob(storage_path('logs/*.log'));
+                    foreach ($files as $file) {
+                        if (is_file($file)) {
+                            @unlink($file);
+                        }
+                    }
+                    $mensaje = 'Logs eliminados correctamente.';
+                    break;
+                case 'migrar':
+                    Artisan::call('migrate', ['--force' => true]);
+                    $mensaje = 'Migraciones ejecutadas correctamente.';
+                    break;
+                case 'seed':
+                    Artisan::call('db:seed', ['--force' => true]);
+                    $mensaje = 'Seeders ejecutados correctamente.';
+                    break;
+            }
+
+            return redirect()->back()->with('success', $mensaje);
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al ejecutar acción: ' . $e->getMessage());
+        }
     }
 }
