@@ -297,6 +297,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('tasas', [ConfiguracionController::class, 'tasas'])->name('configuracion.tasas');
         Route::post('tasas', [ConfiguracionController::class, 'guardarTasa'])->name('configuracion.tasas.guardar');
         Route::put('tasas/{id}', [ConfiguracionController::class, 'actualizarTasa'])->name('configuracion.tasas.actualizar');
+        Route::get('tasas/sincronizar', [ConfiguracionController::class, 'sincronizarTasa'])->name('configuracion.tasas.sincronizar');
+        Route::post('tasas/configuracion', [ConfiguracionController::class, 'actualizarConfiguracionTasa'])->name('configuracion.tasas.settings');
+        Route::put('impuestos', [ConfiguracionController::class, 'actualizarImpuestos'])->name('configuracion.impuestos.actualizar');
         Route::delete('tasas/{id}', [ConfiguracionController::class, 'eliminarTasa'])->name('configuracion.tasas.eliminar');
         
         // Métodos de Pago

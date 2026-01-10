@@ -9,13 +9,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Helper para doble MD5
-        if (!function_exists('double_md5')) {
-            function double_md5($value)
-            {
-                return md5(md5($value));
-            }
-        }
+        //
     }
 
     public function boot(): void

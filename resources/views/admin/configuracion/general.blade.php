@@ -42,7 +42,7 @@
                             </label>
                             <input type="text" name="app_name" id="app_name" 
                                    class="input focus:ring-2 focus:ring-medical-200" 
-                                   value="{{ config('app.name', 'Sistema Médico') }}" 
+                                   value="{{ old('app_name', $configuraciones['app_name']) }}" 
                                    placeholder="Ej: Clínica Santa María" required>
                             <p class="form-help">Este nombre aparecerá en títulos, correos y facturas</p>
                         </div>
@@ -51,7 +51,7 @@
                             <label for="rif" class="form-label">RIF / NIT</label>
                             <input type="text" name="rif" id="rif" 
                                    class="input" 
-                                   value="{{ old('rif', 'J-12345678-9') }}" 
+                                   value="{{ old('rif', $configuraciones['rif']) }}" 
                                    placeholder="J-12345678-9">
                         </div>
 
@@ -59,7 +59,7 @@
                             <label for="telefono_principal" class="form-label">Teléfono Principal</label>
                             <input type="text" name="telefono_principal" id="telefono_principal" 
                                    class="input" 
-                                   value="{{ old('telefono_principal') }}" 
+                                   value="{{ old('telefono_principal', $configuraciones['telefono_principal']) }}" 
                                    placeholder="+58 212 1234567">
                         </div>
                     </div>
@@ -68,7 +68,7 @@
                         <label for="direccion" class="form-label">Dirección Física Completa</label>
                         <textarea name="direccion" id="direccion" rows="3" 
                                   class="textarea" 
-                                  placeholder="Dirección completa de la sede principal..."></textarea>
+                                  placeholder="Dirección completa de la sede principal...">{{ old('direccion', $configuraciones['direccion']) }}</textarea>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -76,6 +76,7 @@
                             <label for="email_contacto" class="form-label">Email de Contacto</label>
                             <input type="email" name="email_contacto" id="email_contacto" 
                                    class="input" 
+                                   value="{{ old('email_contacto', $configuraciones['email_contacto']) }}"
                                    placeholder="contacto@clinica.com">
                         </div>
 
@@ -83,6 +84,7 @@
                             <label for="sitio_web" class="form-label">Sitio Web</label>
                             <input type="url" name="sitio_web" id="sitio_web" 
                                    class="input" 
+                                   value="{{ old('sitio_web', $configuraciones['sitio_web']) }}"
                                    placeholder="https://www.clinica.com">
                         </div>
                     </div>
@@ -107,6 +109,7 @@
                             </div>
                             <input type="url" name="social_facebook" 
                                    class="input pl-10" 
+                                   value="{{ old('social_facebook', $configuraciones['social_facebook']) }}"
                                    placeholder="https://facebook.com/clinica">
                         </div>
                     </div>
@@ -119,6 +122,7 @@
                             </div>
                             <input type="url" name="social_instagram" 
                                    class="input pl-10" 
+                                   value="{{ old('social_instagram', $configuraciones['social_instagram']) }}"
                                    placeholder="https://instagram.com/clinica">
                         </div>
                     </div>
@@ -131,6 +135,7 @@
                             </div>
                             <input type="url" name="social_twitter" 
                                    class="input pl-10" 
+                                   value="{{ old('social_twitter', $configuraciones['social_twitter']) }}"
                                    placeholder="https://twitter.com/clinica">
                         </div>
                     </div>
@@ -143,6 +148,7 @@
                             </div>
                             <input type="text" name="social_whatsapp" 
                                    class="input pl-10" 
+                                   value="{{ old('social_whatsapp', $configuraciones['social_whatsapp']) }}"
                                    placeholder="+58 412 1234567">
                         </div>
                     </div>
@@ -161,15 +167,18 @@
                 <div class="space-y-3">
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <span class="font-medium text-gray-700">Lunes a Viernes</span>
-                        <input type="text" name="horario_lv" class="input w-48 text-center" value="8:00 AM - 6:00 PM">
+                        <input type="text" name="horario_lv" class="input w-48 text-center" 
+                               value="{{ old('horario_lv', $configuraciones['horario_lv'] ?? '8:00 AM - 6:00 PM') }}">
                     </div>
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <span class="font-medium text-gray-700">Sábados</span>
-                        <input type="text" name="horario_sab" class="input w-48 text-center" value="9:00 AM - 2:00 PM">
+                        <input type="text" name="horario_sab" class="input w-48 text-center" 
+                               value="{{ old('horario_sab', $configuraciones['horario_sab'] ?? '9:00 AM - 2:00 PM') }}">
                     </div>
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <span class="font-medium text-gray-700">Domingos y Feriados</span>
-                        <input type="text" name="horario_dom" class="input w-48 text-center" value="Cerrado">
+                        <input type="text" name="horario_dom" class="input w-48 text-center" 
+                               value="{{ old('horario_dom', $configuraciones['horario_dom'] ?? 'Cerrado') }}">
                     </div>
                 </div>
             </div>
