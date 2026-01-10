@@ -70,12 +70,72 @@ class PacienteController extends Controller
             return redirect()->route('paciente.dashboard')->with('error', 'No se encontró el perfil de paciente');
         }
 
-        $historial = \App\Models\Cita::where('paciente_id', $paciente->id)
-                                     ->where('status', true)
+        // 1. Historial propio
+        $historialPropio = \App\Models\Cita::with(['medico', 'consultorio', 'especialidad', 'paciente'])
+                                     ->where('paciente_id', $paciente->id)
+                                     ->whereIn('status', [true, 1]) // Asegurar compatibilidad de status
                                      ->orderBy('fecha_cita', 'desc')
-                                     ->paginate(20);
+                                     ->get()
+                                     ->map(function($cita) {
+                                         $cita->tipo_historia_display = 'propia';
+                                         $cita->paciente_especial_info = null;
+                                         return $cita;
+                                     });
 
-        return view('paciente.historial', compact('historial', 'paciente'));
+        // 2. Buscar si este paciente es representante de pacientes especiales
+        $representante = \App\Models\Representante::where('tipo_documento', $paciente->tipo_documento)
+                                      ->where('numero_documento', $paciente->numero_documento)
+                                      ->first();
+        
+        $historialTerceros = collect();
+        $pacientesEspeciales = collect();
+        
+        if ($representante) {
+            // Obtener pacientes especiales de este representante
+            $pacientesEspeciales = $representante->pacientesEspeciales()->with(['paciente'])->get();
+            
+            // Obtener historial de los pacientes asociados
+            $pacienteIds = $pacientesEspeciales->pluck('paciente_id')->filter();
+            
+            if ($pacienteIds->isNotEmpty()) {
+                $historialTerceros = \App\Models\Cita::with(['medico', 'consultorio', 'especialidad', 'paciente', 'paciente.pacienteEspecial'])
+                                     ->whereIn('paciente_id', $pacienteIds)
+                                     ->whereIn('status', [true, 1])
+                                     ->orderBy('fecha_cita', 'desc')
+                                     ->get()
+                                     ->map(function($cita) use ($pacientesEspeciales) {
+                                         $cita->tipo_historia_display = 'terceros';
+                                         // Buscar info del paciente especial para mostrar nombre correcto
+                                         $pe = $pacientesEspeciales->firstWhere('paciente_id', $cita->paciente_id);
+                                         $cita->paciente_especial_info = $pe;
+                                         return $cita;
+                                     });
+            }
+        }
+
+        // Combinar todo
+        $historial = $historialPropio->concat($historialTerceros)->sortByDesc('fecha_cita');
+        
+        // Mantener paginación manual si es necesario, o pasar colección completa y usar JS (como en citas)
+        // El view existente usa paginación ($historial->links()). 
+        // Al combinar colecciones perdemos el paginador de Eloquent directo.
+        // Convertiremos la colección a paginador manual para mantener compatibilidad con la vista
+        
+        $page = request()->get('page', 1);
+        $perPage = 20;
+        $historialPaginado = new \Illuminate\Pagination\LengthAwarePaginator(
+            $historial->forPage($page, $perPage),
+            $historial->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        return view('paciente.historial', [
+            'historial' => $historialPaginado,
+            'paciente' => $paciente,
+            'pacientesEspeciales' => $pacientesEspeciales
+        ]);
     }
 
     public function pagos()
@@ -86,11 +146,64 @@ class PacienteController extends Controller
             return redirect()->route('paciente.dashboard')->with('error', 'No se encontró el perfil de paciente');
         }
 
-        $pagos = \App\Models\FacturaPaciente::where('paciente_id', $paciente->id)
+        // 1. Pagos propios
+        $pagosPropios = \App\Models\FacturaPaciente::where('paciente_id', $paciente->id)
                                             ->orderBy('created_at', 'desc')
-                                            ->paginate(20);
+                                            ->get()
+                                            ->map(function($pago) {
+                                                $pago->tipo_pago_display = 'propia';
+                                                $pago->paciente_especial_info = null;
+                                                return $pago;
+                                            });
 
-        return view('paciente.pagos', compact('pagos', 'paciente'));
+        // 2. Buscar si este paciente es representante de pacientes especiales
+        $representante = \App\Models\Representante::where('tipo_documento', $paciente->tipo_documento)
+                                      ->where('numero_documento', $paciente->numero_documento)
+                                      ->first();
+        
+        $pagosTerceros = collect();
+        $pacientesEspeciales = collect();
+        
+        if ($representante) {
+            // Obtener pacientes especiales de este representante
+            $pacientesEspeciales = $representante->pacientesEspeciales()->with(['paciente'])->get();
+            
+            // Obtener pagos de los pacientes asociados
+            $pacienteIds = $pacientesEspeciales->pluck('paciente_id')->filter();
+            
+            if ($pacienteIds->isNotEmpty()) {
+                $pagosTerceros = \App\Models\FacturaPaciente::whereIn('paciente_id', $pacienteIds)
+                                     ->orderBy('created_at', 'desc')
+                                     ->get()
+                                     ->map(function($pago) use ($pacientesEspeciales) {
+                                         $pago->tipo_pago_display = 'terceros';
+                                         // Buscar info del paciente especial
+                                         $pe = $pacientesEspeciales->firstWhere('paciente_id', $pago->paciente_id);
+                                         $pago->paciente_especial_info = $pe;
+                                         return $pago;
+                                     });
+            }
+        }
+
+        // Combinar todo
+        $pagos = $pagosPropios->concat($pagosTerceros)->sortByDesc('created_at');
+        
+        // Paginación manual
+        $page = request()->get('page', 1);
+        $perPage = 20;
+        $pagosPaginados = new \Illuminate\Pagination\LengthAwarePaginator(
+            $pagos->forPage($page, $perPage),
+            $pagos->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        return view('paciente.pagos', [
+            'pagos' => $pagosPaginados, 
+            'paciente' => $paciente,
+            'pacientesEspeciales' => $pacientesEspeciales
+        ]);
     }
 
     public function index()

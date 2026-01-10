@@ -125,52 +125,175 @@
                     </div>
 
                     <div class="form-group md:col-span-2">
-                        <label class="form-label form-label-required">Especialidades</label>
+                        <label class="form-label form-label-required">Especialidades y Tarifas</label>
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                            <!-- Buscador simple -->
-                            <div class="relative mb-3">
-                                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                                <input type="text" id="searchSpecialty" class="input pl-10 text-sm" placeholder="Buscar especialidad...">
+                            
+                            <div class="flex gap-2 mb-4">
+                                <div class="flex-1">
+                                    <select id="selectEspecialidad" class="form-select">
+                                        <option value="">Seleccione una especialidad...</option>
+                                        @foreach($especialidades as $especialidad)
+                                            <option value="{{ $especialidad->id }}">{{ $especialidad->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <button type="button" id="btnAddSpecialty" class="btn btn-secondary">
+                                    <i class="bi bi-plus-lg"></i> Agregar
+                                </button>
                             </div>
 
-                            <!-- Grid de Opciones -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar" id="specialtiesContainer">
-                                @foreach($especialidades as $especialidad)
-                                <label class="cursor-pointer group relative">
-                                    <input type="checkbox" name="especialidades[]" value="{{ $especialidad->id }}" 
-                                        class="peer sr-only"
-                                        {{ (collect(old('especialidades', $medico->especialidades->pluck('id')))->contains($especialidad->id)) ? 'checked' : '' }}>
-                                    
-                                    <div class="p-3 bg-white border border-gray-200 rounded-lg hover:border-medical-300 hover:shadow-sm transition-all peer-checked:bg-medical-50 peer-checked:border-medical-500 peer-checked:ring-1 peer-checked:ring-medical-500 flex items-center justify-between">
-                                        <span class="text-sm font-medium text-gray-700 peer-checked:text-medical-700">{{ $especialidad->nombre }}</span>
-                                        <i class="bi bi-check-circle-fill text-medical-500 opacity-0 peer-checked:opacity-100 transition-opacity transform scale-50 peer-checked:scale-100"></i>
-                                    </div>
-                                </label>
-                                @endforeach
+                            <!-- Tabla de Especialidades Seleccionadas -->
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left text-gray-500">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                        <tr>
+                                            <th class="px-3 py-2">Especialidad</th>
+                                            <th class="px-3 py-2 w-24">Tarifa ($)</th>
+                                            <th class="px-3 py-2 w-24">Exp (Años)</th>
+                                            <th class="px-3 py-2 text-center">¿Domicilio?</th>
+                                            <th class="px-3 py-2 w-24">Extra ($)</th>
+                                            <th class="px-3 py-2 text-center"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="specialtiesTableBody">
+                                        {{-- Dynamic Rows Here --}}
+                                        <tr id="noSpecialtiesRow">
+                                            <td colspan="6" class="px-3 py-4 text-center text-gray-400">
+                                                No se han asignado especialidades
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="mt-2 text-xs text-center text-gray-500 hidden" id="noResults">
-                                No se encontraron especialidades
-                            </div>
+                            <!-- Hidden Inputs Container -->
+                            <div id="specialtiesHiddenInputs"></div>
+
+                            @error('especialidades') <p class="form-error mt-2">{{ $message }}</p> @enderror
                         </div>
-                        @error('especialidades') <p class="form-error">{{ $message }}</p> @enderror
 
                         <script>
-                            document.getElementById('searchSpecialty').addEventListener('input', function(e) {
-                                const term = e.target.value.toLowerCase();
-                                const items = document.querySelectorAll('#specialtiesContainer label');
-                                let visibleCount = 0;
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const btnAdd = document.getElementById('btnAddSpecialty');
+                                const select = document.getElementById('selectEspecialidad');
+                                const tbody = document.getElementById('specialtiesTableBody');
+                                const noRow = document.getElementById('noSpecialtiesRow');
                                 
-                                items.forEach(item => {
-                                    const text = item.textContent.toLowerCase();
-                                    if(text.includes(term)) {
-                                        item.classList.remove('hidden');
-                                        visibleCount++;
-                                    } else {
-                                        item.classList.add('hidden');
+                                let selectedSpecialties = new Set();
+
+                                // Recover old data if validation failed OR load existing data
+                                const oldData = @json(old('especialidades_data', []));
+                                const existingData = @json($medico->especialidades);
+
+                                if(Object.keys(oldData).length > 0) {
+                                    Object.values(oldData).forEach(data => {
+                                        // Try to find name in select options
+                                        let name = getOptionName(data.id);
+                                        addRow(data.id, name, data);
+                                    });
+                                } else if (existingData.length > 0) {
+                                    existingData.forEach(e => {
+                                        let data = {
+                                            id: e.id,
+                                            nombre: e.nombre,
+                                            tarifa: e.pivot.tarifa,
+                                            anos_experiencia: e.pivot.anos_experiencia,
+                                            atiende_domicilio: e.pivot.atiende_domicilio,
+                                            tarifa_extra_domicilio: e.pivot.tarifa_extra_domicilio
+                                        };
+                                        addRow(data.id, data.nombre, data);
+                                    });
+                                }
+
+                                function getOptionName(id) {
+                                    // Try to find in select
+                                    for(let opt of select.options) {
+                                        if(opt.value == id) return opt.text;
                                     }
+                                    return 'Especialidad ' + id;
+                                }
+
+                                btnAdd.addEventListener('click', function() {
+                                    const id = select.value;
+                                    const name = select.options[select.selectedIndex].text;
+
+                                    if(!id) return;
+                                    if(selectedSpecialties.has(parseInt(id))) {
+                                        alert('Esta especialidad ya ha sido agregada');
+                                        return;
+                                    }
+
+                                    addRow(id, name);
+                                    select.value = '';
                                 });
 
-                                document.getElementById('noResults').classList.toggle('hidden', visibleCount > 0);
+                                function addRow(id, name, data = null) {
+                                    // Ensure ID is int for Set check
+                                    const intId = parseInt(id);
+                                    
+                                    if(selectedSpecialties.size === 0) noRow.classList.add('hidden');
+                                    selectedSpecialties.add(intId);
+
+                                    const tr = document.createElement('tr');
+                                    tr.className = 'bg-white border-b hover:bg-gray-50';
+                                    tr.dataset.id = intId;
+                                    
+                                    // Default values or loaded values
+                                    const tarifa = data ? data.tarifa : '0.00';
+                                    const exp = data ? (data.anos_experiencia || 0) : '0';
+                                    const hasDom = data && (data.atiende_domicilio == 1 || data.atiende_domicilio == '1' || data.atiende_domicilio === true);
+                                    const extra = data ? data.tarifa_extra_domicilio : '0.00';
+
+                                    tr.innerHTML = `
+                                        <td class="px-3 py-2 font-medium text-gray-900">${name}</td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" step="0.01" class="input py-1 px-2 text-right" 
+                                                name="especialidades_data[${id}][tarifa]" value="${tarifa}" required>
+                                            <input type="hidden" name="especialidades_data[${id}][id]" value="${id}">
+                                            <input type="hidden" name="especialidades[]" value="${id}">
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" class="input py-1 px-2 text-right" 
+                                                name="especialidades_data[${id}][anos_experiencia]" value="${exp}">
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            <input type="checkbox" class="form-checkbox text-medical-600 rounded" 
+                                                name="especialidades_data[${id}][atiende_domicilio]" value="1" 
+                                                ${hasDom ? 'checked' : ''}
+                                                onchange="toggleExtra(this)">
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="number" step="0.01" class="input py-1 px-2 text-right ${hasDom ? '' : 'bg-gray-100 text-gray-400'}" 
+                                                name="especialidades_data[${id}][tarifa_extra_domicilio]" 
+                                                value="${extra}" ${hasDom ? '' : 'readonly'}>
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            <button type="button" class="text-red-500 hover:text-red-700" onclick="removeRow(this, ${id})">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    `;
+                                    tbody.appendChild(tr);
+                                }
+
+                                window.removeRow = function(btn, id) {
+                                    btn.closest('tr').remove();
+                                    selectedSpecialties.delete(parseInt(id));
+                                    if(selectedSpecialties.size === 0) noRow.classList.remove('hidden');
+                                };
+
+                                window.toggleExtra = function(checkbox) {
+                                    const row = checkbox.closest('tr');
+                                    const inputExtra = row.querySelector('input[name*="[tarifa_extra_domicilio]"]');
+                                    if(checkbox.checked) {
+                                        inputExtra.readOnly = false;
+                                        inputExtra.classList.remove('bg-gray-100', 'text-gray-400');
+                                        if(inputExtra.value == '0.00' || inputExtra.value == '') inputExtra.value = '0.00';
+                                    } else {
+                                        inputExtra.readOnly = true;
+                                        inputExtra.classList.add('bg-gray-100', 'text-gray-400');
+                                        inputExtra.value = '0.00';
+                                    }
+                                };
                             });
                         </script>
                     </div>

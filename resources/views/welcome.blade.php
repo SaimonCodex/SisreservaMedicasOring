@@ -22,8 +22,8 @@
 
             <!-- Desktop Menu -->
             <div class="hidden md:flex items-center gap-8">
-                <a href="{{ url('index.php/login?rol=paciente') }}" class="font-medium text-slate-600 hover:text-medical-600 transition-colors">Iniciar Sesión</a>
-                <a href="{{ url('index.php/register?rol=paciente') }}" class="btn bg-medical-600 text-white hover:bg-medical-700 shadow-md shadow-medical-200 rounded-lg px-6 py-2.5 font-medium transition-all hover:-translate-y-0.5">
+                <a href="{{ route('login', ['rol' => 'paciente']) }}" class="font-medium text-slate-600 hover:text-medical-600 transition-colors">Iniciar Sesión</a>
+                <a href="{{ route('register', ['rol' => 'paciente']) }}" class="btn bg-medical-600 text-white hover:bg-medical-700 shadow-md shadow-medical-200 rounded-lg px-6 py-2.5 font-medium transition-all hover:-translate-y-0.5">
                     Registrarme
                 </a>
             </div>
@@ -60,7 +60,7 @@
                     </p>
 
                     <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
-                        <a href="{{ url('index.php/register?rol=paciente') }}" class="btn bg-slate-900 text-white hover:bg-slate-800 h-12 px-8 rounded-lg text-base shadow-xl flex items-center justify-center gap-2 transition-all hover:-translate-y-1">
+                        <a href="{{ route('register', ['rol' => 'paciente']) }}" class="btn bg-slate-900 text-white hover:bg-slate-800 h-12 px-8 rounded-lg text-base shadow-xl flex items-center justify-center gap-2 transition-all hover:-translate-y-1">
                             Crear Cuenta Gratis
                             <i class="bi bi-arrow-right"></i>
                         </a>
@@ -137,7 +137,7 @@
                     <p class="text-slate-500 mb-6 leading-relaxed">
                         Gestiona tus citas médicas, accede a tu historial clínico y recibe recordatorios automáticos.
                     </p>
-                    <a href="{{ url('index.php/login?rol=paciente') }}" class="inline-flex items-center font-semibold text-green-600 group-hover:gap-2 transition-all">
+                    <a href="{{ route('login', ['rol' => 'paciente']) }}" class="inline-flex items-center font-semibold text-green-600 group-hover:gap-2 transition-all">
                         Ingresar <i class="bi bi-arrow-right ml-2"></i>
                     </a>
                 </div>
@@ -151,7 +151,7 @@
                     <p class="text-slate-500 mb-6 leading-relaxed">
                         Control total de tu agenda, historias clínicas digitales y seguimiento detallado de pacientes.
                     </p>
-                    <a href="{{ url('index.php/login?rol=medico') }}" class="inline-flex items-center font-semibold text-blue-600 group-hover:gap-2 transition-all">
+                    <a href="{{ route('login', ['rol' => 'medico']) }}" class="inline-flex items-center font-semibold text-blue-600 group-hover:gap-2 transition-all">
                         Ingresar <i class="bi bi-arrow-right ml-2"></i>
                     </a>
                 </div>
@@ -165,7 +165,7 @@
                     <p class="text-slate-500 mb-6 leading-relaxed">
                         Panel de control integral para la gestión de usuarios, configuraciones y reportes del sistema.
                     </p>
-                    <a href="{{ url('index.php/login?rol=admin') }}" class="inline-flex items-center font-semibold text-purple-600 group-hover:gap-2 transition-all">
+                    <a href="{{ route('login', ['rol' => 'admin']) }}" class="inline-flex items-center font-semibold text-purple-600 group-hover:gap-2 transition-all">
                         Ingresar <i class="bi bi-arrow-right ml-2"></i>
                     </a>
                 </div>

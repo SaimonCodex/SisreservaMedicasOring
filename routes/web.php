@@ -65,6 +65,7 @@ Route::prefix('ajax/citas')->group(function () {
     Route::get('/consultorios-por-especialidad/{especialidadId}', [CitaController::class, 'getConsultoriosPorEspecialidad']);
     Route::get('/medicos', [CitaController::class, 'getMedicosPorEspecialidadConsultorio']);
     Route::get('/horarios-disponibles', [CitaController::class, 'getHorariosDisponibles']);
+    Route::get('/get-next-sequence/{numero_documento}', [CitaController::class, 'getNextSequence']);
 });
 
 /*
@@ -134,6 +135,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::resource('citas', CitaController::class);
     Route::post('citas/{id}/cambiar-estado', [CitaController::class, 'cambiarEstado'])->name('citas.cambiar-estado');
+    Route::post('citas/{id}/solicitar-cancelacion', [CitaController::class, 'solicitarCancelacion'])->name('citas.solicitar-cancelacion');
     Route::get('buscar-disponibilidad', [CitaController::class, 'buscarDisponibilidad'])->name('citas.buscar-disponibilidad');
     
     // =========================================================================

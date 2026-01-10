@@ -4,256 +4,152 @@
 
 @section('content')
 <div class="mb-6">
-    <a href="{{ route('medicos.show', 1) }}" class="text-medical-600 hover:text-medical-700 inline-flex items-center text-sm font-medium mb-3">
+    <a href="{{ route('medicos.show', $medico->id) }}" class="text-medical-600 hover:text-medical-700 inline-flex items-center text-sm font-medium mb-3">
         <i class="bi bi-arrow-left mr-1"></i> Volver al Perfil
     </a>
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h2 class="text-3xl font-display font-bold text-gray-900">Horarios de Atención</h2>
-            <p class="text-gray-500 mt-1">Dr. Juan Pérez - Cardiología</p>
+            <p class="text-gray-500 mt-1">
+                Dr. {{ $medico->primer_nombre }} {{ $medico->primer_apellido }} 
+                @if($medico->especialidades->count() > 0)
+                    - {{ $medico->especialidades->pluck('nombre')->implode(', ') }}
+                @endif
+            </p>
         </div>
-        <button class="btn btn-primary" onclick="alert('Función de guardado')">
+        <button class="btn btn-primary" onclick="document.getElementById('horariosForm').submit()">
             <i class="bi bi-save mr-2"></i>
             Guardar Cambios
         </button>
     </div>
 </div>
 
-<form method="POST" action="{{ route('medicos.guardar-horario', 1) }}">
+<form id="horariosForm" method="POST" action="{{ route('medicos.guardar-horario', $medico->id) }}">
     @csrf
     
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Configuración de Horarios -->
         <div class="lg:col-span-2 space-y-4">
             
-            <!-- Lunes -->
-            <div class="card p-6 hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" name="activo[lunes]" value="1" class="form-checkbox text-medical-600 w-5 h-5" checked>
-                        </label>
-                        <h3 class="text-lg font-bold text-gray-900">Lunes</h3>
-                    </div>
-                    <span class="badge badge-success">Activo</span>
-                </div>
+            @php
+                $diasSemana = [
+                    'lunes' => 'Lunes', 
+                    'martes' => 'Martes', 
+                    'miercoles' => 'Miércoles', 
+                    'jueves' => 'Jueves', 
+                    'viernes' => 'Viernes', 
+                    'sabado' => 'Sábado', 
+                    'domingo' => 'Domingo'
+                ];
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="form-label text-xs">Jornada Mañana</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="time" name="lunes[manana_inicio]" class="input text-sm" value="08:00">
-                            <input type="time" name="lunes[manana_fin]" class="input text-sm" value="12:00">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="form-label text-xs">Jornada Tarde</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="time" name="lunes[tarde_inicio]" class="input text-sm" value="14:00">
-                            <input type="time" name="lunes[tarde_fin]" class="input text-sm" value="18:00">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-3 grid grid-cols-2 gap-3">
-                    <div class="form-group">
-                        <label class="form-label text-xs">Duración Cita (min)</label>
-                        <select name="lunes[duracion_cita]" class="form-select text-sm">
-                            <option value="15">15 minutos</option>
-                            <option value="20">20 minutos</option>
-                            <option value="30" selected>30 minutos</option>
-                            <option value="45">45 minutos</option>
-                            <option value="60">1 hora</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label text-xs">Cupos por hora</label>
-                        <input type="number" name="lunes[cupos_hora]" class="input text-sm" value="2" min="1" max="10">
-                    </div>
-                </div>
-            </div>
+                // Helper para organizar horarios por dia y turno para facil acceso en la vista
+                $horariosMap = [];
+                foreach($horarios as $h) {
+                    // Normalizar clave de día (tildes)
+                    $dayKey = strtolower(str_replace(['á','é','í','ó','ú','Á','É','Í','Ó','Ú'], ['a','e','i','o','u','A','E','I','O','U'], $h->dia_semana));
+                    $horariosMap[$dayKey][$h->turno] = $h;
+                }
+            @endphp
 
-            <!-- Martes -->
-            <div class="card p-6 hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" name="activo[martes]" value="1" class="form-checkbox text-medical-600 w-5 h-5" checked>
-                        </label>
-                        <h3 class="text-lg font-bold text-gray-900">Martes</h3>
-                    </div>
-                    <span class="badge badge-success">Activo</span>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="form-label text-xs">Jornada Mañana</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="time" name="martes[manana_inicio]" class="input text-sm" value="08:00">
-                            <input type="time" name="martes[manana_fin]" class="input text-sm" value="12:00">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="form-label text-xs">Jornada Tarde</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="time" name="martes[tarde_inicio]" class="input text-sm" value="14:00">
-                            <input type="time" name="martes[tarde_fin]" class="input text-sm" value="18:00">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-3 grid grid-cols-2 gap-3">
-                    <div class="form-group">
-                        <label class="form-label text-xs">Duración Cita (min)</label>
-                        <select name="martes[duracion_cita]" class="form-select text-sm">
-                            <option value="15">15 minutos</option>
-                            <option value="20">20 minutos</option>
-                            <option value="30" selected>30 minutos</option>
-                            <option value="45">45 minutos</option>
-                            <option value="60">1 hora</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label text-xs">Cupos por hora</label>
-                        <input type="number" name="martes[cupos_hora]" class="input text-sm" value="2" min="1" max="10">
-                    </div>
-                </div>
-            </div>
+            @foreach($diasSemana as $key => $diaLabel)
+                @php
+                    $hManana = $horariosMap[$key]['mañana'] ?? null;
+                    $hTarde = $horariosMap[$key]['tarde'] ?? null;
+                    $isActive = $hManana || $hTarde; 
+                @endphp
 
-            <!-- Miércoles -->
-            <div class="card p-6 hover:shadow-md transition-shadow opacity-60">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" name="activo[miercoles]" value="1" class="form-checkbox text-medical-600 w-5 h-5">
-                        </label>
-                        <h3 class="text-lg font-bold text-gray-900">Miércoles</h3>
+                <div class="card p-6 hover:shadow-md transition-shadow" x-data="{ 
+                    active: {{ $isActive ? 'true' : 'false' }},
+                    manana_active: {{ $hManana ? 'true' : 'false' }},
+                    tarde_active: {{ $hTarde ? 'true' : 'false' }} 
+                }">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" name="horarios[{{ $key }}][activo]" value="1" 
+                                    class="form-checkbox text-medical-600 w-5 h-5" 
+                                    x-model="active">
+                            </label>
+                            <h3 class="text-lg font-bold text-gray-900">{{ $diaLabel }}</h3>
+                        </div>
+                        <span class="badge" :class="active ? 'badge-success' : 'badge-gray'" x-text="active ? 'Activo' : 'Inactivo'"></span>
                     </div>
-                    <span class="badge badge-gray">Inactivo</span>
-                </div>
-                <p class="text-sm text-gray-500 italic">No hay atención este día</p>
-            </div>
+                    
+                    <div x-show="active" x-transition class="space-y-4">
+                        <!-- Turno Mañana -->
+                        <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                            <div class="flex items-center gap-2 mb-2">
+                                <input type="checkbox" name="horarios[{{ $key }}][manana_activa]" value="1" 
+                                    class="form-checkbox text-blue-600 rounded" 
+                                    x-model="manana_active">
+                                <span class="font-semibold text-blue-800 text-sm">Turno Mañana</span>
+                            </div>
+                            
+                            <div x-show="manana_active" class="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="form-label text-xs">Consultorio</label>
+                                    <select name="horarios[{{ $key }}][manana_consultorio_id]" class="form-select text-sm h-9">
+                                        <option value="">Seleccione...</option>
+                                        @foreach($consultorios as $consultorio)
+                                            <option value="{{ $consultorio->id }}" {{ ($hManana && $hManana->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
+                                                {{ $consultorio->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label text-xs">Inicio</label>
+                                    <input type="time" name="horarios[{{ $key }}][manana_inicio]" class="input text-sm h-9" 
+                                        value="{{ $hManana ? \Carbon\Carbon::parse($hManana->horario_inicio)->format('H:i') : '08:00' }}">
+                                </div>
+                                <div>
+                                    <label class="form-label text-xs">Fin</label>
+                                    <input type="time" name="horarios[{{ $key }}][manana_fin]" class="input text-sm h-9" 
+                                        value="{{ $hManana ? \Carbon\Carbon::parse($hManana->horario_fin)->format('H:i') : '12:00' }}">
+                                </div>
+                            </div>
+                        </div>
 
-            <!-- Jueves -->
-            <div class="card p-6 hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" name="activo[jueves]" value="1" class="form-checkbox text-medical-600 w-5 h-5" checked>
-                        </label>
-                        <h3 class="text-lg font-bold text-gray-900">Jueves</h3>
-                    </div>
-                    <span class="badge badge-success">Activo</span>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="form-label text-xs">Jornada Mañana</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="time" name="jueves[manana_inicio]" class="input text-sm" value="08:00">
-                            <input type="time" name="jueves[manana_fin]" class="input text-sm" value="12:00">
+                        <!-- Turno Tarde -->
+                        <div class="bg-orange-50/50 p-3 rounded-lg border border-orange-100">
+                            <div class="flex items-center gap-2 mb-2">
+                                <input type="checkbox" name="horarios[{{ $key }}][tarde_activa]" value="1" 
+                                    class="form-checkbox text-orange-600 rounded" 
+                                    x-model="tarde_active">
+                                <span class="font-semibold text-orange-800 text-sm">Turno Tarde</span>
+                            </div>
+                            
+                            <div x-show="tarde_active" class="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="form-label text-xs">Consultorio</label>
+                                    <select name="horarios[{{ $key }}][tarde_consultorio_id]" class="form-select text-sm h-9">
+                                        <option value="">Seleccione...</option>
+                                        @foreach($consultorios as $consultorio)
+                                            <option value="{{ $consultorio->id }}" {{ ($hTarde && $hTarde->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
+                                                {{ $consultorio->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label text-xs">Inicio</label>
+                                    <input type="time" name="horarios[{{ $key }}][tarde_inicio]" class="input text-sm h-9" 
+                                        value="{{ $hTarde ? \Carbon\Carbon::parse($hTarde->horario_inicio)->format('H:i') : '14:00' }}">
+                                </div>
+                                <div>
+                                    <label class="form-label text-xs">Fin</label>
+                                    <input type="time" name="horarios[{{ $key }}][tarde_fin]" class="input text-sm h-9" 
+                                        value="{{ $hTarde ? \Carbon\Carbon::parse($hTarde->horario_fin)->format('H:i') : '18:00' }}">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <label class="form-label text-xs">Jornada Tarde</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="time" name="jueves[tarde_inicio]" class="input text-sm" value="" placeholder="--:--">
-                            <input type="time" name="jueves[tarde_fin]" class="input text-sm" value="" placeholder="--:--">
-                        </div>
+                    
+                    <div x-show="!active" class="mt-2">
+                        <p class="text-sm text-gray-500 italic">No hay atención este día</p>
                     </div>
                 </div>
-                
-                <div class="mt-3 grid grid-cols-2 gap-3">
-                    <div class="form-group">
-                        <label class="form-label text-xs">Duración Cita (min)</label>
-                        <select name="jueves[duracion_cita]" class="form-select text-sm">
-                            <option value="15">15 minutos</option>
-                            <option value="20">20 minutos</option>
-                            <option value="30" selected>30 minutos</option>
-                            <option value="45">45 minutos</option>
-                            <option value="60">1 hora</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label text-xs">Cupos por hora</label>
-                        <input type="number" name="jueves[cupos_hora]" class="input text-sm" value="2" min="1" max="10">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Viernes -->
-            <div class="card p-6 hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" name="activo[viernes]" value="1" class="form-checkbox text-medical-600 w-5 h-5" checked>
-                        </label>
-                        <h3 class="text-lg font-bold text-gray-900">Viernes</h3>
-                    </div>
-                    <span class="badge badge-success">Activo</span>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="form-label text-xs">Jornada Mañana</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="time" name="viernes[manana_inicio]" class="input text-sm" value="08:00">
-                            <input type="time" name="viernes[manana_fin]" class="input text-sm" value="12:00">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="form-label text-xs">Jornada Tarde</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="time" name="viernes[tarde_inicio]" class="input text-sm" value="14:00">
-                            <input type="time" name="viernes[tarde_fin]" class="input text-sm" value="18:00">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-3 grid grid-cols-2 gap-3">
-                    <div class="form-group">
-                        <label class="form-label text-xs">Duración Cita (min)</label>
-                        <select name="viernes[duracion_cita]" class="form-select text-sm">
-                            <option value="15">15 minutos</option>
-                            <option value="20">20 minutos</option>
-                            <option value="30" selected>30 minutos</option>
-                            <option value="45">45 minutos</option>
-                            <option value="60">1 hora</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label text-xs">Cupos por hora</label>
-                        <input type="number" name="viernes[cupos_hora]" class="input text-sm" value="2" min="1" max="10">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sábado y Domingo (Inactivos por defecto) -->
-            <div class="card p-6 hover:shadow-md transition-shadow opacity-60">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" name="activo[sabado]" value="1" class="form-checkbox text-medical-600 w-5 h-5">
-                        </label>
-                        <h3 class="text-lg font-bold text-gray-900">Sábado</h3>
-                    </div>
-                    <span class="badge badge-gray">Inactivo</span>
-                </div>
-                <p class="text-sm text-gray-500 italic">No hay atención este día</p>
-            </div>
-
-            <div class="card p-6 hover:shadow-md transition-shadow opacity-60">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" name="activo[domingo]" value="1" class="form-checkbox text-medical-600 w-5 h-5">
-                        </label>
-                        <h3 class="text-lg font-bold text-gray-900">Domingo</h3>
-                    </div>
-                    <span class="badge badge-gray">Inactivo</span>
-                </div>
-                <p class="text-sm text-gray-500 italic">No hay atención este día</p>
-            </div>
+            @endforeach
         </div>
 
         <!-- Sidebar -->

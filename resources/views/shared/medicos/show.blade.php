@@ -128,14 +128,52 @@
                     <p class="font-semibold text-gray-900">{{ $medico->cmg ?? 'No registrado' }}</p>
                 </div>
                 <!-- Especialidades (Iterar si hay más de una, o mostrar principal) -->
+                <!-- Especialidades Detalladas -->
                  <div class="md:col-span-2">
-                    <p class="text-sm text-gray-500 mb-1">Especialidades</p>
-                    <div class="flex flex-wrap gap-2">
-                        @forelse($medico->especialidades as $especialidad)
-                             <span class="badge badge-primary">{{ $especialidad->nombre }}</span>
-                        @empty
-                             <span class="text-gray-500 italic">Sin especialidades registradas</span>
-                        @endforelse
+                    <p class="text-sm text-gray-500 mb-2">Especialidades y Tarifas</p>
+                    <div class="overflow-hidden border border-gray-200 rounded-xl">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Especialidad</th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Tarifa</th>
+                                    <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Exp.</th>
+                                    <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Domicilio</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @forelse($medico->especialidades as $especialidad)
+                                <tr>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {{ $especialidad->nombre }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+                                        ${{ number_format($especialidad->pivot->tarifa, 2) }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        {{ $especialidad->pivot->anos_experiencia ?? 0 }} años
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center">
+                                        @if($especialidad->pivot->atiende_domicilio)
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <i class="bi bi-check-circle-fill"></i> Sí (+${{ number_format($especialidad->pivot->tarifa_extra_domicilio, 2) }})
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                No
+                                            </span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="4" class="px-4 py-3 text-sm text-gray-500 text-center italic">
+                                        Sin especialidades registradas
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 
