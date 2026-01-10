@@ -15,7 +15,7 @@
     <div class="relative mx-auto min-h-screen w-full bg-mesh-premium">
         <header class="sticky top-0 z-40 border-b border-white/20 bg-white/90 backdrop-blur-xl shadow-soft">
             <div class="container flex h-20 items-center justify-between">
-                <a href="{{ url('index.php/paciente/dashboard') }}" class="flex items-center gap-3">
+                <a href="{{ route('paciente.dashboard') }}" class="flex items-center gap-3">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-medical-500 to-premium-500 text-white shadow-medium">
                         <i class="bi bi-person-check text-2xl"></i>
                     </div>
@@ -26,19 +26,19 @@
                 </a>
 
                 <nav class="hidden items-center gap-2 md:flex">
-                    <a href="{{ url('index.php/paciente/dashboard') }}" class="nav-pill {{ request()->is('index.php/paciente/dashboard') ? 'nav-pill-active' : '' }}">
+                    <a href="{{ route('paciente.dashboard') }}" class="nav-pill {{ request()->routeIs('paciente.dashboard') ? 'nav-pill-active' : '' }}">
                         <i class="bi bi-speedometer2 text-lg"></i>
                         <span>Dashboard</span>
                     </a>
-                    <a href="{{ url('index.php/citas') }}" class="nav-pill {{ request()->is('index.php/citas*') ? 'nav-pill-active' : '' }}">
+                    <a href="{{ route('paciente.citas.create') }}" class="nav-pill {{ request()->routeIs('paciente.citas.*') ? 'nav-pill-active' : '' }}">
                         <i class="bi bi-calendar-plus text-lg"></i>
                         <span>Solicitar Cita</span>
                     </a>
-                    <a href="{{ url('index.php/paciente/historial') }}" class="nav-pill {{ request()->is('index.php/paciente/historial*') ? 'nav-pill-active' : '' }}">
+                    <a href="{{ route('paciente.historial') }}" class="nav-pill {{ request()->routeIs('paciente.historial') ? 'nav-pill-active' : '' }}">
                         <i class="bi bi-file-medical text-lg"></i>
                         <span>Mi Historial</span>
                     </a>
-                    <a href="{{ url('index.php/paciente/pagos') }}" class="nav-pill {{ request()->is('index.php/paciente/pagos*') ? 'nav-pill-active' : '' }}">
+                    <a href="{{ route('paciente.pagos') }}" class="nav-pill {{ request()->routeIs('paciente.pagos') ? 'nav-pill-active' : '' }}">
                         <i class="bi bi-credit-card text-lg"></i>
                         <span>Pagos</span>
                     </a>
@@ -51,7 +51,7 @@
                             <p class="text-sm font-semibold text-smoke-700">{{ auth()->user()->correo }}</p>
                             <p class="text-xs text-smoke-400">Paciente</p>
                         </div>
-                        <form method="POST" action="{{ url('index.php/logout') }}" class="inline">@csrf
+                        <form method="POST" action="{{ route('logout') }}" class="inline">@csrf
                             <button type="submit" class="text-xs font-semibold uppercase tracking-wide text-rose-500 transition-colors hover:text-rose-600">Salir</button>
                         </form>
                     </div>
@@ -61,26 +61,26 @@
                 </div>
             </div>
 
-            <div id="mobileMenu" class="md:hidden">
+            <div id="mobileMenu" class="hidden md:hidden">
                 <div class="container pb-4">
                     <nav class="flex flex-col gap-2 rounded-3xl bg-white/80 p-4 shadow-soft ring-1 ring-white/70">
-                        <a href="{{ url('index.php/paciente/dashboard') }}" class="nav-link-mobile {{ request()->is('index.php/paciente/dashboard') ? 'nav-link-mobile-active' : '' }}">
+                        <a href="{{ route('paciente.dashboard') }}" class="nav-link-mobile {{ request()->routeIs('paciente.dashboard') ? 'nav-link-mobile-active' : '' }}">
                             <i class="bi bi-speedometer2 text-lg"></i>
                             <span>Dashboard</span>
                         </a>
-                        <a href="{{ url('index.php/citas') }}" class="nav-link-mobile {{ request()->is('index.php/citas*') ? 'nav-link-mobile-active' : '' }}">
+                        <a href="{{ route('paciente.citas.create') }}" class="nav-link-mobile {{ request()->routeIs('paciente.citas.*') ? 'nav-link-mobile-active' : '' }}">
                             <i class="bi bi-calendar-plus text-lg"></i>
                             <span>Solicitar Cita</span>
                         </a>
-                        <a href="{{ url('index.php/paciente/historial') }}" class="nav-link-mobile {{ request()->is('index.php/paciente/historial*') ? 'nav-link-mobile-active' : '' }}">
+                        <a href="{{ route('paciente.historial') }}" class="nav-link-mobile {{ request()->routeIs('paciente.historial') ? 'nav-link-mobile-active' : '' }}">
                             <i class="bi bi-file-medical text-lg"></i>
                             <span>Mi Historial</span>
                         </a>
-                        <a href="{{ url('index.php/paciente/pagos') }}" class="nav-link-mobile {{ request()->is('index.php/paciente/pagos*') ? 'nav-link-mobile-active' : '' }}">
+                        <a href="{{ route('paciente.pagos') }}" class="nav-link-mobile {{ request()->routeIs('paciente.pagos') ? 'nav-link-mobile-active' : '' }}">
                             <i class="bi bi-credit-card text-lg"></i>
                             <span>Pagos</span>
                         </a>
-                        <form method="POST" action="{{ url('index.php/logout') }}" class="mt-3">@csrf
+                        <form method="POST" action="{{ route('logout') }}" class="mt-3">@csrf
                             <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-500/10 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-500/20">
                                 <i class="bi bi-box-arrow-right"></i>
                                 Cerrar Sesión
@@ -126,6 +126,29 @@
                     menu.classList.toggle('hidden');
                 });
             }
+
+            // Auto-hide alerts after 5 seconds
+            const alerts = document.querySelectorAll('#alert-success, #alert-error');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.transition = 'opacity 0.5s ease-out';
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }, 5000);
+            });
+
+            // Dismiss buttons
+            document.querySelectorAll('[data-dismiss]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-dismiss');
+                    const target = document.getElementById(targetId);
+                    if(target) {
+                        target.style.transition = 'opacity 0.3s';
+                        target.style.opacity = '0';
+                        setTimeout(() => target.remove(), 300);
+                    }
+                });
+            });
         });
     </script>
     @endpush

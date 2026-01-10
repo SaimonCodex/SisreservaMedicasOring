@@ -72,6 +72,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/medico/dashboard', [MedicoController::class, 'dashboard'])->name('medico.dashboard');
     Route::get('/paciente/dashboard', [PacienteController::class, 'dashboard'])->name('paciente.dashboard');
     
+    // Rutas Específicas Paciente
+    Route::prefix('paciente')->middleware(['auth'])->group(function () {
+        Route::get('/historial', [PacienteController::class, 'historial'])->name('paciente.historial'); // Assumes create a method or point to existing
+        Route::get('/pagos', [PacienteController::class, 'pagos'])->name('paciente.pagos');
+        Route::get('/citas/create', [CitaController::class, 'create'])->name('paciente.citas.create'); // Specific route for paciente create
+        Route::post('/citas', [CitaController::class, 'store'])->name('paciente.citas.store');
+        Route::get('/citas', [CitaController::class, 'index'])->name('paciente.citas.index');
+    });
+    
     // =========================================================================
     // ADMINISTRACIÓN DEL SISTEMA
     // =========================================================================
