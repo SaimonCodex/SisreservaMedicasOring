@@ -21,33 +21,23 @@
     <form method="GET" action="{{ route('consultorios.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="md:col-span-2">
             <label class="form-label">Buscar</label>
-            <input type="text" name="buscar" class="input" placeholder="Número, piso, nombre..." value="{{ request('buscar') }}">
-        </div>
-
-        <div>
-            <label class="form-label">Piso</label>
-            <select name="piso" class="form-select">
-                <option value="">Todos</option>
-                <option value="1">Piso 1</option>
-                <option value="2">Piso 2</option>
-                <option value="3">Piso 3</option>
-            </select>
+            <input type="text" name="buscar" class="input" placeholder="Nombre, ubicación, descripción..." value="{{ request('buscar') }}">
         </div>
 
         <div>
             <label class="form-label">Estado</label>
             <select name="status" class="form-select">
                 <option value="">Todos</option>
-                <option value="1">Disponibles</option>
-                <option value="0">No Disponibles</option>
+                <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>Activos</option>
+                <option value="0" {{ request('status') == '0' ? 'selected' : '' }}>Inactivos</option>
             </select>
         </div>
 
-        <div class="md:col-span-4 flex gap-2">
-            <button type="submit" class="btn btn-primary">
+        <div class="flex gap-2 items-end">
+            <button type="submit" class="btn btn-primary w-full md:w-auto">
                 <i class="bi bi-funnel mr-1"></i> Filtrar
             </button>
-            <a href="{{ route('consultorios.index') }}" class="btn btn-outline">
+            <a href="{{ route('consultorios.index') }}" class="btn btn-outline w-full md:w-auto text-center" title="Limpiar filtros">
                 <i class="bi bi-x-lg"></i>
             </a>
         </div>
@@ -60,7 +50,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Total Consultorios</p>
-                <p class="text-2xl font-bold text-gray-900">8</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $totalConsultorios }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-medical-50 flex items-center justify-center">
                 <i class="bi bi-building text-medical-600 text-2xl"></i>
@@ -71,8 +61,8 @@
     <div class="card p-4 border-l-4 border-l-success-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Disponibles</p>
-                <p class="text-2xl font-bold text-gray-900">6</p>
+                <p class="text-sm text-gray-500 mb-1">Activos</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $consultoriosActivos }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-success-50 flex items-center justify-center">
                 <i class="bi bi-check-circle text-success-600 text-2xl"></i>
@@ -83,11 +73,11 @@
     <div class="card p-4 border-l-4 border-l-warning-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">En Uso Hoy</p>
-                <p class="text-2xl font-bold text-gray-900">5</p>
+                <p class="text-sm text-gray-500 mb-1">Ciudades</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $totalCiudades }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-warning-50 flex items-center justify-center">
-                <i class="bi bi-door-open text-warning-600 text-2xl"></i>
+                <i class="bi bi-geo-alt text-warning-600 text-2xl"></i>
             </div>
         </div>
     </div>
@@ -95,11 +85,11 @@
     <div class="card p-4 border-l-4 border-l-info-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Ocupación</p>
-                <p class="text-2xl font-bold text-gray-900">78%</p>
+                <p class="text-sm text-gray-500 mb-1">Médicos Asignados</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $totalMedicosAsignados }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-info-50 flex items-center justify-center">
-                <i class="bi bi-graph-up text-info-600 text-2xl"></i>
+                <i class="bi bi-people text-info-600 text-2xl"></i>
             </div>
         </div>
     </div>
@@ -107,212 +97,93 @@
 
 <!-- Grid de Consultorios -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    <!-- Consultorio 101 -->
-    <div class="card p-0 overflow-hidden hover:shadow-xl transition-shadow">
-        <div class="bg-gradient-to-br from-medical-500 to-medical-600 p-6 text-white">
+    @php
+        $styles = [
+            ['gradient' => 'from-blue-500 to-blue-600', 'text' => 'text-blue-600', 'bg_badge' => 'bg-blue-100', 'text_badge' => 'text-blue-700'],
+            ['gradient' => 'from-emerald-500 to-emerald-600', 'text' => 'text-emerald-600', 'bg_badge' => 'bg-emerald-100', 'text_badge' => 'text-emerald-700'],
+            ['gradient' => 'from-violet-500 to-violet-600', 'text' => 'text-violet-600', 'bg_badge' => 'bg-violet-100', 'text_badge' => 'text-violet-700'],
+            ['gradient' => 'from-rose-500 to-rose-600', 'text' => 'text-rose-600', 'bg_badge' => 'bg-rose-100', 'text_badge' => 'text-rose-700'],
+            ['gradient' => 'from-amber-500 to-amber-600', 'text' => 'text-amber-600', 'bg_badge' => 'bg-amber-100', 'text_badge' => 'text-amber-700'],
+            ['gradient' => 'from-cyan-500 to-cyan-600', 'text' => 'text-cyan-600', 'bg_badge' => 'bg-cyan-100', 'text_badge' => 'text-cyan-700'],
+            ['gradient' => 'from-medical-500 to-medical-600', 'text' => 'text-medical-600', 'bg_badge' => 'bg-medical-100', 'text_badge' => 'text-medical-700'],
+        ];
+    @endphp
+
+    @forelse ($consultorios as $consultorio)
+    @php
+        $style = $styles[$consultorio->id % count($styles)];
+    @endphp
+    
+    <div class="card p-0 overflow-hidden hover:shadow-xl transition-shadow {{ !$consultorio->status ? 'opacity-70' : '' }}">
+        <div class="bg-gradient-to-br {{ $consultorio->status ? $style['gradient'] : 'from-gray-400 to-gray-500' }} p-6 text-white">
             <div class="flex items-center justify-between mb-3">
                 <div>
-                    <h3 class="text-3xl font-bold">101</h3>
-                    <p class="text-white/80 text-sm">Piso 1</p>
+                    <h3 class="text-2xl font-bold truncate max-w-[180px]" title="{{ $consultorio->nombre }}">{{ $consultorio->nombre }}</h3>
+                    <p class="text-white/80 text-sm flex items-center gap-1">
+                        <i class="bi bi-geo-alt-fill text-xs"></i> 
+                        {{ $consultorio->ciudad->ciudad ?? 'N/A' }}
+                    </p>
                 </div>
-                <span class="badge bg-success-500 text-white border-2 border-white/30">Disponible</span>
+                <span class="badge {{ $consultorio->status ? 'bg-white/20' : 'bg-danger-500' }} text-white border-2 border-white/30">
+                    {{ $consultorio->status ? 'Activo' : 'Inactivo' }}
+                </span>
             </div>
-            <p class="text-white/90 font-medium">Consultorio General</p>
+            <p class="text-white/90 font-medium text-sm truncate">{{ $consultorio->direccion_detallada ?? 'Sin dirección detallada' }}</p>
         </div>
         
         <div class="p-6">
             <div class="space-y-3 mb-4 text-sm">
                 <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-person-badge text-medical-600"></i>
-                    <span>Dr. Carlos López</span>
+                    <i class="bi bi-person-badge {{ $style['text'] }}"></i>
+                    <span>{{ $consultorio->medicos_count }} Médicos asignados</span>
+                </div>
+                <!-- Especialidades -->
+                <div class="flex items-start gap-2 text-gray-600">
+                    <i class="bi bi-bookmark {{ $style['text'] }} mt-0.5"></i>
+                    <div class="flex flex-wrap gap-1">
+                        @forelse($consultorio->especialidades as $especialidad)
+                            <span class="px-2 py-0.5 rounded-full text-xs {{ $style['bg_badge'] }} {{ $style['text_badge'] }} border border-transparent">
+                                {{ $especialidad->nombre }}
+                            </span>
+                        @empty
+                            <span class="text-gray-400 italic">Sin especialidades</span>
+                        @endforelse
+                    </div>
                 </div>
                 <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-bookmark text-medical-600"></i>
-                    <span>Traumatología</span>
-                </div>
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-rulers text-medical-600"></i>
-                    <span>25 m²</span>
+                    <i class="bi bi-telephone {{ $style['text'] }}"></i>
+                    <span>{{ $consultorio->telefono ?? 'Sin teléfono' }}</span>
                 </div>
             </div>
             
             <div class="flex gap-2">
-                <a href="{{ route('consultorios.show', 1) }}" class="btn btn-sm btn-outline flex-1">
+                <a href="{{ route('consultorios.show', $consultorio->id) }}" class="btn btn-sm btn-outline flex-1">
                     <i class="bi bi-eye mr-1"></i> Ver
                 </a>
-                <a href="{{ route('consultorios.horarios', 1) }}" class="btn btn-sm btn-ghost text-info-600">
+                <a href="{{ route('consultorios.horarios', $consultorio->id) }}" class="btn btn-sm btn-ghost text-info-600" title="Ver Horarios">
                     <i class="bi bi-clock"></i>
                 </a>
-                <a href="{{ route('consultorios.edit', 1) }}" class="btn btn-sm btn-ghost text-warning-600">
+                <a href="{{ route('consultorios.edit', $consultorio->id) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
                     <i class="bi bi-pencil"></i>
                 </a>
             </div>
         </div>
     </div>
+    @empty
+    <div class="col-span-full py-12 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+            <i class="bi bi-building-slash text-gray-400 text-3xl"></i>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900">No se encontraron consultorios</h3>
+        <p class="text-gray-500 mt-1 mb-4">Intenta ajustar los filtros de búsqueda</p>
+        <a href="{{ route('consultorios.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg mr-2"></i> Crear Nuevo Consultorio
+        </a>
+    </div>
+    @endforelse
+</div>
 
-    <!-- Consultorio 205 -->
-    <div class="card p-0 overflow-hidden hover:shadow-xl transition-shadow">
-        <div class="bg-gradient-to-br from-success-500 to-success-600 p-6 text-white">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <h3 class="text-3xl font-bold">205</h3>
-                    <p class="text-white/80 text-sm">Piso 2</p>
-                </div>
-                <span class="badge bg-warning-500 text-white border-2 border-white/30">En Uso</span>
-            </div>
-            <p class="text-white/90 font-medium">Consultorio Cardiología</p>
-        </div>
-        
-        <div class="p-6">
-            <div class="space-y-3 mb-4 text-sm">
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-person-badge text-success-600"></i>
-                    <span>Dr. Juan Pérez</span>
-                </div>
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-bookmark text-success-600"></i>
-                    <span>Cardiología</span>
-                </div>
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-rulers text-success-600"></i>
-                    <span>30 m²</span>
-                </div>
-            </div>
-            
-            <div class="flex gap-2">
-                <a href="{{ route('consultorios.show', 2) }}" class="btn btn-sm btn-outline flex-1">
-                    <i class="bi bi-eye mr-1"></i> Ver
-                </a>
-                <a href="{{ route('consultorios.horarios', 2) }}" class="btn btn-sm btn-ghost text-info-600">
-                    <i class="bi bi-clock"></i>
-                </a>
-                <a href="{{ route('consultorios.edit', 2) }}" class="btn btn-sm btn-ghost text-warning-600">
-                    <i class="bi bi-pencil"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Consultorio 310 -->
-    <div class="card p-0 overflow-hidden hover:shadow-xl transition-shadow">
-        <div class="bg-gradient-to-br from-warning-500 to-warning-600 p-6 text-white">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <h3 class="text-3xl font-bold">310</h3>
-                    <p class="text-white/80 text-sm">Piso 3</p>
-                </div>
-                <span class="badge bg-success-500 text-white border-2 border-white/30">Disponible</span>
-            </div>
-            <p class="text-white/90 font-medium">Consultorio Pediatría</p>
-        </div>
-        
-        <div class="p-6">
-            <div class="space-y-3 mb-4 text-sm">
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-person-badge text-warning-600"></i>
-                    <span>Dra. María González</span>
-                </div>
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-bookmark text-warning-600"></i>
-                    <span>Pediatría</span>
-                </div>
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-rulers text-warning-600"></i>
-                    <span>28 m²</span>
-                </div>
-            </div>
-            
-            <div class="flex gap-2">
-                <a href="{{ route('consultorios.show', 3) }}" class="btn btn-sm btn-outline flex-1">
-                    <i class="bi bi-eye mr-1"></i> Ver
-                </a>
-                <a href="{{ route('consultorios.horarios', 3) }}" class="btn btn-sm btn-ghost text-info-600">
-                    <i class="bi bi-clock"></i>
-                </a>
-                <a href="{{ route('consultorios.edit', 3) }}" class="btn btn-sm btn-ghost text-warning-600">
-                    <i class="bi bi-pencil"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Consultorio 102 -->
-    <div class="card p-0 overflow-hidden hover:shadow-xl transition-shadow">
-        <div class="bg-gradient-to-br from-info-500 to-info-600 p-6 text-white">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <h3 class="text-3xl font-bold">102</h3>
-                    <p class="text-white/80 text-sm">Piso 1</p>
-                </div>
-                <span class="badge bg-success-500 text-white border-2 border-white/30">Disponible</span>
-            </div>
-            <p class="text-white/90 font-medium">Medicina General</p>
-        </div>
-        
-        <div class="p-6">
-            <div class="space-y-3 mb-4 text-sm">
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-person-badge text-info-600"></i>
-                    <span>Sin asignar</span>
-                </div>
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-bookmark text-info-600"></i>
-                    <span>Disponible</span>
-                </div>
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="bi bi-rulers text-info-600"></i>
-                    <span>22 m²</span>
-                </div>
-            </div>
-            
-            <div class="flex gap-2">
-                <a href="{{ route('consultorios.show', 4) }}" class="btn btn-sm btn-outline flex-1">
-                    <i class="bi bi-eye mr-1"></i> Ver
-                </a>
-                <a href="{{ route('consultorios.horarios', 4) }}" class="btn btn-sm btn-ghost text-info-600">
-                    <i class="bi bi-clock"></i>
-                </a>
-                <a href="{{ route('consultorios.edit', 4) }}" class="btn btn-sm btn-ghost text-warning-600">
-                    <i class="bi bi-pencil"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Consultorio 201 - Mantenimiento -->
-    <div class="card p-0 overflow-hidden hover:shadow-xl transition-shadow opacity-60">
-        <div class="bg-gradient-to-br from-gray-400 to-gray-500 p-6 text-white">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <h3 class="text-3xl font-bold">201</h3>
-                    <p class="text-white/80 text-sm">Piso 2</p>
-                </div>
-                <span class="badge bg-danger-500 text-white border-2 border-white/30">Mantenimiento</span>
-            </div>
-            <p class="text-white/90 font-medium">Fuera de servicio</p>
-        </div>
-        
-        <div class="p-6">
-            <div class="space-y-3 mb-4 text-sm">
-                <div class="flex items-center gap-2 text-gray-500">
-                    <i class="bi bi-tools"></i>
-                    <span>En reparación</span>
-                </div>
-                <div class="flex items-center gap-2 text-gray-500">
-                    <i class="bi bi-calendar"></i>
-                    <span>Disponible: 20/01/2026</span>
-                </div>
-            </div>
-            
-            <div class="flex gap-2">
-                <a href="{{ route('consultorios.show', 5) }}" class="btn btn-sm btn-outline flex-1">
-                    <i class="bi bi-eye mr-1"></i> Ver
-                </a>
-                <a href="{{ route('consultorios.edit', 5) }}" class="btn btn-sm btn-ghost text-warning-600">
-                    <i class="bi bi-pencil"></i>
-                </a>
-            </div>
-        </div>
-    </div>
+<div class="mt-6">
+    {{ $consultorios->links() }}
 </div>
 @endsection

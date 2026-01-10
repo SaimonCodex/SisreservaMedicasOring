@@ -9,18 +9,25 @@
     </a>
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-            <h2 class="text-3xl font-display font-bold text-gray-900">Consultorio 205</h2>
-            <p class="text-gray-500 mt-1">Información completa del espacio médico</p>
+            <h2 class="text-3xl font-display font-bold text-gray-900">{{ $consultorio->nombre }}</h2>
+            <p class="text-gray-500 mt-1">información detallada del espacio médico</p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ route('consultorios.horarios', 1) }}" class="btn btn-outline">
+            <a href="{{ route('consultorios.horarios', $consultorio->id) }}" class="btn btn-outline">
                 <i class="bi bi-clock mr-2"></i>
                 Horarios
             </a>
-            <a href="{{ route('consultorios.edit', 1) }}" class="btn btn-primary">
+            <a href="{{ route('consultorios.edit', $consultorio->id) }}" class="btn btn-primary">
                 <i class="bi bi-pencil mr-2"></i>
                 Editar
             </a>
+            <form action="{{ route('consultorios.destroy', $consultorio->id) }}" method="POST" onsubmit="return confirm('¿Está seguro de desactivar este consultorio?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-ghost text-red-600 hover:bg-red-50">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -34,159 +41,107 @@
             <div class="bg-gradient-to-br from-medical-500 to-medical-600 p-8">
                 <div class="flex items-center justify-between">
                     <div class="text-white">
-                        <h3 class="text-5xl font-bold mb-2">205</h3>
-                        <p class="text-white/90 text-xl mb-3">Consultorio Cardiología</p>
-                        <p class="text-white/80">Piso 2 • 30 m²</p>
+                        <h3 class="text-4xl font-bold mb-2">{{ $consultorio->nombre }}</h3>
+                        <p class="text-white/90 text-xl mb-3">{{ $consultorio->ciudad->ciudad ?? 'Ubicación no definida' }}</p>
+                        <p class="text-white/80"><i class="bi bi-geo-alt mr-1"></i> {{ $consultorio->direccion_detallada ?? 'Sin dirección detallada' }}</p>
                     </div>
-                    <span class="badge bg-success-500 text-white text-lg px-4 py-2 border-2 border-white/30">Disponible</span>
+                    <span class="badge {{ $consultorio->status ? 'bg-success-500' : 'bg-danger-500' }} text-white text-lg px-4 py-2 border-2 border-white/30">
+                        {{ $consultorio->status ? 'Disponible' : 'Inactivo' }}
+                    </span>
                 </div>
             </div>
             
             <div class="p-6">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-medical-600 mb-1">143</p>
-                        <p class="text-sm text-gray-500">Citas/Mes</p>
+                        <p class="text-3xl font-bold text-medical-600 mb-1">{{ $consultorio->medicos->count() }}</p>
+                        <p class="text-sm text-gray-500">Médicos Asignados</p>
                     </div>
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-success-600 mb-1">5</p>
-                        <p class="text-sm text-gray-500">Hoy</p>
+                        <p class="text-3xl font-bold text-success-600 mb-1">{{ $consultorio->especialidades->count() }}</p>
+                        <p class="text-sm text-gray-500">Especialidades</p>
                     </div>
+                    <!-- Placeholder logic for appointments since we don't have direct relation or it's complex -->
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-warning-600 mb-1">92%</p>
-                        <p class="text-sm text-gray-500">Ocupación</p>
-                    </div>
-                    <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-info-600 mb-1">4</p>
-                        <p class="text-sm text-gray-500">Capacidad</p>
+                        <p class="text-3xl font-bold text-info-600 mb-1">
+                            {{-- Assuming we might have a relation like consultorio->citas --}}
+                            {{ $consultorio->citas ? $consultorio->citas->count() : 0 }}
+                        </p>
+                        <p class="text-sm text-gray-500">Citas Históricas</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Médico Asignado -->
+        <!-- Médicos Asignados -->
         <div class="card p-6 border-l-4 border-l-success-500">
             <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <i class="bi bi-person-badge text-success-600"></i>
-                Médico Asignado
+                <i class="bi bi-people text-success-600"></i>
+                Médicos Asignados
             </h3>
             
-            <div class="flex items-center gap-4">
-                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center text-white text-2xl font-bold">
-                    JP
+            @if($consultorio->medicos->count() > 0)
+                <div class="space-y-4">
+                    @foreach($consultorio->medicos as $medico)
+                    <div class="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center text-white text-lg font-bold">
+                            {{ substr($medico->primer_nombre, 0, 1) }}{{ substr($medico->primer_apellido, 0, 1) }}
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-gray-900">Dr. {{ $medico->primer_nombre }} {{ $medico->primer_apellido }}</h4>
+                            <p class="text-gray-600 text-sm">
+                                {{ $medico->especialidades->pluck('nombre')->implode(', ') ?: 'General' }} 
+                                <span class="mx-1">•</span> 
+                                MPPS: {{ $medico->nro_colegiatura }}
+                            </p>
+                        </div>
+                        <a href="{{ route('medicos.show', $medico->id) }}" class="btn btn-sm btn-outline">
+                            <i class="bi bi-eye mr-1"></i> Ver
+                        </a>
+                    </div>
+                    @endforeach
                 </div>
-                <div class="flex-1">
-                    <h4 class="text-xl font-bold text-gray-900">Dr. Juan Pérez</h4>
-                    <p class="text-gray-600">Cardiología • MPPS: 98765</p>
-                    <p class="text-sm text-gray-500 mt-1">12 años de experiencia</p>
+            @else
+                <div class="text-center py-6 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    <i class="bi bi-person-x text-3xl mb-2"></i>
+                    <p>No hay médicos asignados a este consultorio.</p>
+                    <a href="{{ route('consultorios.horarios', $consultorio->id) }}" class="text-medical-600 text-sm hover:underline mt-2 inline-block">Asignar en Horarios</a>
                 </div>
-                <a href="{{ route('medicos.show', 1) }}" class="btn btn-sm btn-outline">
-                    <i class="bi bi-eye mr-1"></i> Ver Perfil
-                </a>
-            </div>
+            @endif
         </div>
 
-        <!-- Equipamiento -->
+        <!-- Especialidades -->
         <div class="card p-6">
             <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <i class="bi bi-box-seam text-info-600"></i>
-                Equipamiento y Servicios
+                <i class="bi bi-bookmark text-info-600"></i>
+                Especialidades Admitidas
             </h3>
             
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <div class="flex items-center gap-2 p-3 bg-success-50 rounded-lg">
-                    <i class="bi bi-check-circle-fill text-success-600"></i>
-                    <span class="text-sm text-gray-700">Camilla</span>
-                </div>
-                <div class="flex items-center gap-2 p-3 bg-success-50 rounded-lg">
-                    <i class="bi bi-check-circle-fill text-success-600"></i>
-                    <span class="text-sm text-gray-700">Escritorio</span>
-                </div>
-                <div class="flex items-center gap-2 p-3 bg-success-50 rounded-lg">
-                    <i class="bi bi-check-circle-fill text-success-600"></i>
-                    <span class="text-sm text-gray-700">Computadora</span>
-                </div>
-                <div class="flex items-center gap-2 p-3 bg-success-50 rounded-lg">
-                    <i class="bi bi-check-circle-fill text-success-600"></i>
-                    <span class="text-sm text-gray-700">Sillas (4)</span>
-                </div>
-                <div class="flex items-center gap-2 p-3 bg-success-50 rounded-lg">
-                    <i class="bi bi-check-circle-fill text-success-600"></i>
-                    <span class="text-sm text-gray-700">Aire Acondicionado</span>
-                </div>
-                <div class="flex items-center gap-2 p-3 bg-success-50 rounded-lg">
-                    <i class="bi bi-check-circle-fill text-success-600"></i>
-                    <span class="text-sm text-gray-700">WiFi</span>
-                </div>
-                <div class="flex items-center gap-2 p-3 bg-success-50 rounded-lg">
-                    <i class="bi bi-check-circle-fill text-success-600"></i>
-                    <span class="text-sm text-gray-700">Lavamanos</span>
-                </div>
-                <div class="flex items-center gap-2 p-3 bg-success-50 rounded-lg">
-                    <i class="bi bi-check-circle-fill text-success-600"></i>
-                    <span class="text-sm text-gray-700">Botiquín</span>
-                </div>
+            <div class="flex flex-wrap gap-2">
+                @forelse($consultorio->especialidades as $especialidad)
+                    <span class="badge bg-info-50 text-info-700 border border-info-100 px-3 py-1">
+                        {{ $especialidad->nombre }}
+                    </span>
+                @empty
+                    <p class="text-gray-500 text-sm italic">Sin especialidades asignadas.</p>
+                @endforelse
             </div>
         </div>
 
-        <!-- Citas de Hoy -->
-        <div class="card p-6">
-            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <i class="bi bi-calendar-check text-warning-600"></i>
-                Citas de Hoy
-            </h3>
-            
-            <div class="space-y-3">
-                <div class="flex items-center gap-4 p-4 bg-info-50 border-l-4 border-info-500 rounded-r-xl">
-                    <div class="text-center min-w-[60px]">
-                        <p class="text-xl font-bold text-info-700">08:00</p>
-                        <p class="text-xs text-info-600">AM</p>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-semibold text-gray-900">Ana Rodríguez</p>
-                        <p class="text-sm text-gray-600">Control Cardiológico</p>
-                    </div>
-                    <span class="badge badge-info">Confirmada</span>
-                </div>
-
-                <div class="flex items-center gap-4 p-4 bg-warning-50 border-l-4 border-warning-500 rounded-r-xl">
-                    <div class="text-center min-w-[60px]">
-                        <p class="text-xl font-bold text-warning-700">10:30</p>
-                        <p class="text-xs text-warning-600">AM</p>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-semibold text-gray-900">Carlos Martínez</p>
-                        <p class="text-sm text-gray-600">Primera Consulta</p>
-                    </div>
-                    <span class="badge badge-warning">Pendiente</span>
-                </div>
-
-                <div class="flex items-center gap-4 p-4 bg-success-50 border-l-4 border-success-500 rounded-r-xl opacity-60">
-                    <div class="text-center min-w-[60px]">
-                        <p class="text-xl font-bold text-success-700">02:00</p>
-                        <p class="text-xs text-success-600">PM</p>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-semibold text-gray-900">Lucía Sánchez</p>
-                        <p class="text-sm text-gray-600">Seguimiento</p>
-                    </div>
-                    <span class="badge badge-success">Completada</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Observaciones -->
+        @if($consultorio->descripcion)
+        <!-- Descripción / Observaciones -->
         <div class="card p-6 border-l-4 border-l-warning-500">
             <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <i class="bi bi-chat-left-text text-warning-600"></i>
-                Observaciones
+                Descripción
             </h3>
             <div class="bg-warning-50 rounded-lg p-4">
-                <p class="text-gray-700 text-sm">
-                    Consultorio equipado con electrocardiografo. Temperatura ambiente recomendada: 22-24°C. Última revisión de mantenimiento: 15/12/2025.
+                <p class="text-gray-700 text-sm whitespace-pre-line">
+                    {{ $consultorio->descripcion }}
                 </p>
             </div>
         </div>
+        @endif
     </div>
 
     <!-- Sidebar -->
@@ -195,68 +150,47 @@
         <div class="card p-6 sticky top-6">
             <h4 class="font-bold text-gray-900 mb-4">Acciones</h4>
             <div class="space-y-2">
-                <button class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-calendar-plus mr-2"></i>
-                    Crear Cita
-                </button>
-                <button class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-clock-history mr-2"></i>
-                    Ver Agenda
-                </button>
-                <button class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-graph-up mr-2"></i>
-                    Estadísticas
-                </button>
-                <button class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-tools mr-2"></i>
-                    Mantenimiento
-                </button>
+                <!-- Buttons could be linked to actual routes if they existed, for now placeholders/existing ones -->
+                <a href="{{ route('consultorios.horarios', $consultorio->id) }}" class="btn btn-outline w-full justify-start text-left">
+                    <i class="bi bi-calendar-week mr-2"></i>
+                    Gestionar Horario
+                </a>
+                <a href="{{ route('consultorios.edit', $consultorio->id) }}" class="btn btn-outline w-full justify-start text-left">
+                    <i class="bi bi-pencil-square mr-2"></i>
+                    Editar Información
+                </a>
             </div>
         </div>
 
-        <!-- Información -->
+        <!-- Información de Contacto -->
         <div class="card p-6">
-            <h4 class="font-bold text-gray-900 mb-4">Información</h4>
+            <h4 class="font-bold text-gray-900 mb-4">Contacto</h4>
             <div class="space-y-3 text-sm">
-                <div class="flex items-center justify-between">
-                    <span class="text-gray-600">Número:</span>
-                    <span class="font-medium text-gray-900">205</span>
+                <div class="flex flex-col pb-3 border-b border-gray-100">
+                    <span class="text-gray-500 mb-1">Teléfono</span>
+                    <span class="font-medium text-gray-900 flex items-center gap-2">
+                        <i class="bi bi-telephone text-medical-600"></i>
+                        {{ $consultorio->telefono ?? 'No registrado' }}
+                    </span>
                 </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-gray-600">Piso:</span>
-                    <span class="font-medium text-gray-900">2</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-gray-600">Área:</span>
-                    <span class="font-medium text-gray-900">30 m²</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-gray-600">Capacidad:</span>
-                    <span class="font-medium text-gray-900">4 personas</span>
-                </div>
-                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <span class="text-gray-600">Estado:</span>
-                    <span class="badge badge-success">Disponible</span>
+                <div class="flex flex-col">
+                    <span class="text-gray-500 mb-1">Email</span>
+                    <span class="font-medium text-gray-900 flex items-center gap-2">
+                        <i class="bi bi-envelope text-medical-600"></i>
+                        {{ $consultorio->email ?? 'No registrado' }}
+                    </span>
                 </div>
             </div>
         </div>
 
-        <!-- Horario -->
-        <div class="card p-6 bg-gradient-to-br from-medical-50 to-info-50">
-            <h4 class="font-bold text-gray-900 mb-4">Horario Habitual</h4>
+        <!-- Ubicación -->
+        <div class="card p-6 bg-gray-50">
+            <h4 class="font-bold text-gray-900 mb-4">Ubicación</h4>
             <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-gray-600">Lun - Vie</span>
-                    <span class="font-medium text-gray-900">8AM - 6PM</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-600">Sábados</span>
-                    <span class="text-gray-500">Cerrado</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-600">Domingos</span>
-                    <span class="text-gray-500">Cerrado</span>
-                </div>
+                <p><strong>Estado:</strong> {{ $consultorio->estado->estado ?? 'N/A' }}</p>
+                <p><strong>Ciudad:</strong> {{ $consultorio->ciudad->ciudad ?? 'N/A' }}</p>
+                <p><strong>Municipio:</strong> {{ $consultorio->municipio->municipio ?? 'N/A' }}</p>
+                <p><strong>Parroquia:</strong> {{ $consultorio->parroquia->parroquia ?? 'N/A' }}</p>
             </div>
         </div>
     </div>
