@@ -54,6 +54,7 @@
     </div>
 
     <!-- Filtros -->
+    @if(isset($pacientesEspeciales) && $pacientesEspeciales->count() > 0)
     <div class="card p-4">
         <div class="flex flex-wrap items-center gap-4">
             <div class="flex-1 min-w-[200px]">
@@ -76,6 +77,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <!-- Tabs -->
     <div class="card p-6">
@@ -167,6 +169,12 @@
                                 <p class="text-sm text-gray-600"><strong>Motivo:</strong> {{ Str::limit($cita->motivo, 100) }}</p>
                             </div>
                             @endif
+
+                            <div class="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                                <a href="{{ route('citas.show', $cita->id) }}" class="btn btn-sm btn-outline hover:bg-emerald-50 text-emerald-600 border-emerald-200">
+                                    <i class="bi bi-eye mr-2"></i> Ver Detalles
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -205,11 +213,16 @@
                             <p class="text-sm text-gray-600 mt-1">
                                 Dr. {{ $cita->medico->primer_nombre ?? '' }} {{ $cita->medico->primer_apellido ?? '' }}
                             </p>
-                            <p class="text-sm text-gray-500 mt-1">
-                                {{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d/m/Y') }} - {{ $cita->hora_inicio }}
+                            <p class="text-xs text-gray-500 mt-2">
+                                {{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d M Y') }} - {{ \Carbon\Carbon::parse($cita->hora_inicio)->format('h:i A') }}
                             </p>
                         </div>
-                        <span class="badge badge-success">Completada</span>
+                        <div class="flex flex-col gap-2">
+                            <span class="badge badge-success self-end">Completada</span>
+                            <a href="{{ route('citas.show', $cita->id) }}" class="btn btn-sm btn-outline text-gray-600 hover:text-emerald-600">
+                                <i class="bi bi-eye"></i> Detalles
+                            </a>
+                        </div>
                     </div>
                 </div>
                 @empty
