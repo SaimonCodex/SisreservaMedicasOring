@@ -616,7 +616,7 @@
         }
         
         try {
-            const response = await fetch(BASE_URL + '/api/ubicacion/municipios/' + estadoId);
+            const response = await fetch(BASE_URL + '/get-municipios/' + estadoId);
             const municipios = await response.json();
             municipioSelect.innerHTML = '<option value="">Seleccionar municipio...</option>';
             municipios.forEach(m => {
@@ -638,7 +638,7 @@
         }
         
         try {
-            const response = await fetch(BASE_URL + '/api/ubicacion/parroquias/' + municipioId);
+            const response = await fetch(BASE_URL + '/get-parroquias/' + municipioId);
             const parroquias = await response.json();
             parroquiaSelect.innerHTML = '<option value="">Seleccionar parroquia...</option>';
             parroquias.forEach(p => {
