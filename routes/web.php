@@ -59,6 +59,8 @@ Route::get('buscar-medicos-publico', [MedicoController::class, 'buscar'])->name(
 // =========================================================================
 // RUTAS AJAX PARA SISTEMA DE CITAS (sin autenticación para AJAX del frontend)
 // =========================================================================
+Route::get('/ajax/verificar-correo', [AuthController::class, 'verificarCorreo'])->name('ajax.verificar-correo');
+
 Route::prefix('ajax/citas')->group(function () {
     Route::get('/consultorios-por-estado/{estadoId}', [CitaController::class, 'getConsultoriosPorEstado']);
     Route::get('/especialidades-por-consultorio/{consultorioId}', [CitaController::class, 'getEspecialidadesPorConsultorio']);
@@ -137,6 +139,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('citas/{id}/cambiar-estado', [CitaController::class, 'cambiarEstado'])->name('citas.cambiar-estado');
     Route::post('citas/{id}/solicitar-cancelacion', [CitaController::class, 'solicitarCancelacion'])->name('citas.solicitar-cancelacion');
     Route::get('buscar-disponibilidad', [CitaController::class, 'buscarDisponibilidad'])->name('citas.buscar-disponibilidad');
+    Route::get('admin/buscar-paciente', [CitaController::class, 'buscarPaciente'])->name('admin.buscar-paciente');
+    Route::get('ajax/verificar-correo', [CitaController::class, 'verificarCorreo'])->name('ajax.verificar-correo');
     
     // =========================================================================
     // ESPECIALIDADES MÉDICAS

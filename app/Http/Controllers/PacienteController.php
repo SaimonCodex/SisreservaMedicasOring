@@ -226,8 +226,8 @@ class PacienteController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'primer_nombre' => 'required|max:100',
-            'primer_apellido' => 'required|max:100',
+            'primer_nombre' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'primer_apellido' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
             'tipo_documento' => 'nullable|in:V,E,P,J',
             'numero_documento' => 'nullable|max:20',
             'fecha_nac' => 'nullable|date',
@@ -296,8 +296,8 @@ class PacienteController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'user_id' => 'nullable|exists:usuarios,id|unique:pacientes,user_id,' . $id,
-            'primer_nombre' => 'required|max:100',
-            'primer_apellido' => 'required|max:100',
+            'primer_nombre' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'primer_apellido' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
             'tipo_documento' => 'nullable|in:V,E,P,J',
             'numero_documento' => 'nullable|max:20',
             'fecha_nac' => 'nullable|date',
