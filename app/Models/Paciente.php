@@ -63,6 +63,12 @@ class Paciente extends Model
         return $this->hasMany(PacienteEspecial::class, 'paciente_id');
     }
 
+    // Relación para cuando ESTE paciente es un paciente especial
+    public function pacienteEspecial()
+    {
+        return $this->hasOne(PacienteEspecial::class, 'paciente_id');
+    }
+
     public function citas()
     {
         return $this->hasMany(Cita::class, 'paciente_id');

@@ -24,7 +24,7 @@
                     <i class="bi bi-calendar-check text-blue-600 text-xl"></i>
                 </div>
                 <div>
-                    <p class="text-2xl font-bold text-gray-900">{{ ($citas ?? collect())->where('estado_cita', 'Programada')->count() }}</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ ($citas ?? collect())->filter(fn($c) => in_array($c->estado_cita, ['Programada', 'Confirmada']))->count() }}</p>
                     <p class="text-sm text-gray-600">Próximas</p>
                 </div>
             </div>
@@ -49,6 +49,30 @@
                     <p class="text-2xl font-bold text-gray-900">{{ ($citas ?? collect())->where('estado_cita', 'Cancelada')->count() }}</p>
                     <p class="text-sm text-gray-600">Canceladas</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card p-4">
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label class="text-sm text-gray-600 mb-1 block">Tipo de Cita</label>
+                <select id="filtro-tipo" class="form-select" onchange="filtrarCitas()">
+                    <option value="todas">Todas las citas</option>
+                    <option value="propia">Solo citas propias</option>
+                    <option value="terceros">Solo citas para terceros</option>
+                </select>
+            </div>
+            
+            <div id="filtro-paciente-container" class="flex-1 min-w-[200px] hidden">
+                <label class="text-sm text-gray-600 mb-1 block">Paciente Especial</label>
+                <select id="filtro-paciente" class="form-select" onchange="filtrarCitas()">
+                    <option value="">Todos los pacientes</option>
+                    @foreach($pacientesEspeciales ?? [] as $pe)
+                    <option value="{{ $pe->id }}">{{ $pe->primer_nombre }} {{ $pe->primer_apellido }}</option>
+                    @endforeach
+                </select>
             </div>
         </div>
     </div>
@@ -79,7 +103,9 @@
         <div id="tab-proximas" class="tab-content">
             <div class="space-y-4">
                 @forelse($citasProximas as $cita)
-                <div class="card p-6 hover:shadow-md transition-shadow border-l-4 border-blue-500">
+                <div class="card cita-card p-6 hover:shadow-md transition-shadow border-l-4 border-blue-500" 
+                     data-tipo="{{ $cita->tipo_cita_display ?? 'propia' }}"
+                     data-paciente-especial="{{ $cita->paciente_especial_info->id ?? '' }}">
                     <div class="flex flex-col md:flex-row gap-6">
                         <!-- Date Box -->
                         <div class="text-center p-4 bg-blue-50 rounded-xl w-full md:w-24 flex-shrink-0">
@@ -104,13 +130,21 @@
                                         Dr. {{ $cita->medico->primer_nombre ?? 'N/A' }} {{ $cita->medico->primer_apellido ?? '' }}
                                     </p>
                                 </div>
-                                @if($cita->estado_cita == 'Confirmada')
-                                <span class="badge badge-success">Confirmada</span>
-                                @elseif($cita->estado_cita == 'Programada')
-                                <span class="badge badge-warning">Pendiente</span>
-                                @elseif($cita->estado_cita == 'En Progreso')
-                                <span class="badge badge-info">En Progreso</span>
-                                @endif
+                                <div class="flex flex-col items-end gap-2">
+                                    @if($cita->tipo_cita_display == 'terceros' && $cita->paciente_especial_info)
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                        <i class="bi bi-person-heart"></i>
+                                        {{ $cita->paciente_especial_info->primer_nombre ?? '' }} {{ $cita->paciente_especial_info->primer_apellido ?? '' }}
+                                    </span>
+                                    @endif
+                                    @if($cita->estado_cita == 'Confirmada')
+                                    <span class="badge badge-success">Confirmada</span>
+                                    @elseif($cita->estado_cita == 'Programada')
+                                    <span class="badge badge-warning">Pendiente</span>
+                                    @elseif($cita->estado_cita == 'En Progreso')
+                                    <span class="badge badge-info">En Progreso</span>
+                                    @endif
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -155,25 +189,33 @@
         <div id="tab-realizadas" class="tab-content hidden">
             <div class="space-y-4">
                 @forelse($citasRealizadas as $cita)
-                <div class="card p-6 bg-gray-50 border-l-4 border-emerald-500">
+                <div class="card cita-card p-6 bg-gray-50 border-l-4 border-emerald-500"
+                     data-tipo="{{ $cita->tipo_cita_display ?? 'propia' }}"
+                     data-paciente-especial="{{ $cita->paciente_especial_info->id ?? '' }}">
                     <div class="flex items-start justify-between">
                         <div>
-                            <h3 class="font-bold text-gray-900">{{ $cita->especialidad->nombre ?? 'Consulta' }}</h3>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-gray-900">{{ $cita->especialidad->nombre ?? 'Consulta' }}</h3>
+                                @if($cita->tipo_cita_display == 'terceros' && $cita->paciente_especial_info)
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                    <i class="bi bi-person-heart"></i> {{ $cita->paciente_especial_info->primer_nombre ?? '' }}
+                                </span>
+                                @endif
+                            </div>
                             <p class="text-sm text-gray-600 mt-1">
-                                Dr. {{ $cita->medico->primer_nombre ?? 'N/A' }} {{ $cita->medico->primer_apellido ?? '' }}
+                                Dr. {{ $cita->medico->primer_nombre ?? '' }} {{ $cita->medico->primer_apellido ?? '' }}
                             </p>
-                            <p class="text-xs text-gray-500 mt-2">
-                                {{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d/m/Y') }} - 
-                                {{ $cita->hora_inicio }}
+                            <p class="text-sm text-gray-500 mt-1">
+                                {{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d/m/Y') }} - {{ $cita->hora_inicio }}
                             </p>
                         </div>
                         <span class="badge badge-success">Completada</span>
                     </div>
                 </div>
                 @empty
-                <div class="text-center py-12">
-                    <i class="bi bi-clock-history text-4xl text-gray-300 mb-3"></i>
-                    <p class="text-gray-500">No hay citas realizadas</p>
+                <div class="text-center py-12 text-gray-500">
+                    <i class="bi bi-inbox text-4xl text-gray-300"></i>
+                    <p class="mt-2">No hay citas realizadas</p>
                 </div>
                 @endforelse
             </div>
@@ -183,24 +225,33 @@
         <div id="tab-canceladas" class="tab-content hidden">
             <div class="space-y-4">
                 @forelse($citasCanceladas as $cita)
-                <div class="card p-6 bg-rose-50 border-l-4 border-rose-500">
+                <div class="card cita-card p-6 bg-gray-50 border-l-4 border-rose-500"
+                     data-tipo="{{ $cita->tipo_cita_display ?? 'propia' }}"
+                     data-paciente-especial="{{ $cita->paciente_especial_info->id ?? '' }}">
                     <div class="flex items-start justify-between">
                         <div>
-                            <h3 class="font-bold text-gray-900">{{ $cita->especialidad->nombre ?? 'Consulta' }}</h3>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-gray-900 line-through">{{ $cita->especialidad->nombre ?? 'Consulta' }}</h3>
+                                @if($cita->tipo_cita_display == 'terceros' && $cita->paciente_especial_info)
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                    <i class="bi bi-person-heart"></i> {{ $cita->paciente_especial_info->primer_nombre ?? '' }}
+                                </span>
+                                @endif
+                            </div>
                             <p class="text-sm text-gray-600 mt-1">
-                                Dr. {{ $cita->medico->primer_nombre ?? 'N/A' }} {{ $cita->medico->primer_apellido ?? '' }}
+                                Dr. {{ $cita->medico->primer_nombre ?? '' }} {{ $cita->medico->primer_apellido ?? '' }}
                             </p>
-                            <p class="text-xs text-gray-500 mt-2">
-                                {{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d/m/Y') }}
+                            <p class="text-sm text-gray-500 mt-1">
+                                {{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d/m/Y') }} - {{ $cita->hora_inicio }}
                             </p>
                         </div>
-                        <span class="badge badge-danger">{{ $cita->estado_cita }}</span>
+                        <span class="badge badge-danger">Cancelada</span>
                     </div>
                 </div>
                 @empty
-                <div class="text-center py-12">
-                    <i class="bi bi-x-circle text-4xl text-gray-300 mb-3"></i>
-                    <p class="text-gray-500">No hay citas canceladas</p>
+                <div class="text-center py-12 text-gray-500">
+                    <i class="bi bi-inbox text-4xl text-gray-300"></i>
+                    <p class="mt-2">No hay citas canceladas</p>
                 </div>
                 @endforelse
             </div>
@@ -210,34 +261,51 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const tabName = this.dataset.tab;
-
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                tabContents.forEach(content => content.classList.add('hidden'));
-
-                this.classList.add('active');
-                document.getElementById('tab-' + tabName).classList.remove('hidden');
-            });
+    // Tab switching
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            button.classList.add('active');
+            document.getElementById('tab-' + button.dataset.tab).classList.remove('hidden');
         });
     });
-</script>
 
-<style>
-    .tab-button {
-        @apply px-4 py-2 rounded-lg font-semibold text-gray-600 hover:bg-gray-100 transition-colors flex items-center gap-2;
+    // Filtrado de citas
+    function filtrarCitas() {
+        const tipoFiltro = document.getElementById('filtro-tipo').value;
+        const pacienteFiltro = document.getElementById('filtro-paciente')?.value || '';
+        const containerPaciente = document.getElementById('filtro-paciente-container');
+        
+        // Mostrar/ocultar filtro de paciente
+        if (tipoFiltro === 'terceros') {
+            containerPaciente.classList.remove('hidden');
+        } else {
+            containerPaciente.classList.add('hidden');
+        }
+        
+        // Filtrar todas las tarjetas de citas
+        document.querySelectorAll('.cita-card').forEach(card => {
+            const tipoCita = card.dataset.tipo;
+            const pacienteEspecialId = card.dataset.pacienteEspecial;
+            
+            let mostrar = true;
+            
+            // Filtro por tipo
+            if (tipoFiltro === 'propia' && tipoCita !== 'propia') {
+                mostrar = false;
+            } else if (tipoFiltro === 'terceros' && tipoCita !== 'terceros') {
+                mostrar = false;
+            }
+            
+            // Filtro por paciente especial (solo si tipo es terceros)
+            if (tipoFiltro === 'terceros' && pacienteFiltro && pacienteEspecialId !== pacienteFiltro) {
+                mostrar = false;
+            }
+            
+            card.style.display = mostrar ? '' : 'none';
+        });
     }
-    .tab-button.active {
-        @apply bg-blue-600 text-white hover:bg-blue-700;
-    }
-    .badge-info {
-        @apply bg-sky-100 text-sky-700;
-    }
-</style>
+</script>
 @endpush
 @endsection

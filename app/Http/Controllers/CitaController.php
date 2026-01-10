@@ -32,13 +32,53 @@ class CitaController extends Controller
                 return redirect()->route('paciente.dashboard')->with('error', 'No se encontró el perfil de paciente');
             }
             
-            $citas = Cita::with(['medico', 'especialidad', 'consultorio'])
+            // 1. Citas propias del paciente
+            $citasPropias = Cita::with(['medico', 'especialidad', 'consultorio', 'paciente'])
                          ->where('paciente_id', $paciente->id)
                          ->where('status', true)
                          ->orderBy('fecha_cita', 'desc')
-                         ->get();
+                         ->get()
+                         ->map(function($cita) {
+                             $cita->tipo_cita_display = 'propia';
+                             $cita->paciente_especial_info = null;
+                             return $cita;
+                         });
             
-            return view('paciente.citas.index', compact('citas'));
+            // 2. Buscar si este paciente es representante de pacientes especiales
+            $representante = Representante::where('tipo_documento', $paciente->tipo_documento)
+                                          ->where('numero_documento', $paciente->numero_documento)
+                                          ->first();
+            
+            $citasTerceros = collect();
+            $pacientesEspeciales = collect();
+            
+            if ($representante) {
+                // Obtener pacientes especiales de este representante
+                $pacientesEspeciales = $representante->pacientesEspeciales()->with(['paciente'])->get();
+                
+                // Obtener citas de los pacientes asociados a esos pacientes especiales
+                $pacienteIds = $pacientesEspeciales->pluck('paciente_id')->filter();
+                
+                if ($pacienteIds->isNotEmpty()) {
+                    $citasTerceros = Cita::with(['medico', 'especialidad', 'consultorio', 'paciente', 'paciente.pacienteEspecial'])
+                                         ->whereIn('paciente_id', $pacienteIds)
+                                         ->where('status', true)
+                                         ->orderBy('fecha_cita', 'desc')
+                                         ->get()
+                                         ->map(function($cita) use ($pacientesEspeciales) {
+                                             $cita->tipo_cita_display = 'terceros';
+                                             // Buscar info del paciente especial
+                                             $pe = $pacientesEspeciales->firstWhere('paciente_id', $cita->paciente_id);
+                                             $cita->paciente_especial_info = $pe;
+                                             return $cita;
+                                         });
+                }
+            }
+            
+            // Combinar todas las citas
+            $citas = $citasPropias->concat($citasTerceros)->sortByDesc('fecha_cita');
+            
+            return view('paciente.citas.index', compact('citas', 'pacientesEspeciales'));
         }
         
         // Para médico: sus citas
