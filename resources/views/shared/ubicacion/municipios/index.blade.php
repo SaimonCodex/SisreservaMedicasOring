@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-display font-bold text-gray-900">Gestión de Municipios</h1>
             <p class="text-gray-600 mt-1">Administra los municipios por estado</p>
         </div>
-        <a href="{{ url('index.php/configuracion/ubicacion/municipios/create') }}" class="btn btn-primary">
+        <a href="{{ route('ubicacion.municipios.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i>
             <span>Nuevo Municipio</span>
         </a>
@@ -18,24 +18,24 @@
 
     <!-- Filters -->
     <div class="card p-6">
-        <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <form action="{{ route('ubicacion.municipios.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
                 <label class="form-label">Buscar</label>
                 <input type="text" name="search" class="input" placeholder="Nombre de municipio..." value="{{ request('search') }}">
             </div>
             <div>
                 <label class="form-label">Estado</label>
-                <select name="estado_id" class="form-select" id="estado_filter">
+                <select name="estado_id" class="form-select">
                     <option value="">Todos los estados</option>
                     @foreach($estados ?? [] as $estado)
-                    <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
-                        {{ $estado->nombre }}
+                    <option value="{{ $estado->id_estado }}" {{ request('estado_id') == $estado->id_estado ? 'selected' : '' }}>
+                        {{ $estado->estado }}
                     </option>
                     @endforeach
                 </select>
             </div>
             <div>
-                <label class="form-label">Estado</label>
+                <label class="form-label">Estatus</label>
                 <select name="status" class="form-select">
                     <option value="">Todos</option>
                     <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>Activos</option>
@@ -46,7 +46,7 @@
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-search"></i> Buscar
                 </button>
-                <a href="{{ url('index.php/configuracion/ubicacion/municipios') }}" class="btn btn-outline">
+                <a href="{{ route('ubicacion.municipios.index') }}" class="btn btn-outline">
                     <i class="bi bi-x-lg"></i> Limpiar
                 </a>
             </div>
@@ -62,7 +62,7 @@
                         <th>Municipio</th>
                         <th>Estado</th>
                         <th class="w-32">Parroquias</th>
-                        <th class="w-24">Estado</th>
+                        <th class="w-24">Estatus</th>
                         <th class="w-40">Acciones</th>
                     </tr>
                 </thead>
@@ -75,15 +75,14 @@
                                     <i class="bi bi-geo-alt text-amber-600"></i>
                                 </div>
                                 <div>
-                                    <p class="font-semibold text-gray-900">{{ $municipio->nombre }}</p>
-                                    <p class="text-sm text-gray-500">{{ $municipio->codigo ?? 'N/A' }}</p>
+                                    <p class="font-semibold text-gray-900">{{ $municipio->municipio }}</p>
                                 </div>
                             </div>
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
                                 <i class="bi bi-map text-blue-600"></i>
-                                <span class="text-gray-700">{{ $municipio->estado->nombre ?? 'N/A' }}</span>
+                                <span class="text-gray-700">{{ $municipio->estado->estado ?? 'N/A' }}</span>
                             </div>
                         </td>
                         <td class="text-center">
@@ -98,12 +97,16 @@
                         </td>
                         <td>
                             <div class="flex gap-2">
-                                <a href="{{ url('index.php/configuracion/ubicacion/municipios/' . $municipio->id . '/edit') }}" class="btn btn-sm btn-outline" title="Editar">
+                                <a href="{{ route('ubicacion.municipios.edit', $municipio->id_municipio) }}" class="btn btn-sm btn-outline" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <button onclick="if(confirm('¿Eliminar este municipio?')) { /* submit delete form */ }" class="btn btn-sm btn-outline text-rose-600 hover:bg-rose-50" title="Eliminar">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                <form action="{{ route('ubicacion.municipios.destroy', $municipio->id_municipio) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que deseas desactivar este municipio?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline text-rose-600 hover:bg-rose-50" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>

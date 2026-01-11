@@ -104,7 +104,19 @@ class ConsultorioController extends Controller
     public function show($id)
     {
         $consultorio = Consultorio::with(['estado', 'ciudad', 'municipio', 'parroquia', 'especialidades'])->findOrFail($id);
-        return view('shared.consultorios.show', compact('consultorio'));
+        
+        // Obtenemos los médicos y sus especialidades pivot, agrupados
+        $medicosAsignados = $consultorio->medicos->groupBy('id')->map(function ($medicos) {
+            $medico = $medicos->first();
+            // Recopilamos todas las especialidades que este médico ejerce en este consultorio (desde el pivot)
+            $especialidadesIds = $medicos->pluck('pivot.especialidad_id')->unique();
+            $especialidadesNombres = \App\Models\Especialidad::whereIn('id', $especialidadesIds)->pluck('nombre');
+            
+            $medico->especialidades_en_consultorio = $especialidadesNombres;
+            return $medico;
+        });
+
+        return view('shared.consultorios.show', compact('consultorio', 'medicosAsignados'));
     }
 
     public function edit($id)

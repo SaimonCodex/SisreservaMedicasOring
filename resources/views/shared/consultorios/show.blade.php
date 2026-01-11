@@ -80,23 +80,36 @@
                 Médicos Asignados
             </h3>
             
-            @if($consultorio->medicos->count() > 0)
+            @if(isset($medicosAsignados) && $medicosAsignados->count() > 0)
                 <div class="space-y-4">
-                    @foreach($consultorio->medicos as $medico)
+                    @foreach($medicosAsignados as $medico)
                     <div class="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center text-white text-lg font-bold">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
                             {{ substr($medico->primer_nombre, 0, 1) }}{{ substr($medico->primer_apellido, 0, 1) }}
                         </div>
                         <div class="flex-1">
-                            <h4 class="font-bold text-gray-900">Dr. {{ $medico->primer_nombre }} {{ $medico->primer_apellido }}</h4>
-                            <p class="text-gray-600 text-sm">
-                                {{ $medico->especialidades->pluck('nombre')->implode(', ') ?: 'General' }} 
-                                <span class="mx-1">•</span> 
-                                MPPS: {{ $medico->nro_colegiatura }}
-                            </p>
+                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                <div>
+                                    <h4 class="font-bold text-gray-900">Dr. {{ $medico->primer_nombre }} {{ $medico->primer_apellido }}</h4>
+                                    <p class="text-sm mt-1">
+                                        @if($medico->especialidades_en_consultorio->count() > 0)
+                                            @foreach($medico->especialidades_en_consultorio as $esp)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mr-1">
+                                                    {{ $esp }}
+                                                </span>
+                                            @endforeach
+                                        @else
+                                            <span class="text-gray-500 italic">Sin especialidad asignada en horario</span>
+                                        @endif
+                                    </p>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    MPPS: {{ $medico->nro_colegiatura }}
+                                </div>
+                            </div>
                         </div>
                         <a href="{{ route('medicos.show', $medico->id) }}" class="btn btn-sm btn-outline">
-                            <i class="bi bi-eye mr-1"></i> Ver
+                            <i class="bi bi-eye mr-1"></i>
                         </a>
                     </div>
                     @endforeach
