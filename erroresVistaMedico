@@ -1,0 +1,126 @@
+vista: dashboard
+solucionado 1)boton salir de sesion no funciona. The POST method is not supported for route index.php/logout. Supported
+methods:
+GET, HEAD.
+C:\laragon\www\SisreservaMedicasOring\public\index
+.php
+ 
+: 51
+[top]
+
+solucionado2)menu lateral opciones: dashboard,mis citas, mis pacientes, historias clinicas, ordenes medicas, mi agenda,
+estadisticas y mi perfil no redirigen a donde deben.
+solucionado 3)los botones dentro de las opciones que no redirigen a donde deben son los siguientes: +Nueva Evolucion,
+Ver agenda,
+ver Historial, ver ordenes. estan en esta seccion: <!-- Enhanced Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Citas Hoy -->
+    <div class="card p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-sm font-semibold text-blue-700 mb-2">Citas Hoy</p>
+                <h3 class="text-4xl font-display font-bold text-blue-900">{{ $stats['citas_hoy'] ?? 5 }}</h3>
+                <p class="text-sm text-blue-600 mt-2">{{ $stats['completadas_hoy'] ?? 2 }} completadas</p>
+            </div>
+            <div class="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center">
+                <i class="bi bi-calendar-check text-white text-2xl"></i>
+            </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-blue-200">
+            <a href="{{ url('index.php/citas') }}"
+                class="text-blue-700 hover:text-blue-900 font-semibold text-sm flex items-center gap-1">
+                Ver agenda <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Pacientes Atendidos -->
+    <div class="card p-6 bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-sm font-semibold text-emerald-700 mb-2">Pacientes Este Mes</p>
+                <h3 class="text-4xl font-display font-bold text-emerald-900">{{ $stats['pacientes_mes'] ?? 48 }}</h3>
+                <p class="text-sm text-emerald-600 mt-2 flex items-center gap-1">
+                    <i class="bi bi-arrow-up"></i> +12% vs mes anterior
+                </p>
+            </div>
+            <div class="w-14 h-14 bg-emerald-600 rounded-xl flex items-center justify-center">
+                <i class="bi bi-people text-white text-2xl"></i>
+            </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-emerald-200">
+            <span class="text-emerald-700 font-semibold text-sm">{{ $stats['pacientes_nuevos'] ?? 8 }} nuevos
+                pacientes</span>
+        </div>
+    </div>
+
+    <!-- Historias Clínicas -->
+    <div class="card p-6 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-sm font-semibold text-purple-700 mb-2">Historias Clínicas</p>
+                <h3 class="text-4xl font-display font-bold text-purple-900">{{ $stats['historias_pendientes'] ?? 7 }}
+                </h3>
+                <p class="text-sm text-purple-600 mt-2">Pendientes de actualizar</p>
+            </div>
+            <div class="w-14 h-14 bg-purple-600 rounded-xl flex items-center justify-center">
+                <i class="bi bi-file-medical text-white text-2xl"></i>
+            </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-purple-200">
+            <a href="{{ url('index.php/historia-clinica/evoluciones') }}"
+                class="text-purple-700 hover:text-purple-900 font-semibold text-sm flex items-center gap-1">
+                Ver historias <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Órdenes Médicas -->
+    <div class="card p-6 bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-sm font-semibold text-amber-700 mb-2">Órdenes Pendientes</p>
+                <h3 class="text-4xl font-display font-bold text-amber-900">{{ $stats['ordenes_pendientes'] ?? 12 }}</h3>
+                <p class="text-sm text-amber-600 mt-2">{{ $stats['laboratorios_pendientes'] ?? 5 }} laboratorios</p>
+            </div>
+            <div class="w-14 h-14 bg-amber-600 rounded-xl flex items-center justify-center">
+                <i class="bi bi-clipboard-pulse text-white text-2xl"></i>
+            </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-amber-200">
+            <a href="{{ url('index.php/ordenes-medicas') }}"
+                class="text-amber-700 hover:text-amber-900 font-semibold text-sm flex items-center gap-1">
+                Ver órdenes <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+solucionado4) agenda del dia boton Ver Todas no funciona. no redirige a donde debe.
+solucionado5)seccion:Acciones rapidas, los botones no funcionan ninguno redirige a donde debe.
+
+nuevos errores detectados en el dashboard del medico:
+solucionado 1) algunos botones redirigen pero entran como administrador esto no deberia, tienen que mostrarse las vistas
+para el
+medico, los botones que hace eso son los siguientes: menu panel izquierdo, mis citas, mis pacientes, historias clinicas,
+mi agenda y mi perfil.
+tambien los botones de +Nueva Evolucion, ver agenda, ver historias, en la seccion agenda del dia el boton Ver Todas
+tambien lo hace, y tambien en la seccion de acciones rapidas: Nueva Evolucion, Nueva Historia.
+los botones que redirigen bien a la vistas del medico son: ordenes medicas del menu izquierdo, dashboard, el de ver
+ordenes, y en la seccion rapida: nueva receta y registrar resultados.
+solucionado2)al presionar ver historias, manda a la vista
+http://sisreservamedicasoring.test/index.php/historia-clinica/base pero
+como vista para admin y mi sistema los administradores no pueden por nada del mundo ver las hoistorias clinicas de los
+medicos y su pacientes eso es privado. asi que quita el acceso a eso como administrador y solo lo tengan los medicos y
+los pacientes y representantes con la condicion que solo pueden ver su propio historial medico y el de sus
+representados(pacientes especiales)
+
+nuevos errores detectados en el dashboard del medico:
+solucionado 1) el boton mi agenda del menu lateral redirige a la vista del adminsitrador para agendar horas laborales
+del
+consultorio. el medico debe tener su propia vista para agregar su horario de trabajo
+solucionado2)boton nueva historia tambien redirige a la vista del administrador lo cual es incorrecto los
+administradores no tienen
+acceso a eso solo los medicos. la logica es para el historial medico de los paciente tanto el base como el que cambia,
+el medico: puede verlos, editarlos, pedir permisos para ver el historial medico de un paciente con otro medico, el
+paciente puede: verlos, y dar permisos al medico que solicite ver el hoistorial que se hizo con otro medico.

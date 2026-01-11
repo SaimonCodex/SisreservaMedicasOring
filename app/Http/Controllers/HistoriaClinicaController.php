@@ -18,12 +18,48 @@ class HistoriaClinicaController extends Controller
 
     public function indexBase()
     {
+        $user = Auth::user();
+        
+        // Administradores NO tienen acceso a historias clínicas
+        if ($user->rol_id == 1) {
+            abort(403, 'Los administradores no tienen acceso a historias clínicas.');
+        }
+        
+        // Médicos: solo historias de sus pacientes
+        if ($user->rol_id == 2) {
+            $medico = $user->medico;
+            if (!$medico) {
+                return redirect()->route('medico.dashboard')->with('error', 'No se encontró el perfil de médico');
+            }
+            
+            // Obtener IDs de pacientes atendidos por este médico
+            $pacienteIds = \App\Models\Cita::where('medico_id', $medico->id)
+                                          ->where('status', true)
+                                          ->distinct()
+                                          ->pluck('paciente_id');
+            
+            $historias = HistoriaClinicaBase::with('paciente')
+                                           ->whereIn('paciente_id', $pacienteIds)
+                                           ->where('status', true)
+                                           ->paginate(10);
+            
+            return view('medico.historia-clinica.base.index', compact('historias'));
+        }
+        
+        // Pacientes: solo su propia historia (implementar si es necesario)
         $historias = HistoriaClinicaBase::with('paciente')->where('status', true)->paginate(10);
         return view('shared.historia-clinica.index', compact('historias'));
     }
 
     public function showBase($pacienteId)
     {
+        $user = Auth::user();
+        
+        // Administradores NO tienen acceso
+        if ($user->rol_id == 1) {
+            abort(403, 'Los administradores no tienen acceso a historias clínicas.');
+        }
+        
         $paciente = Paciente::with(['historiaClinicaBase', 'usuario'])->findOrFail($pacienteId);
         $historia = $paciente->historiaClinicaBase;
         
@@ -32,6 +68,12 @@ class HistoriaClinicaController extends Controller
                            ->with('info', 'El paciente no tiene historia clínica base. Por favor créela.');
         }
 
+        // Médicos: vista específica
+        if ($user->rol_id == 2) {
+            return view('medico.historia-clinica.base.show', compact('paciente', 'historia'));
+        }
+        
+        // Pacientes/Representantes: vista compartida
         return view('shared.historia-clinica.base.show', compact('paciente', 'historia'));
     }
 
@@ -41,7 +83,7 @@ class HistoriaClinicaController extends Controller
             abort(403, 'Solo los médicos pueden crear historias clínicas.');
         }
         $paciente = Paciente::with('usuario')->findOrFail($pacienteId);
-        return view('shared.historia-clinica.base.create', compact('paciente'));
+        return view('medico.historia-clinica.base.create', compact('paciente'));
     }
 // ...
     public function editBase($pacienteId)
@@ -56,11 +98,18 @@ class HistoriaClinicaController extends Controller
             return redirect()->route('historia-clinica.base.create', $pacienteId);
         }
 
-        return view('shared.historia-clinica.base.edit', compact('paciente', 'historia'));
+        return view('medico.historia-clinica.base.edit', compact('paciente', 'historia'));
     }
 // ...
     public function indexEvoluciones($pacienteId)
     {
+        $user = Auth::user();
+        
+        // Administradores NO tienen acceso
+        if ($user->rol_id == 1) {
+            abort(403, 'Los administradores no tienen acceso a historias clínicas.');
+        }
+        
         $paciente = Paciente::with('usuario')->findOrFail($pacienteId);
         $evoluciones = EvolucionClinica::with(['cita', 'medico'])
                                      ->where('paciente_id', $pacienteId)
@@ -68,6 +117,12 @@ class HistoriaClinicaController extends Controller
                                      ->orderBy('created_at', 'desc')
                                      ->get();
 
+        // Médicos: vista específica
+        if ($user->rol_id == 2) {
+            return view('medico.historia-clinica.evoluciones.index', compact('paciente', 'evoluciones'));
+        }
+        
+        // Pacientes/Representantes: vista compartida
         return view('shared.historia-clinica.evoluciones.index', compact('paciente', 'evoluciones'));
     }
 
@@ -90,14 +145,27 @@ class HistoriaClinicaController extends Controller
                            ->with('error', 'Ya existe una evolución clínica para esta cita.');
         }
 
-        return view('shared.historia-clinica.evoluciones.create', compact('cita'));
+        return view('medico.historia-clinica.evoluciones.create', compact('cita'));
     }
 // ...
     public function showEvolucion($citaId)
     {
+        $user = Auth::user();
+        
+        // Administradores NO tienen acceso
+        if ($user->rol_id == 1) {
+            abort(403, 'Los administradores no tienen acceso a historias clínicas.');
+        }
+        
         $cita = Cita::with(['paciente', 'medico', 'especialidad'])->findOrFail($citaId);
         $evolucion = EvolucionClinica::where('cita_id', $citaId)->firstOrFail();
 
+        // Médicos: vista específica
+        if ($user->rol_id == 2) {
+            return view('medico.historia-clinica.evoluciones.show', compact('cita', 'evolucion'));
+        }
+        
+        // Pacientes/Representantes: vista compartida
         return view('shared.historia-clinica.evoluciones.show', compact('cita', 'evolucion'));
     }
 
@@ -109,7 +177,7 @@ class HistoriaClinicaController extends Controller
         $cita = Cita::with(['paciente', 'medico'])->findOrFail($citaId);
         $evolucion = EvolucionClinica::where('cita_id', $citaId)->firstOrFail();
 
-        return view('shared.historia-clinica.evoluciones.edit', compact('cita', 'evolucion'));
+        return view('medico.historia-clinica.evoluciones.edit', compact('cita', 'evolucion'));
     }
 // ...
     public function historialCompleto($pacienteId)

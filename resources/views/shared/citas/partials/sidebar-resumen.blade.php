@@ -44,12 +44,15 @@
         
         <div class="mt-6 space-y-3">
             <button type="submit" class="btn btn-success w-full text-lg py-3">
-                <i class="bi bi-check-lg"></i> Agendar Cita
+                <i class="bi bi-check-lg"></i> Confirmar Cita
             </button>
             <button type="button" onclick="resetForm()" class="btn btn-outline w-full">
                 <i class="bi bi-arrow-left"></i> Cancelar
             </button>
         </div>
+
+        <!-- Banner de errores de validación -->
+        <div id="submit-error-banner" class="hidden p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg mt-4 text-center font-bold text-sm"></div>
     </div>
     
     <!-- Estado -->
