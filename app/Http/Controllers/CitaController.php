@@ -24,11 +24,13 @@ use Carbon\Carbon;
 
 class CitaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
         
-        // Para paciente: vista específica
+        // =========================================================================
+        // PARA PACIENTE (ROL 3)
+        // =========================================================================
         if ($user->rol_id == 3) {
             $paciente = $user->paciente;
             
@@ -85,25 +87,103 @@ class CitaController extends Controller
             return view('paciente.citas.index', compact('citas', 'pacientesEspeciales'));
         }
         
-        // Para médico: sus citas
+        // =========================================================================
+        // PARA MÉDICO (ROL 2) Y ADMIN (ROL 1)
+        // =========================================================================
+        
+        $query = Cita::with(['paciente', 'medico', 'especialidad', 'consultorio'])
+                     ->where('status', true);
+
+        // Filtro por Rol Médico (solo ve sus citas)
         if ($user->rol_id == 2) {
             $medico = $user->medico;
-            $citas = Cita::with(['paciente', 'especialidad', 'consultorio'])
-                         ->where('medico_id', $medico->id)
-                         ->where('status', true)
-                         ->orderBy('fecha_cita', 'desc')
-                         ->get();
+            if ($medico) {
+                $query->where('medico_id', $medico->id);
+            }
+        }
+
+        // Filtro por Búsqueda (Paciente, Médico, Cédula)
+        if ($request->filled('buscar')) {
+            $busqueda = $request->buscar;
+            $query->where(function($q) use ($busqueda) {
+                // Buscar por Paciente
+                $q->whereHas('paciente', function($qPac) use ($busqueda) {
+                    $qPac->where('primer_nombre', 'like', "%$busqueda%")
+                         ->orWhere('primer_apellido', 'like', "%$busqueda%")
+                         ->orWhere('numero_documento', 'like', "%$busqueda%");
+                })
+                // Buscar por Médico
+                ->orWhereHas('medico', function($qMed) use ($busqueda) {
+                    $qMed->where('primer_nombre', 'like', "%$busqueda%")
+                         ->orWhere('primer_apellido', 'like', "%$busqueda%");
+                });
+            });
+        }
+
+        // Filtro por Fecha
+        if ($request->filled('fecha')) {
+            $query->whereDate('fecha_cita', $request->fecha);
+        }
+
+        // Filtro por Médico (Select en Admin)
+        if ($request->filled('medico_id') && $user->rol_id == 1) { // Solo admin puede filtrar médicos arbitrarios
+            $query->where('medico_id', $request->medico_id);
+        }
+
+        // Filtro por Estado de Cita
+        if ($request->filled('estado')) {
+            // Mapeo simple de valores del select a valores de la BD si es necesario,
+            // asumiendo que el value del select coincide con la BD o hacemos un map.
+            // Valores BD esperados: 'Programada', 'Confirmada', 'En Progreso', 'Completada', 'Cancelada', 'No Asistió'
+            $estadoMap = [
+                'pendiente' => ['Programada'],
+                'confirmada' => ['Confirmada'],
+                'completada' => ['Completada'],
+                'cancelada' => ['Cancelada', 'No Asistió']
+            ];
             
-            return view('shared.citas.index', compact('citas'));
+            if (array_key_exists($request->estado, $estadoMap)) {
+                $query->whereIn('estado_cita', $estadoMap[$request->estado]);
+            }
+        }
+
+        // Ordenamiento
+        $citas = $query->orderBy('fecha_cita', 'desc')
+                       ->orderBy('hora_inicio', 'asc')
+                       ->paginate(10)
+                       ->withQueryString();
+
+        // =========================================================================
+        // ESTADÍSTICAS (Para las tarjetas superiores)
+        // =========================================================================
+        
+        // Base query para stats (mismas restricciones de rol base, pero sin filtros de búsqueda/fecha para totales globales del día o generales)
+        $statsQuery = Cita::where('status', true);
+        if ($user->rol_id == 2 && $user->medico) {
+            $statsQuery->where('medico_id', $user->medico->id);
         }
         
-        // Para admin: todas las citas
-        $citas = Cita::with(['paciente', 'medico', 'especialidad', 'consultorio'])
-                     ->where('status', true)
-                     ->orderBy('fecha_cita', 'desc')
-                     ->get();
+        $hoy = Carbon::today();
+        
+        $stats = [
+            'total_hoy' => (clone $statsQuery)->whereDate('fecha_cita', $hoy)->count(),
+            // Pendientes: Programadas desde hoy en adelante
+            'pendientes_hoy' => (clone $statsQuery)->whereDate('fecha_cita', '>=', $hoy)->where('estado_cita', 'Programada')->count(),
+            // Confirmadas: Confirmadas desde hoy en adelante
+            'confirmadas_hoy' => (clone $statsQuery)->whereDate('fecha_cita', '>=', $hoy)->where('estado_cita', 'Confirmada')->count(),
+            // Completadas: Mes actual (histórico reciente)
+            'completadas_hoy' => (clone $statsQuery)->whereMonth('fecha_cita', $hoy->month)->whereYear('fecha_cita', $hoy->year)->where('estado_cita', 'Completada')->count(),
+            // Canceladas: Mes actual (histórico reciente)
+            'canceladas_hoy' => (clone $statsQuery)->whereMonth('fecha_cita', $hoy->month)->whereYear('fecha_cita', $hoy->year)->whereIn('estado_cita', ['Cancelada', 'No Asistió'])->count(),
+        ];
+        
+        // Datos para combos de filtros
+        $medicos = [];
+        if ($user->rol_id == 1) {
+            $medicos = Medico::where('status', true)->orderBy('primer_nombre')->get();
+        }
 
-        return view('shared.citas.index', compact('citas'));
+        return view('shared.citas.index', compact('citas', 'stats', 'medicos'));
     }
 
     public function create()
@@ -365,6 +445,15 @@ class CitaController extends Controller
                             $pacEspecial = PacienteEspecial::find($pacienteEspecialId);
                             $pacienteId = $pacEspecial->paciente_id ?? null;
                             Log::info('Admin: Usando paciente especial existente', ['pac_especial_id' => $pacienteEspecialId]);
+
+                            // Vincular representante con paciente especial si no existe el vínculo
+                            if ($pacEspecial && $representanteId && !$pacEspecial->representantes()->where('representante_id', $representanteId)->exists()) {
+                                $pacEspecial->representantes()->attach($representanteId, [
+                                    'tipo_responsabilidad' => 'Secundario', // Opcional: podrías determinarlo
+                                    'status' => true
+                                ]);
+                                Log::info('Admin: Representante vinculado a paciente especial existente');
+                            }
                         } else {
                             // Crear nuevo paciente especial
                             $representanteDoc = $request->rep_numero_documento;
@@ -779,6 +868,36 @@ class CitaController extends Controller
         return redirect()->route('citas.index')->with('success', 'Cita cancelada exitosamente');
     }
 
+    public function cambiarEstado(Request $request, $id)
+    {
+        $cita = Cita::findOrFail($id);
+        
+        $validator = Validator::make($request->all(), [
+            'estado_cita' => 'required|in:Programada,Confirmada,En Progreso,Completada,Cancelada,No Asistió',
+            'observaciones' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->with('error', 'Estado inválido');
+        }
+
+        $cita->estado_cita = $request->estado_cita;
+        
+        // Si viene un motivo/observación (ej: al cancelar), lo guardamos
+        if ($request->filled('observaciones')) {
+            $cita->observaciones = $request->observaciones;
+        }
+
+        $cita->save();
+
+        // Si se confirma la cita, se podría enviar una notificación (código comentado opcional)
+        // if ($request->estado_cita == 'Confirmada') {
+        //     $this->enviarNotificacionCita($cita);
+        // }
+
+        return redirect()->back()->with('success', 'Estado de la cita actualizado correctamente');
+    }
+
     // =========================================================================
     // API ENDPOINTS
     // =========================================================================
@@ -1157,5 +1276,96 @@ class CitaController extends Controller
         $existe = Usuario::where('correo', $correo)->exists();
         
         return response()->json(['existe' => $existe]);
+    }
+
+
+    // =========================================================================
+    // API PARA FULLCALENDAR
+    // =========================================================================
+    public function events(Request $request)
+    {
+        $user = auth()->user();
+        
+        $start = $request->query('start');
+        $end = $request->query('end');
+
+        // Base query
+        $query = Cita::with(['paciente', 'medico', 'consultorio', 'especialidad'])
+                     ->where('status', true)
+                     ->whereBetween('fecha_cita', [substr($start, 0, 10), substr($end, 0, 10)]);
+
+        // Filtros de Rol
+        if ($user->rol_id == 3) {
+             // Paciente: ver sus citas (propia y terceros)
+             $paciente = $user->paciente;
+             if (!$paciente) return response()->json([]);
+             
+             // Buscar citas directas
+             $idsPropios = Cita::where('paciente_id', $paciente->id)->pluck('id');
+             
+             // Buscar citas como representante
+             $representante = Representante::where('tipo_documento', $paciente->tipo_documento)
+                                           ->where('numero_documento', $paciente->numero_documento)
+                                           ->first();
+             $idsTerceros = collect();
+             if ($representante) {
+                 $pacientesEspeciales = $representante->pacientesEspeciales; // Get the collection
+                 if ($pacientesEspeciales) {
+                    $pacientesEspecialesIds = $pacientesEspeciales->pluck('paciente_id');
+                    $idsTerceros = Cita::whereIn('paciente_id', $pacientesEspecialesIds)->pluck('id');
+                 }
+             }
+             
+             $query->whereIn('id', $idsPropios->concat($idsTerceros));
+             
+        } elseif ($user->rol_id == 2) {
+            // Médico: ver sus citas
+            if ($user->medico) {
+                $query->where('medico_id', $user->medico->id);
+            }
+        }
+        
+        // Filtros adicionales (si vienen del frontend)
+        if ($request->filled('medico_id') && $user->rol_id == 1) {
+            $query->where('medico_id', $request->medico_id);
+        }
+
+        $citas = $query->get();
+
+        $events = $citas->map(function($cita) {
+            $color = match($cita->estado_cita) {
+                'Confirmada' => '#10b981', // emerald-500
+                'Programada' => '#f59e0b', // amber-500
+                'En Progreso' => '#3b82f6', // blue-500
+                'Completada' => '#6b7280', // gray-500
+                'Cancelada', 'No Asistió' => '#ef4444', // red-500
+                default => '#6b7280'
+            };
+
+            $title = $cita->paciente->primer_nombre . ' ' . $cita->paciente->primer_apellido;
+            // Para admin/medico mostrar paciente, para paciente mostrar medico/especialidad
+            if (auth()->user()->rol_id == 3) {
+                 $title = $cita->especialidad->nombre . ' - Dr. ' . $cita->medico->primer_apellido;
+            } else {
+                 // Info extra para admin/medico
+                 $title .= ' (' . $cita->especialidad->nombre . ')';
+            }
+
+            return [
+                'id' => $cita->id,
+                'title' => $title,
+                'start' => $cita->fecha_cita . 'T' . $cita->hora_inicio,
+                'end' => $cita->fecha_cita . 'T' . $cita->hora_fin, 
+                'backgroundColor' => $color,
+                'borderColor' => $color,
+                'url' => route('citas.show', $cita->id),
+                'extendedProps' => [
+                    'estado' => $cita->estado_cita,
+                    'consultorio' => $cita->consultorio->nombre ?? 'N/A'
+                ]
+            ];
+        });
+
+        return response()->json($events);
     }
 }

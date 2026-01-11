@@ -265,23 +265,85 @@
 
     function seleccionarRepresentante(rep) {
         document.getElementById('resultados-representante').classList.add('hidden');
-        document.getElementById('representante_existente').value = '1';
-        document.getElementById('representante_id_hidden').value = rep.id;
         
-        document.getElementById('representante_seleccionado').classList.remove('hidden');
-        document.getElementById('rep_iniciales_display').textContent = 
-            (rep.primer_nombre?.[0] || '') + (rep.primer_apellido?.[0] || '');
-        document.getElementById('rep_nombre_display').textContent = rep.nombre;
-        document.getElementById('rep_documento_display').textContent = rep.documento;
-        
-        document.getElementById('resumen-representante').textContent = rep.nombre;
-        document.getElementById('buscar_representante').value = '';
-        document.getElementById('buscar_representante').disabled = true;
-        
-        // Deshabilitar checkbox "no registrado"
-        document.getElementById('representante_no_registrado').disabled = true;
-        document.getElementById('representante_no_registrado').checked = false;
-        document.getElementById('datos-representante-nuevo').classList.add('hidden');
+        // Si seleccionamos un PACIENTE, debemos registrarlo como representante (copiar datos)
+        if (rep.tipo === 'paciente') {
+            // Activar modo "Nuevo Representante"
+            const chkCheck = document.getElementById('representante_no_registrado');
+            chkCheck.checked = true;
+            chkCheck.disabled = false;
+            
+            // Mostrar formulario y deshabilitar buscador
+            document.getElementById('datos-representante-nuevo').classList.remove('hidden');
+            document.getElementById('buscar_representante').disabled = true;
+            document.getElementById('buscar_representante').value = rep.nombre;
+            
+            // Setear flags
+            document.getElementById('representante_existente').value = '0';
+            document.getElementById('representante_id_hidden').value = '';
+            
+            // Llenar campos
+            if(document.getElementById('rep_primer_nombre')) document.getElementById('rep_primer_nombre').value = rep.primer_nombre || '';
+            if(document.getElementById('rep_segundo_nombre')) document.getElementById('rep_segundo_nombre').value = rep.segundo_nombre || '';
+            if(document.getElementById('rep_primer_apellido')) document.getElementById('rep_primer_apellido').value = rep.primer_apellido || '';
+            if(document.getElementById('rep_segundo_apellido')) document.getElementById('rep_segundo_apellido').value = rep.segundo_apellido || '';
+            
+            if(document.getElementById('rep_tipo_documento')) document.getElementById('rep_tipo_documento').value = rep.tipo_documento || 'V';
+            if(document.getElementById('rep_numero_documento')) document.getElementById('rep_numero_documento').value = rep.numero_documento || '';
+            
+            if(document.getElementById('rep_fecha_nac')) document.getElementById('rep_fecha_nac').value = rep.fecha_nac || '';
+            
+            // Teléfono
+            if(document.getElementById('rep_prefijo_tlf')) document.getElementById('rep_prefijo_tlf').value = rep.prefijo_tlf || '+58';
+            if(document.getElementById('rep_numero_tlf')) document.getElementById('rep_numero_tlf').value = rep.numero_tlf || '';
+            
+            // Ubicación - Intentar setear y disparar cambios para cascada
+            if(document.getElementById('rep_estado_id') && rep.estado_id) {
+                document.getElementById('rep_estado_id').value = rep.estado_id;
+                document.getElementById('rep_estado_id').dispatchEvent(new Event('change'));
+                
+                // Esperar un momento a que carguen y setear municipio si existe
+                setTimeout(() => {
+                    if (document.getElementById('rep_municipio_id') && rep.municipio_id) {
+                        document.getElementById('rep_municipio_id').value = rep.municipio_id;
+                        document.getElementById('rep_municipio_id').dispatchEvent(new Event('change'));
+                        
+                        setTimeout(() => {
+                            if (document.getElementById('rep_parroquia_id') && rep.parroquia_id) {
+                                document.getElementById('rep_parroquia_id').value = rep.parroquia_id;
+                            }
+                        }, 500);
+                    }
+                    if (document.getElementById('rep_ciudad_id') && rep.ciudad_id) {
+                        document.getElementById('rep_ciudad_id').value = rep.ciudad_id;
+                    }
+                }, 500);
+            }
+            if(document.getElementById('rep_direccion_detallada')) document.getElementById('rep_direccion_detallada').value = rep.direccion_detallada || '';
+
+            // Actualizar resumen
+            actualizarResumenRepresentanteNuevo();
+            
+        } else {
+            // Es un REPRESENTANTE existente
+            document.getElementById('representante_existente').value = '1';
+            document.getElementById('representante_id_hidden').value = rep.id;
+            
+            document.getElementById('representante_seleccionado').classList.remove('hidden');
+            document.getElementById('rep_iniciales_display').textContent = 
+                (rep.primer_nombre?.[0] || '') + (rep.primer_apellido?.[0] || '');
+            document.getElementById('rep_nombre_display').textContent = rep.nombre;
+            document.getElementById('rep_documento_display').textContent = rep.documento;
+            
+            document.getElementById('resumen-representante').textContent = rep.nombre;
+            document.getElementById('buscar_representante').value = '';
+            document.getElementById('buscar_representante').disabled = true;
+            
+            // Deshabilitar checkbox "no registrado"
+            document.getElementById('representante_no_registrado').disabled = true;
+            document.getElementById('representante_no_registrado').checked = false;
+            document.getElementById('datos-representante-nuevo').classList.add('hidden');
+        }
     }
 
     function limpiarRepresentanteSeleccionado() {

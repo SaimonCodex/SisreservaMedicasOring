@@ -139,6 +139,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('citas/{id}/cambiar-estado', [CitaController::class, 'cambiarEstado'])->name('citas.cambiar-estado');
     Route::post('citas/{id}/solicitar-cancelacion', [CitaController::class, 'solicitarCancelacion'])->name('citas.solicitar-cancelacion');
     Route::get('buscar-disponibilidad', [CitaController::class, 'buscarDisponibilidad'])->name('citas.buscar-disponibilidad');
+    Route::get('events', [CitaController::class, 'events'])->name('citas.events');
     Route::get('admin/buscar-paciente', [CitaController::class, 'buscarPaciente'])->name('admin.buscar-paciente');
     Route::get('ajax/verificar-correo', [CitaController::class, 'verificarCorreo'])->name('ajax.verificar-correo');
     
