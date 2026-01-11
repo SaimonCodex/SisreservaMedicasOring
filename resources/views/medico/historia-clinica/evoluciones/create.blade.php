@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/historia-clinica/evoluciones') }}" class="btn btn-outline">
+        <a href="{{ url('historia-clinica/evoluciones') }}" class="btn btn-outline">
             <i class="bi bi-arrow-left"></i>
         </a>
         <div>
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    <form action="{{ url('index.php/historia-clinica/evoluciones') }}" method="POST" class="space-y-6">
+    <form action="{{ route('historia-clinica.evoluciones.store', ['citaId' => request('cita') ?? 0]) }}" method="POST" class="space-y-6">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -185,7 +185,7 @@
                             <i class="bi bi-check-lg"></i>
                             Guardar Evolución
                         </button>
-                        <a href="{{ url('index.php/historia-clinica/evoluciones') }}" class="btn btn-outline w-full">
+                        <a href="{{ url('historia-clinica/evoluciones') }}" class="btn btn-outline w-full">
                             <i class="bi bi-x-lg"></i>
                             Cancelar
                         </a>
@@ -196,11 +196,11 @@
                 <div class="card p-6">
                     <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Enlaces Rápidos</h3>
                     <div class="space-y-2">
-                        <a href="{{ url('index.php/ordenes-medicas/create') }}" class="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2">
+                        <a href="{{ route('ordenes-medicas.create') }}" class="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2">
                             <i class="bi bi-clipboard-plus"></i>
                             Crear Orden Médica
                         </a>
-                        <a href="{{ url('index.php/historia-clinica/base/create') }}" class="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2">
+                        <a href="{{ url('historia-clinica/base/create') }}" class="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2">
                             <i class="bi bi-file-earmark-medical"></i>
                             Nueva Historia Clínica
                         </a>

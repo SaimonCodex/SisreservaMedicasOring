@@ -214,6 +214,7 @@ class MedicoController extends Controller
             'especialidades_data.*.anos_experiencia' => 'nullable|integer|min:0',
             'especialidades_data.*.atiende_domicilio' => 'nullable|boolean',
             'especialidades_data.*.tarifa_extra_domicilio' => 'nullable|numeric|min:0',
+            'password' => 'nullable|min:8|confirmed'
         ]);
 
         if ($validator->fails()) {
@@ -227,6 +228,15 @@ class MedicoController extends Controller
         $data['status'] = $request->has('status'); // Si se envía status en el form
 
         $medico->update($data);
+
+        // Update User Password if provided
+        if ($request->filled('password')) {
+            $medico->usuario->update([
+                'password' => $request->password // Mutator handles encryption
+            ]);
+        }
+
+
         
         // Sincronizar especialidades con datos pivote
         if ($request->has('especialidades_data')) {

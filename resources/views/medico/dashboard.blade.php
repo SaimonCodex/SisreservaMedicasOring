@@ -18,7 +18,7 @@
             </p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ url('index.php/historia-clinica/evoluciones/create') }}" class="btn bg-white text-blue-600 hover:bg-gray-50 border-none shadow-md">
+            <a href="{{ url('historia-clinica/evoluciones/create') }}" class="btn bg-white text-blue-600 hover:bg-gray-50 border-none shadow-md">
                 <i class="bi bi-plus-lg"></i> Nueva Evolución
             </a>
         </div>
@@ -40,7 +40,7 @@
             </div>
         </div>
         <div class="mt-4 pt-4 border-t border-blue-200">
-            <a href="{{ url('index.php/citas') }}" class="text-blue-700 hover:text-blue-900 font-semibold text-sm flex items-center gap-1">
+            <a href="{{ route('citas.index') }}" class="text-blue-700 hover:text-blue-900 font-semibold text-sm flex items-center gap-1">
                 Ver agenda <i class="bi bi-arrow-right"></i>
             </a>
         </div>
@@ -78,7 +78,7 @@
             </div>
         </div>
         <div class="mt-4 pt-4 border-t border-purple-200">
-            <a href="{{ url('index.php/historia-clinica/evoluciones') }}" class="text-purple-700 hover:text-purple-900 font-semibold text-sm flex items-center gap-1">
+            <a href="{{ url('historia-clinica/evoluciones') }}" class="text-purple-700 hover:text-purple-900 font-semibold text-sm flex items-center gap-1">
                 Ver historias <i class="bi bi-arrow-right"></i>
             </a>
         </div>
@@ -97,7 +97,7 @@
             </div>
         </div>
         <div class="mt-4 pt-4 border-t border-amber-200">
-            <a href="{{ url('index.php/ordenes-medicas') }}" class="text-amber-700 hover:text-amber-900 font-semibold text-sm flex items-center gap-1">
+            <a href="{{ route('ordenes-medicas.index') }}" class="text-amber-700 hover:text-amber-900 font-semibold text-sm flex items-center gap-1">
                 Ver órdenes <i class="bi bi-arrow-right"></i>
             </a>
         </div>
@@ -117,7 +117,7 @@
                     </h3>
                     <p class="text-sm text-gray-600 mt-1">{{ \Carbon\Carbon::now()->isoFormat('dddd, D [de] MMMM') }}</p>
                 </div>
-                <a href="{{ url('index.php/citas') }}" class="btn btn-sm btn-outline">
+                <a href="{{ route('citas.index') }}" class="btn btn-sm btn-outline">
                     Ver todas
                 </a>
             </div>
@@ -172,10 +172,10 @@
                             @endif
 
                             <div class="flex gap-2 mt-3">
-                                <a href="{{ url('index.php/citas/' . $cita->id) }}" class="btn btn-sm btn-outline">
+                                <a href="{{ route('citas.show', $cita->id) }}" class="btn btn-sm btn-outline">
                                     <i class="bi bi-eye"></i> Ver Detalles
                                 </a>
-                                <a href="{{ url('index.php/historia-clinica/evoluciones/create?cita=' . $cita->id) }}" class="btn btn-sm btn-primary">
+                                <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-primary">
                                     <i class="bi bi-file-medical"></i> Atender
                                 </a>
                             </div>
@@ -244,7 +244,7 @@
                 </p>
                 <p class="text-sm text-blue-100">{{ $proximaCita->motivo ?? 'Consulta general' }}</p>
             </div>
-            <a href="{{ url('index.php/citas/' . $proximaCita->id) }}" class="btn bg-white text-blue-600 hover:bg-blue-50 w-full mt-4">
+            <a href="{{ route('citas.show', $proximaCita->id) }}" class="btn bg-white text-blue-600 hover:bg-blue-50 w-full mt-4">
                 Ver Detalles
             </a>
         </div>
@@ -257,16 +257,17 @@
                 Acciones Rápidas
             </h3>
             <div class="space-y-2">
-                <a href="{{ url('index.php/historia-clinica/evoluciones/create') }}" class="btn btn-outline w-full justify-start">
+                <a href="{{ url('historia-clinica/evoluciones/create') }}" class="btn btn-outline w-full justify-start">
                     <i class="bi bi-file-medical"></i> Nueva Evolución
                 </a>
-                <a href="{{ url('index.php/ordenes-medicas/create') }}" class="btn btn-outline w-full justify-start">
+                <a href="{{ route('ordenes-medicas.create') }}" class="btn btn-outline w-full justify-start">
                     <i class="bi bi-prescription"></i> Nueva Receta
                 </a>
-                <a href="{{ url('index.php/historia-clinica/base/create') }}" class="btn btn-outline w-full justify-start">
+                <a href="{{ route('historia-clinica.base.create', ['pacienteId' => 0]) }}" class="btn btn-outline w-full justify-start">
+                    <!-- Note: Route requires patientId, checking if explicit 0 works or if we must use url -->
                     <i class="bi bi-folder-plus"></i> Nueva Historia
                 </a>
-                <a href="{{ url('index.php/ordenes-medicas/registrar-resultados') }}" class="btn btn-outline w-full justify-start">
+                <a href="{{ url('ordenes-medicas/registrar-resultados') }}" class="btn btn-outline w-full justify-start">
                     <i class="bi bi-clipboard-check"></i> Registrar Resultados
                 </a>
             </div>

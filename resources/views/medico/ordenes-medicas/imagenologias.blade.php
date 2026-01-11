@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <a href="{{ url('index.php/ordenes-medicas') }}" class="btn btn-outline">
+            <a href="{{ route('ordenes-medicas.index') }}" class="btn btn-outline">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
@@ -15,7 +15,7 @@
                 <p class="text-gray-600 mt-1">Gestión de estudios de imagen y radiología</p>
             </div>
         </div>
-        <a href="{{ url('index.php/ordenes-medicas/create?tipo=imagenologia') }}" class="btn btn-primary">
+        <a href="{{ route('ordenes-medicas.create', ['tipo' => 'imagenologia']) }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i>
             <span>Nueva Orden</span>
         </a>
@@ -150,7 +150,7 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
-                                <a href="{{ url('index.php/ordenes-medicas/' . $imagen->orden_id) }}" class="btn btn-sm btn-outline" title="Ver">
+                                <a href="{{ route('ordenes-medicas.show', $imagen->orden_id) }}" class="btn btn-sm btn-outline" title="Ver">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 <button onclick="window.print()" class="btn btn-sm btn-primary" title="Imprimir">
@@ -168,7 +168,7 @@
                                 </div>
                                 <p class="text-gray-500 font-medium mb-2">No hay órdenes de imagenología</p>
                                 <p class="text-sm text-gray-400 mb-4">Crea una nueva orden de estudio</p>
-                                <a href="{{ url('index.php/ordenes-medicas/create?tipo=imagenologia') }}" class="btn btn-sm btn-primary">
+                                <a href="{{ route('ordenes-medicas.create', ['tipo' => 'imagenologia']) }}" class="btn btn-sm btn-primary">
                                     <i class="bi bi-plus-lg"></i>
                                     Nueva Orden
                                 </a>

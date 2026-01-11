@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/ordenes-medicas') }}" class="btn btn-outline">
+        <a href="{{ route('ordenes-medicas.index') }}" class="btn btn-outline">
             <i class="bi bi-arrow-left"></i>
         </a>
         <div>
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    <form action="{{ url('index.php/ordenes-medicas') }}" method="POST" class="space-y-6" id="ordenForm">
+    <form action="{{ route('ordenes-medicas.store') }}" method="POST" class="space-y-6" id="ordenForm">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -297,7 +297,7 @@
                             <i class="bi bi-check-lg"></i>
                             Crear Orden
                         </button>
-                        <a href="{{ url('index.php/ordenes-medicas') }}" class="btn btn-outline w-full">
+                        <a href="{{ route('ordenes-medicas.index') }}" class="btn btn-outline w-full">
                             <i class="bi bi-x-lg"></i>
                             Cancelar
                         </a>

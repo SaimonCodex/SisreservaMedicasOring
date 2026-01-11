@@ -8,12 +8,8 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-display font-bold text-gray-900">Mis Citas Médicas</h1>
-            <p class="text-gray-600 mt-1">Gestiona tu agenda y consultas programadas</p>
+            <p class="text-gray-600 mt-1">Consulta tu agenda y citas programadas</p>
         </div>
-        <a href="{{ route('citas.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i>
-            <span>Agendar Cita</span>
-        </a>
     </div>
 
     <!-- Filters -->
@@ -176,7 +172,7 @@
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 @if($cita->status == 'confirmada')
-                                <a href="{{ url('index.php/historia-clinica/evoluciones/create?cita=' . $cita->id) }}" class="btn btn-sm btn-success" title="Registrar Evolución">
+                                <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-success" title="Registrar Evolución">
                                     <i class="bi bi-file-earmark-medical"></i>
                                 </a>
                                 @endif
@@ -200,11 +196,7 @@
                                     <i class="bi bi-calendar-x text-4xl text-gray-300"></i>
                                 </div>
                                 <p class="text-gray-500 font-medium mb-2">No se encontraron citas</p>
-                                <p class="text-sm text-gray-400 mb-4">Intenta ajustar los filtros o agenda una nueva cita</p>
-                                <a href="{{ route('citas.create') }}" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-plus-lg"></i>
-                                    Agendar Cita
-                                </a>
+                                <p class="text-sm text-gray-400">Intenta ajustar los filtros de búsqueda</p>
                             </div>
                         </td>
                     </tr>

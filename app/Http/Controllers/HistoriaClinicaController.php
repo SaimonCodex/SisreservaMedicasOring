@@ -19,6 +19,12 @@ class HistoriaClinicaController extends Controller
     public function indexBase()
     {
         $historias = HistoriaClinicaBase::with('paciente')->where('status', true)->paginate(10);
+        
+        // Doctors use their specific view
+        if (auth()->user()->rol_id == 2) {
+            return view('medico.historia-clinica.base.index', compact('historias'));
+        }
+        
         return view('shared.historia-clinica.index', compact('historias'));
     }
 
@@ -32,6 +38,11 @@ class HistoriaClinicaController extends Controller
                            ->with('info', 'El paciente no tiene historia clínica base. Por favor créela.');
         }
 
+        // Doctors use their specific view
+        if (auth()->user()->rol_id == 2) {
+            return view('medico.historia-clinica.base.show', compact('paciente', 'historia'));
+        }
+
         return view('shared.historia-clinica.base.show', compact('paciente', 'historia'));
     }
 
@@ -41,7 +52,7 @@ class HistoriaClinicaController extends Controller
             abort(403, 'Solo los médicos pueden crear historias clínicas.');
         }
         $paciente = Paciente::with('usuario')->findOrFail($pacienteId);
-        return view('shared.historia-clinica.base.create', compact('paciente'));
+        return view('medico.historia-clinica.base.create', compact('paciente'));
     }
 // ...
     public function editBase($pacienteId)
@@ -56,7 +67,7 @@ class HistoriaClinicaController extends Controller
             return redirect()->route('historia-clinica.base.create', $pacienteId);
         }
 
-        return view('shared.historia-clinica.base.edit', compact('paciente', 'historia'));
+        return view('medico.historia-clinica.base.edit', compact('paciente', 'historia'));
     }
 // ...
     public function indexEvoluciones($pacienteId)

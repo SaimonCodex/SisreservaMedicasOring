@@ -17,7 +17,7 @@
         </div>
         <div class="flex items-center gap-2">
             @if(($cita->status ?? 'pendiente') == 'confirmada')
-            <a href="{{ url('index.php/historia-clinica/evoluciones/create?cita=' . $cita->id) }}" class="btn btn-success">
+            <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}" class="btn btn-success">
                 <i class="bi bi-file-earmark-medical"></i>
                 <span>Registrar Evolución</span>
             </a>
@@ -76,10 +76,35 @@
                                 <a href="{{ route('pacientes.show', $cita->paciente->id ?? 1) }}" class="btn btn-sm btn-outline">
                                     <i class="bi bi-eye"></i> Ver Perfil Completo
                                 </a>
-                                <a href="{{ url('index.php/historia-clinica?paciente=' . $cita->paciente->id) }}" class="btn btn-sm btn-outline">
+                                <a href="{{ route('historia-clinica.base.index', ['paciente' => $cita->paciente->id]) }}" class="btn btn-sm btn-outline">
                                     <i class="bi bi-file-medical"></i> Historia Clínica
                                 </a>
                             </div>
+
+<!-- ... other blocks ... -->
+
+                        <div class="pt-4 border-t border-gray-200">
+                            <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-outline">
+                                <i class="bi bi-eye"></i> Ver Evolución Completa
+                            </a>
+                        </div>
+
+<!-- ... other blocks ... -->
+
+            <!-- Quick Actions -->
+            <div class="card p-6">
+                <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
+                <div class="space-y-2">
+                    <a href="{{ route('ordenes-medicas.create', ['paciente' => $cita->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
+                        <i class="bi bi-clipboard-plus"></i>
+                        Nueva Orden Médica
+                    </a>
+                    <a href="{{ route('historia-clinica.base.index', ['paciente' => $cita->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
+                        <i class="bi bi-folder2-open"></i>
+                        Ver Expediente
+                    </a>
+                </div>
+            </div>
                         </div>
                     </div>
                 </div>
@@ -156,7 +181,7 @@
                             <p class="mt-1 text-gray-900">{{ $cita->evolucionClinica->tratamiento ?? 'N/A' }}</p>
                         </div>
                         <div class="pt-4 border-t border-gray-200">
-                            <a href="{{ url('index.php/historia-clinica/evoluciones/' . $cita->evolucionClinica->id) }}" class="btn btn-sm btn-outline">
+                            <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-outline">
                                 <i class="bi bi-eye"></i> Ver Evolución Completa
                             </a>
                         </div>
@@ -279,11 +304,11 @@
             <div class="card p-6">
                 <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
                 <div class="space-y-2">
-                    <a href="{{ url('index.php/ordenes-medicas/create?paciente=' . ($cita->paciente->id ?? 1)) }}" class="btn btn-outline w-full justify-start">
+                    <a href="{{ route('ordenes-medicas.create', ['paciente' => $cita->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
                         <i class="bi bi-clipboard-plus"></i>
                         Nueva Orden Médica
                     </a>
-                    <a href="{{ url('index.php/historia-clinica?paciente=' . ($cita->paciente->id ?? 1)) }}" class="btn btn-outline w-full justify-start">
+                    <a href="{{ route('historia-clinica.base.index', ['paciente' => $cita->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
                         <i class="bi bi-folder2-open"></i>
                         Ver Expediente
                     </a>
