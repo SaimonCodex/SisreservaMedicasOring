@@ -33,8 +33,8 @@
         <!-- Navigation Menu -->
         <nav class="flex-1 px-3 py-6 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             <!-- Dashboard -->
-            <a href="{{ url('index.php/medico/dashboard') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg mb-4 transition-all duration-200 group {{ request()->is('*/medico/dashboard') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+            <a href="{{ route('medico.dashboard') }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg mb-4 transition-all duration-200 group {{ request()->routeIs('medico.dashboard') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-speedometer2 text-lg mr-3 {{ request()->is('*/medico/dashboard') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Dashboard</span>
             </a>
@@ -44,26 +44,26 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Atención Médica</p>
             </div>
             
-            <a href="{{ url('index.php/citas') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/citas*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+            <a href="{{ route('citas.index') }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('citas.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-calendar-check-fill text-lg mr-3 {{ request()->is('*/citas*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mis Citas</span>
             </a>
             
-            <a href="{{ url('index.php/pacientes') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/pacientes*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+            <a href="{{ route('pacientes.index') }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('pacientes.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-people-fill text-lg mr-3 {{ request()->is('*/pacientes*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mis Pacientes</span>
             </a>
             
-            <a href="{{ url('index.php/historia-clinica') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/historia-clinica*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+            <a href="{{ route('historia-clinica.base.index') }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('historia-clinica.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-file-earmark-medical-fill text-lg mr-3 {{ request()->is('*/historia-clinica*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Historias Clínicas</span>
             </a>
             
-            <a href="{{ url('index.php/ordenes-medicas') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/ordenes-medicas*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+            <a href="{{ route('ordenes-medicas.index') }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('ordenes-medicas.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-clipboard2-pulse-fill text-lg mr-3 {{ request()->is('*/ordenes-medicas*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Órdenes Médicas</span>
             </a>
@@ -73,14 +73,14 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Gestión</p>
             </div>
             
-            <a href="{{ url('index.php/medico/agenda') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/medico/agenda*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+            <a href="{{ route('medicos.horarios', auth()->id()) }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('medicos.horarios') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-calendar-week-fill text-lg mr-3 {{ request()->is('*/medico/agenda*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mi Agenda</span>
             </a>
             
-            <a href="{{ url('index.php/medico/estadisticas') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/medico/estadisticas*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+            <a href="{{ route('ordenes-medicas.estadisticas') }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('ordenes-medicas.estadisticas') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-graph-up-arrow text-lg mr-3 {{ request()->is('*/medico/estadisticas*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Estadísticas</span>
             </a>
@@ -90,8 +90,8 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cuenta</p>
             </div>
             
-            <a href="{{ url('index.php/medico/perfil') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/medico/perfil*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+            <a href="{{ route('medicos.show', auth()->id()) }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('medicos.show') || request()->is('*/medico/perfil*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-person-fill text-lg mr-3 {{ request()->is('*/medico/perfil*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mi Perfil</span>
             </a>
@@ -177,7 +177,7 @@
                                 </a>
                             </div>
                             <div class="p-2 border-t border-gray-100">
-                                <form method="POST" action="{{ url('index.php/logout') }}">
+                                <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-rose-50 transition-colors text-sm text-rose-600">
                                         <i class="bi bi-box-arrow-right"></i>

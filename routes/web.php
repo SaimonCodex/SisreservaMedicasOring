@@ -68,6 +68,8 @@ Route::prefix('ajax/citas')->group(function () {
     Route::get('/medicos', [CitaController::class, 'getMedicosPorEspecialidadConsultorio']);
     Route::get('/horarios-disponibles', [CitaController::class, 'getHorariosDisponibles']);
     Route::get('/get-next-sequence/{numero_documento}', [CitaController::class, 'getNextSequence']);
+    Route::get('/pacientes-especiales-por-representante/{representanteId}', [CitaController::class, 'getPacientesEspecialesPorRepresentante']);
+    Route::get('/verificar-documento', [CitaController::class, 'verificarDocumento']);
 });
 
 /*
@@ -93,6 +95,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/citas/create', [CitaController::class, 'create'])->name('paciente.citas.create'); // Specific route for paciente create
         Route::post('/citas', [CitaController::class, 'store'])->name('paciente.citas.store');
         Route::get('/citas', [CitaController::class, 'index'])->name('paciente.citas.index');
+        Route::get('/citas/{id}', [CitaController::class, 'show'])->name('paciente.citas.show');
     });
     
     // =========================================================================

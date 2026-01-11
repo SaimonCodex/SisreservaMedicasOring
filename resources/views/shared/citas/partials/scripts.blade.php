@@ -8,35 +8,87 @@
     // =========================================================================
     // TIPO DE CITA
     // =========================================================================
-    // =========================================================================
-    // TIPO DE CITA
-    // =========================================================================
     function selectTipoCita(tipo) {
+        console.log('selectTipoCita llamado con tipo:', tipo);
+        
         try {
+            // Verificar elementos críticos
             const inputTipo = document.getElementById('tipo_cita');
-            if(!inputTipo) throw new Error("Input tipo_cita no encontrado");
+            const stepTipo = document.getElementById('step-tipo');
+            const citaForm = document.getElementById('citaForm');
+            const seccionConsulta = document.getElementById('seccion-consulta');
             
-            inputTipo.value = tipo;
-            document.getElementById('step-tipo').classList.add('hidden');
-            document.getElementById('citaForm').classList.remove('hidden');
-            
-            if (tipo === 'propia') {
-                document.getElementById('seccion-buscar-paciente').classList.remove('hidden');
-                document.getElementById('seccion-terceros').classList.add('hidden');
-                document.getElementById('resumen-tipo').textContent = 'Cita Propia';
-            } else {
-                document.getElementById('seccion-buscar-paciente').classList.add('hidden');
-                document.getElementById('seccion-terceros').classList.remove('hidden');
-                document.getElementById('resumen-tipo').textContent = 'Cita para Terceros';
-                document.getElementById('resumen-representante-container').classList.remove('hidden');
+            if(!inputTipo) {
+                console.error('Elemento tipo_cita no encontrado');
+                throw new Error("Input tipo_cita no encontrado");
+            }
+            if(!stepTipo) {
+                console.error('Elemento step-tipo no encontrado');
+                throw new Error("Elemento step-tipo no encontrado");
+            }
+            if(!citaForm) {
+                console.error('Elemento citaForm no encontrado');
+                throw new Error("Elemento citaForm no encontrado");
+            }
+            if(!seccionConsulta) {
+                console.error('Elemento seccion-consulta no encontrado');
+                throw new Error("Elemento seccion-consulta no encontrado");
             }
             
-            document.getElementById('seccion-consulta').classList.remove('hidden');
+            // Establecer tipo de cita
+            inputTipo.value = tipo;
+            console.log('Tipo de cita establecido:', tipo);
+            
+            // Ocultar paso de selección y mostrar formulario
+            stepTipo.classList.add('hidden');
+            citaForm.classList.remove('hidden');
+            console.log('Formulario mostrado');
+            
+            // Mostrar sección correspondiente
+            if (tipo === 'propia') {
+                const seccionBuscar = document.getElementById('seccion-buscar-paciente');
+                const seccionTerceros = document.getElementById('seccion-terceros');
+                const resumenTipo = document.getElementById('resumen-tipo');
+                
+                if(seccionBuscar) seccionBuscar.classList.remove('hidden');
+                if(seccionTerceros) seccionTerceros.classList.add('hidden');
+                if(resumenTipo) resumenTipo.textContent = 'Cita Propia';
+                
+                console.log('Modo: Cita Propia');
+            } else if (tipo === 'terceros') {
+                const seccionBuscar = document.getElementById('seccion-buscar-paciente');
+                const seccionTerceros = document.getElementById('seccion-terceros');
+                const resumenTipo = document.getElementById('resumen-tipo');
+                const resumenRepContainer = document.getElementById('resumen-representante-container');
+                
+                if(seccionBuscar) seccionBuscar.classList.add('hidden');
+                if(seccionTerceros) seccionTerceros.classList.remove('hidden');
+                if(resumenTipo) resumenTipo.textContent = 'Cita para Terceros';
+                if(resumenRepContainer) resumenRepContainer.classList.remove('hidden');
+                
+                console.log('Modo: Cita para Terceros');
+            }
+            
+            // Mostrar sección de consulta
+            seccionConsulta.classList.remove('hidden');
+            console.log('Sección de consulta mostrada');
+            
         } catch (e) {
-            console.error(e);
-            alert('Error al seleccionar tipo de cita: ' + e.message);
+            console.error('Error en selectTipoCita:', e);
+            alert('Error al seleccionar tipo de cita: ' + e.message + '\n\nPor favor, recargue la página e intente nuevamente.');
         }
     }
+
+    // Event listeners para los botones de tipo de cita
+    document.addEventListener('DOMContentLoaded', function() {
+        const botonesTipoCita = document.querySelectorAll('[data-tipo-cita]');
+        botonesTipoCita.forEach(boton => {
+            boton.addEventListener('click', function() {
+                const tipo = this.getAttribute('data-tipo-cita');
+                selectTipoCita(tipo);
+            });
+        });
+    });
 
     function resetForm() {
         document.getElementById('step-tipo').classList.remove('hidden');
@@ -134,9 +186,13 @@
         // Actualizar resumen
         document.getElementById('resumen-paciente').textContent = paciente.nombre;
         
-        // Ocultar buscador y DESHABILITAR checkbox "no registrado"
-        document.getElementById('buscar_paciente').value = '';
-        document.getElementById('buscar_paciente').disabled = true;
+        // Ocultar buscador
+        document.getElementById('pac-buscador-container').classList.add('hidden');
+        
+        // Mostrar tarjeta de selección
+        document.getElementById('paciente_seleccionado').classList.remove('hidden');
+        
+        // Deshabilitar checkbox "no registrado"
         document.getElementById('paciente_no_registrado').disabled = true;
         document.getElementById('paciente_no_registrado').checked = false;
         document.getElementById('datos-paciente-nuevo').classList.add('hidden');
@@ -145,9 +201,17 @@
     function limpiarPacienteSeleccionado() {
         document.getElementById('paciente_existente').value = '0';
         document.getElementById('paciente_id').value = '';
+        
+        // Ocultar tarjeta
         document.getElementById('paciente_seleccionado').classList.add('hidden');
-        document.getElementById('buscar_paciente').disabled = false;
+        
+        // Mostrar buscador nuevamente
+        document.getElementById('pac-buscador-container').classList.remove('hidden');
+        
+        // Habilitar checkbox
         document.getElementById('paciente_no_registrado').disabled = false;
+        
+        // Limpiar resumen
         document.getElementById('resumen-paciente').textContent = '-';
     }
 
@@ -329,29 +393,132 @@
             document.getElementById('representante_existente').value = '1';
             document.getElementById('representante_id_hidden').value = rep.id;
             
-            document.getElementById('representante_seleccionado').classList.remove('hidden');
+            // Llenar datos de la tarjeta
             document.getElementById('rep_iniciales_display').textContent = 
                 (rep.primer_nombre?.[0] || '') + (rep.primer_apellido?.[0] || '');
             document.getElementById('rep_nombre_display').textContent = rep.nombre;
             document.getElementById('rep_documento_display').textContent = rep.documento;
             
+            // Actualizar resumen
             document.getElementById('resumen-representante').textContent = rep.nombre;
-            document.getElementById('buscar_representante').value = '';
-            document.getElementById('buscar_representante').disabled = true;
             
-            // Deshabilitar checkbox "no registrado"
-            document.getElementById('representante_no_registrado').disabled = true;
-            document.getElementById('representante_no_registrado').checked = false;
+            // Ocultar buscador
+            document.getElementById('rep-buscador-container').classList.add('hidden');
+            
+            // Mostrar tarjeta de selección
+            document.getElementById('representante_seleccionado').classList.remove('hidden');
+            
+            // Deshabilitar y desmarcar checkbox "no registrado"
+            const chkNoRegistrado = document.getElementById('representante_no_registrado');
+            chkNoRegistrado.disabled = true;
+            chkNoRegistrado.checked = false;
+            
+            // Ocultar formulario de nuevo representante si estaba visible
             document.getElementById('datos-representante-nuevo').classList.add('hidden');
+            
+            // Actualizar preview de ID paciente especial
+            if(typeof actualizarPacEspPreviewDocumento === 'function') {
+                actualizarPacEspPreviewDocumento();
+            }
+            
+            // Cargar pacientes especiales del representante
+            cargarPacientesEspecialesDelRepresentante(rep.id);
         }
     }
 
     function limpiarRepresentanteSeleccionado() {
         document.getElementById('representante_existente').value = '0';
         document.getElementById('representante_id_hidden').value = '';
+        
+        // Ocultar tarjeta
         document.getElementById('representante_seleccionado').classList.add('hidden');
-        document.getElementById('buscar_representante').disabled = false;
+        
+        // Mostrar buscador nuevamente
+        document.getElementById('rep-buscador-container').classList.remove('hidden');
+        
+        // Habilitar checkbox
         document.getElementById('representante_no_registrado').disabled = false;
+        
+        // Limpiar resumen
+        document.getElementById('resumen-representante').textContent = '-';
+        
+        // Limpiar preview de ID paciente especial
+        const preview = document.getElementById('pac-esp-documento-preview');
+        if(preview) preview.textContent = '-';
+        
+        // Ocultar y limpiar select de pacientes especiales del representante
+        const seccionSelectPacEsp = document.getElementById('seccion-select-pac-esp-representante');
+        if (seccionSelectPacEsp) {
+            seccionSelectPacEsp.classList.add('hidden');
+            document.getElementById('select_pac_esp_representante').innerHTML = 
+                '<option value="">Seleccionar paciente...</option>';
+        }
+        
+        // Mostrar mensaje informativo nuevamente
+        const mensajeInfo = document.getElementById('mensaje-seleccionar-representante');
+        if (mensajeInfo) {
+            mensajeInfo.classList.remove('hidden');
+        }
+    }
+    
+    // Cargar pacientes especiales del representante seleccionado
+    async function cargarPacientesEspecialesDelRepresentante(representanteId) {
+        const seccionSelect = document.getElementById('seccion-select-pac-esp-representante');
+        const select = document.getElementById('select_pac_esp_representante');
+        const mensajeInfo = document.getElementById('mensaje-seleccionar-representante');
+        
+        if (!seccionSelect || !select) return;
+        
+        try {
+            const response = await fetch(`${BASE_URL}/ajax/citas/pacientes-especiales-por-representante/${representanteId}`);
+            const pacientes = await response.json();
+            
+            // Ocultar mensaje informativo cuando hay representante
+            if (mensajeInfo) {
+                mensajeInfo.classList.add('hidden');
+            }
+            
+            if (pacientes.length > 0) {
+                // Limpiar y llenar el select
+                select.innerHTML = '<option value="">Seleccionar paciente...</option>';
+                pacientes.forEach(p => {
+                    select.innerHTML += `<option value="${p.id}" data-nombre="${p.nombre_completo}" data-documento="${p.tipo_documento}-${p.numero_documento}" data-tipo="${p.tipo}">${p.nombre_completo} (${p.tipo})</option>`;
+                });
+                
+                // Mostrar la sección del select
+                seccionSelect.classList.remove('hidden');
+            } else {
+                // Ocultar select si no hay pacientes (el checkbox de "no registrado" sigue disponible)
+                seccionSelect.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error cargando pacientes especiales:', error);
+            seccionSelect.classList.add('hidden');
+        }
+    }
+    
+    // Seleccionar paciente especial del dropdown del representante
+    function seleccionarPacEspDeRepresentante(id) {
+        if (!id) {
+            // Nada seleccionado, limpiar si había algo
+            limpiarPacEspecialSeleccionado();
+            return;
+        }
+        
+        const select = document.getElementById('select_pac_esp_representante');
+        const selectedOption = select.options[select.selectedIndex];
+        
+        // Crear un objeto con los datos del paciente
+        const paciente = {
+            id: id,
+            nombre: selectedOption.dataset.nombre,
+            documento: selectedOption.dataset.documento,
+            primer_nombre: selectedOption.dataset.nombre.split(' ')[0],
+            primer_apellido: selectedOption.dataset.nombre.split(' ').pop()
+        };
+        
+        // Usar la función existente de selección
+        seleccionarPacienteEspecial(paciente);
     }
 
     function toggleRepresentanteNoRegistrado() {
@@ -592,6 +759,142 @@
         document.getElementById(id)?.addEventListener('blur', function() {
              validarCorreo(id);
         });
+    });
+
+    // Helper para encontrar el span de error
+    function findErrorSpan(inputElement) {
+        if (!inputElement) return null;
+        let errorSpan = document.getElementById(inputElement.id + '_error');
+        if (!errorSpan) {
+             errorSpan = inputElement.nextElementSibling;
+             if (!errorSpan || !errorSpan.classList.contains('error-message')) {
+                 errorSpan = inputElement.parentElement.querySelector('.error-message');
+             }
+             if (!errorSpan && inputElement.parentElement) {
+                  errorSpan = inputElement.parentElement.nextElementSibling;
+                  if(errorSpan && !errorSpan.classList.contains('error-message')) {
+                      let abuelo = inputElement.parentElement.parentElement;
+                      if(abuelo) errorSpan = abuelo.querySelector('.error-message');
+                  }
+             }
+        }
+        return errorSpan;
+    }
+
+    // Helper para limpiar error visualmente al escribir
+    function limpiarErrorVisual(inputId) {
+        const input = document.getElementById(inputId);
+        if(!input) return;
+        
+        input.classList.remove('border-red-500');
+        const errorSpan = findErrorSpan(input);
+        if(errorSpan) errorSpan.classList.add('hidden');
+        
+        delete input.dataset.documentoInvalido;
+        delete input.dataset.invalid; // For email
+        
+        // Actualizar banner
+        if (inputId.includes('correo')) actualizarBannerErrores('email');
+        else actualizarBannerErrores('id');
+    }
+
+    // =========================================================================
+    // VALIDACIÓN DE DOCUMENTO (tipo + numero) EN TIEMPO REAL
+    // =========================================================================
+    async function validarDocumento(tipoInputId, numeroInputId) {
+        const tipoInput = document.getElementById(tipoInputId);
+        const numeroInput = document.getElementById(numeroInputId);
+        if(!tipoInput || !numeroInput) return true;
+        
+        const tipoDocumento = tipoInput.value.trim();
+        const numeroDocumento = numeroInput.value.trim();
+        
+        const errorSpan = findErrorSpan(numeroInput);
+        
+        if (!numeroDocumento || numeroDocumento.length < 6) {
+            // Limpiar error si el campo está vacío o muy corto
+            numeroInput.classList.remove('border-red-500');
+            if (errorSpan) errorSpan.classList.add('hidden');
+            delete numeroInput.dataset.documentoInvalido;
+            return true;
+        }
+
+        try {
+            const response = await fetch(`${BASE_URL}/ajax/citas/verificar-documento?tipo_documento=${encodeURIComponent(tipoDocumento)}&numero_documento=${encodeURIComponent(numeroDocumento)}`);
+            const data = await response.json();
+            
+            if (data.existe) {
+                numeroInput.classList.add('border-red-500');
+                if (errorSpan) {
+                    errorSpan.textContent = 'La identificación ya se encuentra registrada en el sistema.';
+                    errorSpan.classList.remove('hidden');
+                }
+                numeroInput.dataset.documentoInvalido = "true";
+                return false;
+            } else {
+                numeroInput.classList.remove('border-red-500');
+                if (errorSpan) errorSpan.classList.add('hidden');
+                delete numeroInput.dataset.documentoInvalido;
+                return true;
+            }
+        } catch (error) {
+            console.error('Error verificando documento:', error);
+            return true; // En caso de error, no bloquear
+        }
+    }
+
+    // Listeners para validación de documento en tiempo real (Paciente Nuevo)
+    let docTimeoutPac = null;
+    document.getElementById('pac_numero_documento')?.addEventListener('input', function() {
+        limpiarErrorVisual('pac_numero_documento');
+        clearTimeout(docTimeoutPac);
+        docTimeoutPac = setTimeout(() => validarDocumento('pac_tipo_documento', 'pac_numero_documento'), 500);
+    });
+    document.getElementById('pac_numero_documento')?.addEventListener('blur', function() {
+        validarDocumento('pac_tipo_documento', 'pac_numero_documento');
+    });
+    document.getElementById('pac_tipo_documento')?.addEventListener('change', function() {
+        limpiarErrorVisual('pac_numero_documento'); // Limpiar al cambiar tipo
+        const numDoc = document.getElementById('pac_numero_documento')?.value;
+        if (numDoc && numDoc.length >= 6) {
+            validarDocumento('pac_tipo_documento', 'pac_numero_documento');
+        }
+    });
+
+    // Listeners para validación de documento en tiempo real (Representante Nuevo)
+    let docTimeoutRep = null;
+    document.getElementById('rep_numero_documento')?.addEventListener('input', function() {
+        limpiarErrorVisual('rep_numero_documento');
+        clearTimeout(docTimeoutRep);
+        docTimeoutRep = setTimeout(() => validarDocumento('rep_tipo_documento', 'rep_numero_documento'), 500);
+    });
+    document.getElementById('rep_numero_documento')?.addEventListener('blur', function() {
+        validarDocumento('rep_tipo_documento', 'rep_numero_documento');
+    });
+    document.getElementById('rep_tipo_documento')?.addEventListener('change', function() {
+        limpiarErrorVisual('rep_numero_documento');
+        const numDoc = document.getElementById('rep_numero_documento')?.value;
+        if (numDoc && numDoc.length >= 6) {
+            validarDocumento('rep_tipo_documento', 'rep_numero_documento');
+        }
+    });
+
+    // Listeners para validación de documento en tiempo real (Paciente Especial Nuevo)
+    let docTimeoutPacEsp = null;
+    document.getElementById('pac_esp_numero_documento')?.addEventListener('input', function() {
+        limpiarErrorVisual('pac_esp_numero_documento');
+        clearTimeout(docTimeoutPacEsp);
+        docTimeoutPacEsp = setTimeout(() => validarDocumento('pac_esp_tipo_documento', 'pac_esp_numero_documento'), 500);
+    });
+    document.getElementById('pac_esp_numero_documento')?.addEventListener('blur', function() {
+        validarDocumento('pac_esp_tipo_documento', 'pac_esp_numero_documento');
+    });
+    document.getElementById('pac_esp_tipo_documento')?.addEventListener('change', function() {
+        limpiarErrorVisual('pac_esp_numero_documento');
+        const numDoc = document.getElementById('pac_esp_numero_documento')?.value;
+        if (numDoc && numDoc.length >= 6) {
+            validarDocumento('pac_esp_tipo_documento', 'pac_esp_numero_documento');
+        }
     });
 
     // Validación de Edad (18+)
@@ -1060,77 +1363,325 @@
     // =========================================================================
     // VALIDACIÓN
     // =========================================================================
+    // =========================================================================
+    // LÓGICA PACIENTE ESPECIAL (Admin)
+    // =========================================================================
+    function togglePacEspDocumento(tiene) {
+        const campoDoc = document.getElementById('campo-documento-pac-esp');
+        const infoGenerado = document.getElementById('pac-esp-doc-generado-info');
+        
+        if (tiene) {
+            campoDoc.classList.remove('hidden');
+            infoGenerado.classList.add('hidden');
+        } else {
+            campoDoc.classList.add('hidden');
+            infoGenerado.classList.remove('hidden');
+            actualizarPacEspPreviewDocumento();
+        }
+    }
+
+    async function actualizarPacEspPreviewDocumento() {
+        let tipoDoc = document.getElementById('rep_tipo_documento')?.value || 'V';
+        let numDoc = document.getElementById('rep_numero_documento')?.value || '';
+        
+        // Si hay representante existente seleccionado, intentar tomar de ahí
+        const repExistente = document.getElementById('representante_existente')?.value === '1';
+        if (repExistente) {
+             const docDisplay = document.getElementById('rep_documento_display')?.textContent; 
+             // Formato esperado display: "V-12345678"
+             if(docDisplay && docDisplay.includes('-')) {
+                 const parts = docDisplay.split('-');
+                 tipoDoc = parts[0];
+                 numDoc = parts[1];
+             }
+        }
+
+        const preview = document.getElementById('pac-esp-documento-preview');
+        const hiddenInput = document.getElementById('pac_esp_numero_documento_generado');
+        
+        if (!numDoc || !preview) return;
+
+        preview.textContent = 'Generando...';
+        
+        try {
+            const response = await fetch(`${BASE_URL}/ajax/citas/get-next-sequence/${numDoc}`);
+            if (!response.ok) throw new Error('Error en API');
+            
+            const data = await response.json();
+            const fullId = tipoDoc + '-' + data.full_id;
+            preview.textContent = fullId;
+            if(hiddenInput) hiddenInput.value = fullId;
+        } catch(e) {
+            console.error('Error sequence:', e);
+            const fallback = tipoDoc + '-' + numDoc + '-01';
+            preview.textContent = fallback; 
+            if(hiddenInput) hiddenInput.value = fallback;
+        }
+    }
+    
+    // Listeners para actualizar preview ID cuando cambia datos del rep (nuevo)
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('rep_numero_documento')?.addEventListener('input', actualizarPacEspPreviewDocumento);
+        document.getElementById('rep_tipo_documento')?.addEventListener('change', actualizarPacEspPreviewDocumento);
+    });
+
+    // =========================================================================
+    // VALIDACIÓN IMPORTANTE
+    // =========================================================================
     function validarFormulario() {
         let valid = true;
-        const tipoCita = document.getElementById('tipo_cita').value;
+        let hasEmailDup = false;
+        let hasIdDup = false;
         
-        // Validar paciente (propia)
+        // Reset validaciones visuales
+        document.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+        document.querySelectorAll('.error-message').forEach(el => {
+            if(!el.id.includes('error-message')) el.classList.add('hidden');
+        });
+        
+        // Reset banner
+        const banner = document.getElementById('submit-error-banner');
+        if(banner) {
+            banner.textContent = '';
+            banner.classList.add('hidden');
+        }
+
+        const tipoCita = document.getElementById('tipo_cita').value;
+
+        // 1. Validar Cita Propia
         if (tipoCita === 'propia') {
             const existente = document.getElementById('paciente_existente').value === '1';
             const noRegistrado = document.getElementById('paciente_no_registrado').checked;
             
             if (!existente && !noRegistrado) {
-                alert('Debe buscar un paciente o marcar que no está registrado');
+                alert('Debe buscar un paciente o indicar que es Nuevo');
                 return false;
             }
             
             if (noRegistrado) {
-                // Validar campos obligatorios
                 const campos = ['pac_primer_nombre', 'pac_primer_apellido', 'pac_numero_documento', 'pac_fecha_nac', 'pac_genero', 'pac_estado_id'];
-                campos.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (!el.value) {
-                        el.classList.add('border-red-500');
-                        valid = false;
-                    } else {
-                        el.classList.remove('border-red-500');
-                    }
-                });
+                if(!validarCampos(campos)) valid = false;
                 
-                // Validar correo si registrar usuario está marcado
+                // Documento duplicado
+                const pacDocInput = document.getElementById('pac_numero_documento');
+                if (pacDocInput && pacDocInput.dataset.documentoInvalido === "true") {
+                    marcarError('pac_numero_documento', 'La identificación ya se encuentra registrada en el sistema.');
+                    hasIdDup = true;
+                    valid = false;
+                }
+                
+                // Correo Usuario
                 if (document.getElementById('chk_registrar_usuario')?.checked) {
                     const correo = document.getElementById('pac_correo');
-                    if (!correo.value) {
-                        correo.classList.add('border-red-500');
-                        valid = false;
+                    if (correo) {
+                        if (!correo.value) { marcarError('pac_correo', 'El correo es requerido'); valid = false; }
+                        else if (correo.dataset.invalid === "true") { 
+                            marcarError('pac_correo', 'Correo ya registrado'); 
+                            hasEmailDup = true;
+                            valid = false; 
+                        }
                     }
-                    // Chequear flag de invalidez puesto por validarCorreo
-                    if (correo.dataset.invalid === "true") {
-                        alert('El correo electrónico ya está registrado. Por favor use otro.');
+                }
+            }
+        } 
+        
+        // 2. Validar Cita Terceros
+        else if (tipoCita === 'terceros') {
+            // A) Representante
+            const repExistente = document.getElementById('representante_existente').value === '1';
+            const repNoRegistrado = document.getElementById('representante_no_registrado').checked;
+            
+            if (!repExistente && !repNoRegistrado) {
+                alert('Debe seleccionar un representante o crear uno nuevo');
+                return false;
+            }
+            
+            if (repNoRegistrado) {
+                const camposRep = ['rep_primer_nombre', 'rep_primer_apellido', 'rep_numero_documento', 'rep_fecha_nac', 'rep_parentesco', 'rep_estado_id'];
+                if(!validarCampos(camposRep)) valid = false;
+                
+                // Documento duplicado representante
+                const repDocInput = document.getElementById('rep_numero_documento');
+                if (repDocInput && repDocInput.dataset.documentoInvalido === "true") {
+                    marcarError('rep_numero_documento', 'La identificación ya se encuentra registrada en el sistema.');
+                    hasIdDup = true;
+                    valid = false;
+                }
+                
+                // Correo Representante
+                if (document.getElementById('chk_registrar_representante')?.checked) {
+                     const correoRep = document.getElementById('rep_correo');
+                     if (correoRep) {
+                         if (!correoRep.value) { marcarError('rep_correo', 'El correo es requerido'); valid = false; }
+                         else if (correoRep.dataset.invalid === "true") { 
+                             marcarError('rep_correo', 'Correo ya registrado'); 
+                             hasEmailDup = true;
+                             valid = false; 
+                         }
+                     }
+                }
+            }
+            
+            // B) Paciente Especial
+            const pacEspExistente = document.getElementById('paciente_especial_id').value;
+            const pacEspNoRegistrado = document.getElementById('pac_especial_no_registrado').checked;
+            
+            // También verificar si hay paciente seleccionado del select del representante
+            const selectPacEspRep = document.getElementById('select_pac_esp_representante');
+            const pacEspDelRepresentante = selectPacEspRep ? selectPacEspRep.value : '';
+            
+            if (!pacEspExistente && !pacEspNoRegistrado && !pacEspDelRepresentante) {
+                alert('Debe seleccionar un paciente especial o crear uno nuevo');
+                return false;
+            }
+            
+            if (pacEspNoRegistrado) {
+                // Tipo
+                if(!document.querySelector('input[name="pac_esp_tipo"]:checked')) {
+                    document.getElementById('pac_esp_tipo_error').classList.remove('hidden');
+                    document.getElementById('pac_esp_tipo_error').textContent = 'Seleccione el tipo';
+                    valid = false;
+                }
+                
+                // Tiene Documento
+                const tieneDoc = document.querySelector('input[name="pac_esp_tiene_documento"]:checked');
+                if(!tieneDoc) {
+                    document.getElementById('pac_esp_tiene_documento_error').classList.remove('hidden');
+                    document.getElementById('pac_esp_tiene_documento_error').textContent = 'Seleccione si tiene documento';
+                    valid = false;
+                }
+                
+                // Campos comunes
+                const camposPacEsp = ['pac_esp_primer_nombre', 'pac_esp_primer_apellido', 'pac_esp_fecha_nac', 'pac_esp_genero', 'pac_esp_estado_id'];
+                if(!validarCampos(camposPacEsp)) valid = false;
+                
+                // Documento manual si aplica
+                if (tieneDoc && tieneDoc.value === 'si') {
+                    if(!validarCampos(['pac_esp_numero_documento'])) valid = false;
+                    
+                    // Documento duplicado paciente especial
+                    const pacEspDocInput = document.getElementById('pac_esp_numero_documento');
+                    if (pacEspDocInput && pacEspDocInput.dataset.documentoInvalido === "true") {
+                        marcarError('pac_esp_numero_documento', 'La identificación ya se encuentra registrada en el sistema.');
+                        hasIdDup = true;
                         valid = false;
                     }
                 }
             }
-        } else {
-             // Validar representante (si es tercero y no registrado)
-            const repNoRegistrado = document.getElementById('representante_no_registrado').checked;
-             if (repNoRegistrado) {
-                 if (document.getElementById('chk_registrar_representante')?.checked) {
-                    const correoRep = document.getElementById('rep_correo');
-                    if(correoRep.dataset.invalid === "true") {
-                        alert('El correo electrónico del representante ya está registrado.');
-                        valid = false;
-                    }
-                 }
-             }
         }
         
-        // Validar médico, fecha y hora
-        if (!document.getElementById('medico_id').value) {
-            alert('Debe seleccionar un médico');
-            return false;
-        }
-        
-        if (!document.getElementById('hora_inicio').value) {
-            alert('Debe seleccionar una hora');
-            return false;
-        }
+        // 3. Validar Médico/Fecha/Hora
+        if (!document.getElementById('medico_id').value) { alert('Seleccione Médico'); valid = false; }
+        if (!document.getElementById('hora_inicio').value) { alert('Seleccione Hora'); valid = false; }
         
         if (!valid) {
-            alert('Complete todos los campos obligatorios');
+            // Mostrar Banner con errores específicos
+            if (banner) {
+                if (hasEmailDup && hasIdDup) {
+                    banner.textContent = 'El correo y Numero de Identificacion ya estan Registrados en el Sistema';
+                    banner.dataset.emailError = '1';
+                    banner.dataset.idError = '1';
+                    banner.classList.remove('hidden');
+                } else if (hasEmailDup) {
+                    banner.textContent = 'El Correo ya se Encuentra Registrado en el Sistema, Ingrese Otro.';
+                    banner.dataset.emailError = '1';
+                    banner.dataset.idError = '0';
+                    banner.classList.remove('hidden');
+                } else if (hasIdDup) {
+                    banner.textContent = 'La identificacion ya se Encuentra Registrada en el Sistema, Ingrese Otra.';
+                    banner.dataset.emailError = '0';
+                    banner.dataset.idError = '1';
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.dataset.emailError = '0';
+                    banner.dataset.idError = '0';
+                    alert('Por favor verifique los errores en el formulario.');
+                }
+            } else {
+                 alert('Por favor verifique los errores en el formulario.');
+            }
         }
         
         return valid;
+    }
+
+    // =========================================================================
+    // GESTIÓN DINÁMICA DEL BANNER DE ERRORES AL ESCRIBIR
+    // =========================================================================
+    
+    function actualizarBannerErrores(tipoCorregido) {
+        const banner = document.getElementById('submit-error-banner');
+        if (!banner || banner.classList.contains('hidden')) return;
+        
+        // Obtener estado actual de errores del banner
+        let hasEmailError = banner.dataset.emailError === '1';
+        let hasIdError = banner.dataset.idError === '1';
+        
+        if (tipoCorregido === 'email') {
+            hasEmailError = false;
+            banner.dataset.emailError = '0';
+        } else if (tipoCorregido === 'id') {
+            hasIdError = false;
+            banner.dataset.idError = '0';
+        }
+        
+        // Decidir qué mostrar
+        if (!hasEmailError && !hasIdError) {
+            banner.textContent = '';
+            banner.classList.add('hidden');
+        } else if (hasEmailError) {
+            banner.textContent = 'El Correo ya se Encuentra Registrado en el Sistema, Ingrese Otro.';
+        } else if (hasIdError) {
+            banner.textContent = 'La identificacion ya se Encuentra Registrada en el Sistema, Ingrese Otra.';
+        }
+    }
+
+    // Agregar listeners a los campos propensos a error para ocultar banner
+    // y para asegurarnos que se dispare la validación
+    const camposEmailMonitor = ['pac_correo', 'rep_correo'];
+    const camposIdMonitor = ['pac_numero_documento', 'rep_numero_documento', 'pac_esp_numero_documento'];
+    
+    camposEmailMonitor.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', () => actualizarBannerErrores('email'));
+        }
+    });
+    
+    camposIdMonitor.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', () => actualizarBannerErrores('id'));
+        }
+    });
+    
+    function validarCampos(ids) {
+        let allValid = true;
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if(el && !el.value) {
+                el.classList.add('border-red-500');
+                const err = el.nextElementSibling;
+                if(err && err.classList.contains('error-message')) {
+                    err.textContent = 'Este campo es requerido';
+                    err.classList.remove('hidden');
+                }
+                allValid = false;
+            }
+        });
+        return allValid;
+    }
+    
+    function marcarError(id, msg) {
+        const el = document.getElementById(id);
+        if(el) {
+            el.classList.add('border-red-500');
+            const err = el.nextElementSibling;
+            if(err && err.classList.contains('error-message')) {
+                err.textContent = msg;
+                err.classList.remove('hidden');
+            }
+        }
     }
 </script>
 @endpush
