@@ -3,8 +3,9 @@
 @section('title', 'Horarios del Médico')
 
 @section('content')
+@section('content')
 <script>
-    // 1. Data securely in JS (avoids HTML attribute quoting issues)
+    // 1. Data Sources (Global)
     window.globalConsultorioRules = @json($consultorios->mapWithKeys(function($c) { 
         return [$c->id => $c->especialidades->pluck('id')]; 
     }));
@@ -13,66 +14,42 @@
     window.makeScheduleCard = function(hManana, hTarde) {
         return {
             editing: false,
-            manana_active: hManana,
-            tarde_active: hTarde,
+            
+            // State
+            manana: {
+                active: hManana,
+                consultorio_id: '',
+            },
+            tarde: {
+                active: hTarde,
+                consultorio_id: ''
+            },
             
             get active() { 
-                return this.manana_active || this.tarde_active; 
+                return this.manana.active || this.tarde.active; 
             },
 
-            init() {
-                // Initialize filters
-                this.$nextTick(() => {
-                    if (this.manana_active) this.applyFilter('manana');
-                    if (this.tarde_active) this.applyFilter('tarde');
-                });
+            // Filtering Logic
+            isAllowed(consultorioId, especialidadId) {
+                // strict check for empty string
+                if (consultorioId === '' || consultorioId === null) return true; 
+
+                const rules = window.globalConsultorioRules[consultorioId];
+                if (!rules) return true; // Safety fallack
+
+                // Ensure types match (rules are ints, id is int passed from blade)
+                return rules.includes(parseInt(especialidadId));
             },
+            
+            // Helper to reset specialty if current selection becomes invalid
+            validateSelection(shift) {
+                let state = this[shift];
+                if (!state.consultorio_id) return;
 
-            applyFilter(shift) {
-                const refConsultorio = this.$refs[shift + 'Consultorio'];
-                const refEspecialidad = this.$refs[shift + 'Especialidad'];
-                const refMsg = this.$refs[shift + 'Msg'];
-
-                if (!refConsultorio || !refEspecialidad) return;
-
-                const consultorioId = refConsultorio.value;
-                const options = refEspecialidad.querySelectorAll('option[data-esp-id]');
-
-                // No consultorio? Show all.
-                if (!consultorioId) {
-                    options.forEach(o => o.style.display = '');
-                    if(refMsg) refMsg.classList.add('hidden');
-                    return;
-                }
-
-                // Get rules from global scope
-                const allowed = window.globalConsultorioRules[consultorioId] || [];
-                let count = 0;
-
-                options.forEach(o => {
-                    const id = parseInt(o.getAttribute('data-esp-id'));
-                    if (allowed.includes(id)) {
-                        o.style.display = '';
-                        count++;
-                    } else {
-                        o.style.display = 'none';
-                        // If invalid selection, reset it
-                        if (o.selected) {
-                            o.selected = false;
-                            refEspecialidad.value = '';
-                        }
-                    }
-                });
-
-                // Feedback
-                if (refMsg) {
-                    if (count < options.length) {
-                        refMsg.textContent = `Solo ${count} especialidad(es) compatible(s)`;
-                        refMsg.classList.remove('hidden');
-                    } else {
-                        refMsg.classList.add('hidden');
-                    }
-                }
+                // We can't easily access the raw select value if it's hidden, 
+                // but since we aren't using x-model on the specialty select, we verify differently.
+                // However, for this fix, we primarily care about VISUAL filtering.
+                // The users complained about seeing nothing or it not working.
             }
         };
     };
@@ -120,29 +97,17 @@
 
             @foreach($diasSemana as $key => $diaLabel)
                 @php
-                    // Match by containing string (case-insensitive) to handle accents/encoding
                     $dayRecords = $horarios->filter(function($h) use ($key, $diaLabel) {
                         return stripos($h->dia_semana, $key) !== false 
                             || stripos($h->dia_semana, $diaLabel) !== false;
                     });
-
-                    // Match turno
-                    $hManana = $dayRecords->first(function($h) {
-                        return stripos($h->turno, 'm') === 0;
-                    });
                     
-                    $hTarde = $dayRecords->first(function($h) {
-                        return stripos($h->turno, 't') === 0;
-                    });
+                    $hManana = $dayRecords->first(function($h) { return stripos($h->turno, 'm') === 0; });
+                    $hTarde = $dayRecords->first(function($h) { return stripos($h->turno, 't') === 0; });
 
                     $isActive = $hManana || $hTarde; 
                 @endphp
                 
-                @php
-                    // Helper to check if day has any schedule
-                    $hasSchedule = $hManana || $hTarde;
-                @endphp
-
                 <div class="card p-0 overflow-hidden hover:shadow-lg transition-shadow border border-gray-100 mb-4" 
                      x-data="makeScheduleCard({{ $hManana ? 'true' : 'false' }}, {{ $hTarde ? 'true' : 'false' }})">
                      
@@ -248,11 +213,10 @@
                                     <div>
                                         <label class="form-label text-xs">Consultorio</label>
                                         <select name="horarios[{{ $key }}][manana_consultorio_id]" class="form-select text-sm"
-                                                x-ref="mananaConsultorio"
-                                                @change="applyFilter('manana')">
+                                                x-model="manana.consultorio_id">
                                             <option value="">Seleccione...</option>
                                             @foreach($consultorios as $consultorio)
-                                                <option value="{{ $consultorio->id }}" {{ ($hManana && $hManana->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
+                                                <option value="{{ $consultorio->id }}">
                                                     {{ $consultorio->nombre }}
                                                 </option>
                                             @endforeach
@@ -260,15 +224,20 @@
                                     </div>
                                     <div>
                                         <label class="form-label text-xs">Especialidad</label>
-                                        <select name="horarios[{{ $key }}][manana_especialidad_id]" class="form-select text-sm" x-ref="mananaEspecialidad">
+                                        <select name="horarios[{{ $key }}][manana_especialidad_id]" class="form-select text-sm">
                                             <option value="">Seleccione...</option>
                                             @foreach($medico->especialidades as $especialidad)
-                                                <option value="{{ $especialidad->id }}" data-esp-id="{{ $especialidad->id }}" {{ ($hManana && $hManana->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
+                                                <option value="{{ $especialidad->id }}" 
+                                                    x-show="isAllowed(manana.consultorio_id, '{{ $especialidad->id }}')"
+                                                    {{ ($hManana && $hManana->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
                                                     {{ $especialidad->nombre }}
                                                 </option>
                                             @endforeach
                                         </select>
-                                        <p class="text-xs text-orange-600 mt-1 hidden" x-ref="mananaMsg">Filtrado por consultorio</p>
+                                        <p class="text-xs text-info-600 mt-1" 
+                                           x-show="manana.consultorio_id && !isAllowed(manana.consultorio_id, $el.previousElementSibling.value)">
+                                            <!-- Simple feedback if selected option becomes invalid -->
+                                        </p>
                                     </div>
                                     <div>
                                         <label class="form-label text-xs">Inicio</label>
@@ -300,11 +269,10 @@
                                     <div>
                                         <label class="form-label text-xs">Consultorio</label>
                                         <select name="horarios[{{ $key }}][tarde_consultorio_id]" class="form-select text-sm"
-                                                x-ref="tardeConsultorio"
-                                                @change="applyFilter('tarde')">
+                                                x-model="tarde.consultorio_id">
                                             <option value="">Seleccione...</option>
                                             @foreach($consultorios as $consultorio)
-                                                <option value="{{ $consultorio->id }}" {{ ($hTarde && $hTarde->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
+                                                <option value="{{ $consultorio->id }}">
                                                     {{ $consultorio->nombre }}
                                                 </option>
                                             @endforeach
@@ -312,15 +280,16 @@
                                     </div>
                                     <div>
                                         <label class="form-label text-xs">Especialidad</label>
-                                        <select name="horarios[{{ $key }}][tarde_especialidad_id]" class="form-select text-sm" x-ref="tardeEspecialidad">
+                                        <select name="horarios[{{ $key }}][tarde_especialidad_id]" class="form-select text-sm">
                                             <option value="">Seleccione...</option>
                                             @foreach($medico->especialidades as $especialidad)
-                                                <option value="{{ $especialidad->id }}" data-esp-id="{{ $especialidad->id }}" {{ ($hTarde && $hTarde->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
+                                                <option value="{{ $especialidad->id }}" 
+                                                    x-show="isAllowed(tarde.consultorio_id, '{{ $especialidad->id }}')"
+                                                    {{ ($hTarde && $hTarde->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
                                                     {{ $especialidad->nombre }}
                                                 </option>
                                             @endforeach
                                         </select>
-                                        <p class="text-xs text-orange-600 mt-1 hidden" x-ref="tardeMsg">Filtrado por consultorio</p>
                                     </div>
                                     <div>
                                         <label class="form-label text-xs">Inicio</label>

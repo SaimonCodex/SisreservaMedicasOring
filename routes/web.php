@@ -174,28 +174,28 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('estados/{id}', [UbicacionController::class, 'destroyEstado'])->name('ubicacion.estados.destroy');
 
         // Ciudades
-        Route::get('estados/{estadoId}/ciudades', [UbicacionController::class, 'indexCiudades'])->name('ubicacion.ciudades.index');
-        Route::get('estados/{estadoId}/ciudades/create', [UbicacionController::class, 'createCiudad'])->name('ubicacion.ciudades.create');
-        Route::post('estados/{estadoId}/ciudades', [UbicacionController::class, 'storeCiudad'])->name('ubicacion.ciudades.store');
-        Route::get('estados/{estadoId}/ciudades/{id}/edit', [UbicacionController::class, 'editCiudad'])->name('ubicacion.ciudades.edit');
-        Route::put('estados/{estadoId}/ciudades/{id}', [UbicacionController::class, 'updateCiudad'])->name('ubicacion.ciudades.update');
-        Route::delete('estados/{estadoId}/ciudades/{id}', [UbicacionController::class, 'destroyCiudad'])->name('ubicacion.ciudades.destroy');
+        Route::get('ciudades', [UbicacionController::class, 'indexCiudades'])->name('ubicacion.ciudades.index');
+        Route::get('ciudades/create', [UbicacionController::class, 'createCiudad'])->name('ubicacion.ciudades.create');
+        Route::post('ciudades', [UbicacionController::class, 'storeCiudad'])->name('ubicacion.ciudades.store');
+        Route::get('ciudades/{id}/edit', [UbicacionController::class, 'editCiudad'])->name('ubicacion.ciudades.edit');
+        Route::put('ciudades/{id}', [UbicacionController::class, 'updateCiudad'])->name('ubicacion.ciudades.update');
+        Route::delete('ciudades/{id}', [UbicacionController::class, 'destroyCiudad'])->name('ubicacion.ciudades.destroy');
 
         // Municipios
-        Route::get('estados/{estadoId}/municipios', [UbicacionController::class, 'indexMunicipios'])->name('ubicacion.municipios.index');
-        Route::get('estados/{estadoId}/municipios/create', [UbicacionController::class, 'createMunicipio'])->name('ubicacion.municipios.create');
-        Route::post('estados/{estadoId}/municipios', [UbicacionController::class, 'storeMunicipio'])->name('ubicacion.municipios.store');
-        Route::get('estados/{estadoId}/municipios/{id}/edit', [UbicacionController::class, 'editMunicipio'])->name('ubicacion.municipios.edit');
-        Route::put('estados/{estadoId}/municipios/{id}', [UbicacionController::class, 'updateMunicipio'])->name('ubicacion.municipios.update');
-        Route::delete('estados/{estadoId}/municipios/{id}', [UbicacionController::class, 'destroyMunicipio'])->name('ubicacion.municipios.destroy');
+        Route::get('municipios', [UbicacionController::class, 'indexMunicipios'])->name('ubicacion.municipios.index');
+        Route::get('municipios/create', [UbicacionController::class, 'createMunicipio'])->name('ubicacion.municipios.create');
+        Route::post('municipios', [UbicacionController::class, 'storeMunicipio'])->name('ubicacion.municipios.store');
+        Route::get('municipios/{id}/edit', [UbicacionController::class, 'editMunicipio'])->name('ubicacion.municipios.edit');
+        Route::put('municipios/{id}', [UbicacionController::class, 'updateMunicipio'])->name('ubicacion.municipios.update');
+        Route::delete('municipios/{id}', [UbicacionController::class, 'destroyMunicipio'])->name('ubicacion.municipios.destroy');
 
         // Parroquias
-        Route::get('estados/{estadoId}/municipios/{municipioId}/parroquias', [UbicacionController::class, 'indexParroquias'])->name('ubicacion.parroquias.index');
-        Route::get('estados/{estadoId}/municipios/{municipioId}/parroquias/create', [UbicacionController::class, 'createParroquia'])->name('ubicacion.parroquias.create');
-        Route::post('estados/{estadoId}/municipios/{municipioId}/parroquias', [UbicacionController::class, 'storeParroquia'])->name('ubicacion.parroquias.store');
-        Route::get('estados/{estadoId}/municipios/{municipioId}/parroquias/{id}/edit', [UbicacionController::class, 'editParroquia'])->name('ubicacion.parroquias.edit');
-        Route::put('estados/{estadoId}/municipios/{municipioId}/parroquias/{id}', [UbicacionController::class, 'updateParroquia'])->name('ubicacion.parroquias.update');
-        Route::delete('estados/{estadoId}/municipios/{municipioId}/parroquias/{id}', [UbicacionController::class, 'destroyParroquia'])->name('ubicacion.parroquias.destroy');
+        Route::get('parroquias', [UbicacionController::class, 'indexParroquias'])->name('ubicacion.parroquias.index');
+        Route::get('parroquias/create', [UbicacionController::class, 'createParroquia'])->name('ubicacion.parroquias.create');
+        Route::post('parroquias', [UbicacionController::class, 'storeParroquia'])->name('ubicacion.parroquias.store');
+        Route::get('parroquias/{id}/edit', [UbicacionController::class, 'editParroquia'])->name('ubicacion.parroquias.edit');
+        Route::put('parroquias/{id}', [UbicacionController::class, 'updateParroquia'])->name('ubicacion.parroquias.update');
+        Route::delete('parroquias/{id}', [UbicacionController::class, 'destroyParroquia'])->name('ubicacion.parroquias.destroy');
 
     });
     
