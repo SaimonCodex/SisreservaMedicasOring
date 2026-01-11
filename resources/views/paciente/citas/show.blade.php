@@ -10,18 +10,20 @@
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h2 class="text-3xl font-display font-bold text-gray-900">Consulta {{ $cita->especialidad->nombre ?? 'General' }}</h2>
-
             <p class="text-gray-500 mt-1">Detalle completo de tu cita médica programada</p>
         </div>
         <div>
-            <span class="badge {{ match(strtolower($cita->status)) {
-                'confirmada' => 'badge-success',
-                'pendiente' => 'badge-warning',
-                'completada' => 'badge-primary',
-                'cancelada' => 'badge-danger',
-                default => 'badge-gray'
-            } }} text-lg px-4 py-2">
-                {{ ucfirst($cita->status) }}
+            @php
+                $statusColor = match(strtolower($cita->estado_cita)) {
+                    'confirmada' => 'success',
+                    'programada', 'pendiente' => 'warning',
+                    'completada' => 'primary',
+                    'cancelada', 'no asistió' => 'danger',
+                    default => 'gray'
+                };
+            @endphp
+            <span class="badge badge-{{ $statusColor }} text-lg px-4 py-2 uppercase">
+                {{ $cita->estado_cita }}
             </span>
         </div>
     </div>
@@ -39,23 +41,23 @@
                         <h3 class="font-bold text-xl opacity-90">Horario Programado</h3>
                         <p class="text-white/80 text-sm">Asegúrate de llegar 15 minutos antes</p>
                     </div>
-                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center border-4 border-white/30 backdrop-blur-sm">
                         <i class="bi bi-calendar-event text-2xl"></i>
                     </div>
                 </div>
             </div>
-            <div class="p-6 grid grid-cols-2 gap-4">
-                <div class="bg-gray-50 p-4 rounded-xl flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl font-bold">
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-50 p-4 rounded-xl flex items-center gap-4 border border-gray-100">
+                    <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl font-bold flex-shrink-0">
                         {{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d') }}
                     </div>
                     <div>
-                        <p class="text-xs text-gray-500 uppercase font-bold">{{ \Carbon\Carbon::parse($cita->fecha_cita)->format('F Y') }}</p>
-                        <p class="font-bold text-gray-900 text-lg">{{ \Carbon\Carbon::parse($cita->fecha_cita)->locale('es')->dayName }}</p>
+                        <p class="text-xs text-gray-500 uppercase font-bold">{{ \Carbon\Carbon::parse($cita->fecha_cita)->isoFormat('F Y') }}</p>
+                        <p class="font-bold text-gray-900 text-lg capitalize">{{ \Carbon\Carbon::parse($cita->fecha_cita)->locale('es')->dayName }}</p>
                     </div>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-xl flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-xl">
+                <div class="bg-gray-50 p-4 rounded-xl flex items-center gap-4 border border-gray-100">
+                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-xl flex-shrink-0">
                         <i class="bi bi-clock"></i>
                     </div>
                     <div>
@@ -110,7 +112,7 @@
                 Médico Especialista
             </h3>
             <div class="flex items-start gap-4">
-                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-2xl font-bold text-blue-700 border-2 border-white shadow-sm flex-shrink-0">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-2xl font-bold text-blue-700 border-4 border-white shadow-sm flex-shrink-0">
                     {{ substr($cita->medico->primer_nombre, 0, 1) }}{{ substr($cita->medico->primer_apellido, 0, 1) }}
                 </div>
                 <div class="flex-1">
@@ -144,7 +146,7 @@
             @endphp
 
             <div class="flex items-center gap-4 mb-4">
-                <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-lg">
+                <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-lg border-2 border-purple-200">
                     <i class="bi bi-person"></i>
                 </div>
                 <div>
@@ -181,14 +183,14 @@
     <div class="lg:col-span-1 space-y-6">
         
         <!-- Acciones -->
-        @if(in_array($cita->status, ['pendiente', 'confirmada']))
+        @if(in_array($cita->estado_cita, ['Programada', 'Confirmada', 'Pendiente']))
         <div class="card p-6 border-t-4 border-t-red-500 sticky top-6">
             <h4 class="font-bold text-gray-900 mb-4">Gestión de Cita</h4>
             <p class="text-sm text-gray-600 mb-4">
                 Si no puedes asistir a tu cita, por favor solicita una cancelación o reprogramación con anticipación.
             </p>
-            <button onclick="abrirModalCancelacion()" class="btn w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 shadow-sm">
-                <i class="bi bi-x-circle mr-2"></i> Solicitar Cancelación
+            <button onclick="document.getElementById('modal-cancelacion').showModal()" class="btn w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 shadow-sm transition-all group">
+                <i class="bi bi-x-circle mr-2 group-hover:scale-110 transition-transform"></i> Solicitar Cancelación
             </button>
         </div>
         @endif
@@ -198,29 +200,26 @@
             <h4 class="font-bold text-gray-900 mb-4">Info Adicional</h4>
             <div class="space-y-3 text-sm">
                 <div>
-                    <p class="text-gray-500 text-xs uppercase mb-1">Motivo Consulta</p>
+                    <p class="text-gray-500 text-xs uppercase mb-1 font-bold">Motivo Consulta</p>
                     <p class="font-medium text-gray-800">{{ $cita->motivo ?? 'Consulta General' }}</p>
                 </div>
                 @if($cita->observaciones)
                 <div class="pt-2 border-t border-gray-200">
-                    <p class="text-gray-500 text-xs uppercase mb-1">Observaciones</p>
-                    <p class="text-gray-600 italic">"{{ Str::limit($cita->observaciones, 100) }}"</p>
+                    <p class="text-gray-500 text-xs uppercase mb-1 font-bold">Observaciones/Historial</p>
+                    <div class="text-gray-600 italic text-xs max-h-32 overflow-y-auto bg-white p-2 rounded border border-gray-200">
+                        {!! nl2br(e($cita->observaciones)) !!}
+                    </div>
                 </div>
                 @endif
                 <div class="pt-2 border-t border-gray-200">
-                    <p class="text-gray-500 text-xs uppercase mb-1">Código Cita</p>
-                    <p class="font-mono bg-gray-200 px-2 py-1 rounded inline-block text-xs text-gray-700">#{{ str_pad($cita->id, 6, '0', STR_PAD_LEFT) }}</p>
+                    <p class="text-gray-500 text-xs uppercase mb-1 font-bold">Código Cita</p>
+                    <p class="font-mono bg-gray-200 px-2 py-1 rounded inline-block text-xs text-gray-700 font-bold">#{{ str_pad($cita->id, 6, '0', STR_PAD_LEFT) }}</p>
                 </div>
 
                 <div class="pt-2 border-t border-gray-200">
-                    <p class="text-gray-500 text-xs uppercase mb-1">Costo Total</p>
+                    <p class="text-gray-500 text-xs uppercase mb-1 font-bold">Costo Estimado</p>
                     <div class="flex items-center gap-2">
-                        <span class="text-2xl font-bold text-emerald-600">${{ number_format($cita->tarifa_total, 2) }}</span>
-                        @if($cita->tarifa_extra > 0)
-                            <span class="text-xs text-gray-500" title="Tarifa Base: ${{ number_format($cita->tarifa, 2) }} + Extra: ${{ number_format($cita->tarifa_extra, 2) }}">
-                                (Incluye extras)
-                            </span>
-                        @endif
+                        <span class="text-2xl font-bold text-emerald-600">${{ number_format($cita->tarifa + $cita->tarifa_extra, 2) }}</span>
                     </div>
                 </div>
 
@@ -230,92 +229,101 @@
     </div>
 </div>
 
-<!-- Modal Solicitud Cancelación -->
-<div id="modal-cancelacion" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <!-- Background overlay -->
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="cerrarModalCancelacion()"></div>
-
-        <!-- Center modal -->
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div class="sm:flex sm:items-start">
-                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                        <i class="bi bi-exclamation-triangle text-red-600 text-lg"></i>
-                    </div>
-                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                            Solicitar Cancelación de Cita
-                        </h3>
-                        <div class="mt-2 text-sm text-gray-500">
-                            <p class="mb-4">Por favor indícanos el motivo por el cual no podrás asistir. Tu solicitud será enviada al administrador.</p>
-                            
-                            <form id="form-cancelacion">
-                                @csrf
-                                <div class="mb-4">
-                                    <label for="motivo_cancelacion" class="block text-sm font-medium text-gray-700 mb-1">Motivo Principal</label>
-                                    <select id="motivo_cancelacion" name="motivo_cancelacion" class="form-select w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50">
-                                        <option value="">Seleccione un motivo...</option>
-                                        <option value="Salud">Problemas de Salud</option>
-                                        <option value="Trabajo">Motivos Laborales</option>
-                                        <option value="Personal">Asuntos Personales</option>
-                                        <option value="Transporte">Problemas de Transporte</option>
-                                        <option value="Economico">Motivos Económicos</option>
-                                        <option value="Otro">Otro</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="mb-2">
-                                    <label for="explicacion" class="block text-sm font-medium text-gray-700 mb-1">Explicación Detallada</label>
-                                    <textarea id="explicacion" name="explicacion" rows="3" class="form-textarea w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50" placeholder="Describe brevemente la razón..."></textarea>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+<!-- Modal Solicitud Cancelación (Rediseñado) -->
+<dialog id="modal-cancelacion" class="modal backdrop-blur-sm">
+    <div class="modal-box p-0 overflow-hidden bg-white shadow-2xl rounded-2xl w-11/12 max-w-md">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-red-50 to-white px-6 py-4 border-b border-red-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <i class="bi bi-exclamation-triangle text-red-600 text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-gray-900">Solicitar Cancelación</h3>
+                    <p class="text-xs text-red-500 font-medium">Requerirá aprobación del administrador</p>
                 </div>
             </div>
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button type="button" onclick="enviarSolicitud()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
-                    Enviar Solicitud
-                </button>
-                <button type="button" onclick="cerrarModalCancelacion()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                    Cancelar
-                </button>
-            </div>
+            <button class="btn btn-sm btn-circle btn-ghost text-gray-400 hover:bg-gray-100 rounded-full transition-colors" onclick="document.getElementById('modal-cancelacion').close()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="p-6">
+            <form id="form-cancelacion" onsubmit="enviarSolicitud(event)">
+                @csrf
+                
+                <p class="text-gray-600 text-sm mb-6">
+                    Lamentamos que no puedas asistir. Por favor indícanos el motivo para procesar tu solicitud.
+                </p>
+
+                <div class="form-control mb-4">
+                     <label class="label px-0 pt-0">
+                        <span class="label-text font-medium text-gray-700">Motivo Principal</span>
+                    </label>
+                    <select id="motivo_cancelacion" name="motivo_cancelacion" class="select select-bordered w-full bg-gray-50 focus:bg-white transition-colors">
+                        <option value="">Seleccione un motivo...</option>
+                        <option value="Salud">Problemas de Salud</option>
+                        <option value="Trabajo">Motivos Laborales</option>
+                        <option value="Personal">Asuntos Personales</option>
+                        <option value="Transporte">Problemas de Transporte</option>
+                        <option value="Economico">Motivos Económicos</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+                
+                <div class="form-control mb-6">
+                    <label class="label px-0 pt-0">
+                        <span class="label-text font-medium text-gray-700">Explícanos un poco más</span>
+                    </label>
+                    <textarea 
+                        id="explicacion" 
+                        name="explicacion" 
+                        class="textarea textarea-bordered h-24 w-full focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all resize-none text-gray-900 placeholder:text-gray-400 bg-gray-50" 
+                        placeholder="Detalles adicionales..."
+                    ></textarea>
+                </div>
+                
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button" class="btn btn-outline border-gray-300 text-gray-700 hover:bg-gray-50 px-6" onclick="document.getElementById('modal-cancelacion').close()">
+                        Volver
+                    </button>
+                    <button type="submit" class="btn bg-red-600 hover:bg-red-700 text-white border-0 px-6 shadow-lg shadow-red-200">
+                        Enviar Solicitud <i class="bi bi-send ml-2"></i>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-</div>
-
-    </div>
-</div>
+    <form method="dialog" class="modal-backdrop bg-gray-900/50">
+        <button>close</button>
+    </form>
+</dialog>
 
 <!-- SweetAlert2 CDN -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    // Asegurar que el modal esté oculto al cargar
-    document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('modal-cancelacion').classList.add('hidden');
-    });
-
-    function abrirModalCancelacion() {
-        document.getElementById('modal-cancelacion').classList.remove('hidden');
-    }
-
-    function cerrarModalCancelacion() {
-        document.getElementById('modal-cancelacion').classList.add('hidden');
-    }
-
-    async function enviarSolicitud() {
+    async function enviarSolicitud(e) {
+        e.preventDefault();
+        
         const motivo = document.getElementById('motivo_cancelacion').value;
         const explicacion = document.getElementById('explicacion').value;
 
         if (!motivo || !explicacion) {
-            Swal.fire('Error', 'Por favor complete todos los campos', 'error');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Campos incompletos',
+                text: 'Por favor complete todos los campos para continuar.',
+                confirmButtonColor: '#d33'
+            });
             return;
         }
+        
+        // Mostrar loading
+        const btnSubmit = e.target.querySelector('button[type="submit"]');
+        const originalText = btnSubmit.innerHTML;
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<span class="loading loading-spinner text-white"></span> Enviando...';
 
         try {
             const formData = new FormData();
@@ -334,22 +342,27 @@
             const data = await response.json();
 
             if (data.success) {
-                cerrarModalCancelacion();
+                document.getElementById('modal-cancelacion').close();
                 Swal.fire({
-                    title: 'Solicitud Enviada',
+                    title: '¡Solicitud Enviada!',
                     text: data.message,
                     icon: 'success',
+                    confirmButtonColor: '#10b981',
                     confirmButtonText: 'Entendido'
                 }).then(() => {
                     location.reload();
                 });
             } else {
-                Swal.fire('Error', data.message || 'Ocurrió un error', 'error');
+                Swal.fire('Error', data.message || 'Ocurrió un error al procesar la solicitud', 'error');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = originalText;
             }
 
         } catch (error) {
             console.error(error);
-            Swal.fire('Error', 'Error de conexión', 'error');
+            Swal.fire('Error', 'Hubo un problema de conexión. Intente nuevamente.', 'error');
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalText;
         }
     }
 </script>
