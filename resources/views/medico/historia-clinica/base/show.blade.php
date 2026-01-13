@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <a href="{{ url('index.php/historia-clinica/base') }}" class="btn btn-outline">
+            <a href="{{ route('historia-clinica.base.index') }}" class="btn btn-outline">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
@@ -16,7 +16,7 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ url('index.php/historia-clinica/base/' . ($historia->id ?? 1) . '/edit') }}" class="btn btn-primary">
+            <a href="{{ route('historia-clinica.base.edit', $historia->paciente_id ?? 1) }}" class="btn btn-primary">
                 <i class="bi bi-pencil"></i>
                 <span>Editar</span>
             </a>
@@ -239,7 +239,7 @@
                             </p>
                         </div>
                         <div class="flex-shrink-0">
-                            <a href="{{ url('index.php/historia-clinica/evoluciones/' . $evolucion->id) }}" class="btn btn-sm btn-outline">
+                            <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $evolucion->cita_id ?? 0]) }}" class="btn btn-sm btn-outline">
                                 <i class="bi bi-eye"></i>
                             </a>
                         </div>
@@ -317,17 +317,15 @@
             <div class="card p-6">
                 <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
                 <div class="space-y-2">
-                    {{-- Ver todas las evoluciones de este paciente con el médico actual --}}
-                    <a href="{{ route('historia-clinica.evoluciones.index', $historia->paciente->id ?? 1) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-journal-medical"></i>
-                        Ver Evoluciones
+                    <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => 0, 'historia_clinica_id' => $historia->id]) }}" class="btn btn-outline w-full justify-start">
+                        <i class="bi bi-file-earmark-plus"></i>
+                        Nueva Evolución
                     </a>
                     <a href="{{ route('ordenes-medicas.create', ['paciente' => $historia->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
                         <i class="bi bi-clipboard-plus"></i>
                         Nueva Orden
                     </a>
-                    {{-- Botón oculto - Los médicos no pueden agendar citas. Descomentar si se requiere habilitar --}}
-                    {{-- <a href="{{ route('citas.create', ['paciente' => $historia->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
+                    <a href="{{ route('citas.create', ['paciente' => $historia->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
                         <i class="bi bi-calendar-plus"></i>
                         Agendar Cita
                     </a> --}}

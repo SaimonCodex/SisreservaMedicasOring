@@ -8,13 +8,8 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-display font-bold text-gray-900">Mis Citas Médicas</h1>
-            <p class="text-gray-600 mt-1">Gestiona tu agenda y consultas programadas</p>
+            <p class="text-gray-600 mt-1">Consulta tu agenda y citas programadas</p>
         </div>
-        {{-- Botón oculto - Los médicos no pueden agendar citas. Descomentar si se requiere habilitar --}}
-        {{-- <a href="{{ route('citas.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i>
-            <span>Agendar Cita</span>
-        </a> --}}
     </div>
 
     <!-- Filters -->
@@ -201,30 +196,10 @@
                                 <a href="{{ route('citas.show', $cita->id) }}" class="btn btn-sm btn-outline" title="Ver Detalles">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                @if($cita->paciente && $cita->paciente->historiaClinicaBase)
-                                    <a href="{{ route('historia-clinica.base.show', $cita->paciente->id) }}" class="btn btn-sm btn-outline text-info-600" title="Historia Clínica Base">
-                                        <i class="bi bi-file-medical"></i>
-                                    </a>
-                                @endif
-                                @php
-                                    // Verificar si existen evoluciones clínicas entre este paciente y el médico actual
-                                    $medicoId = auth()->user()->medico->id ?? null;
-                                    $tieneEvoluciones = $medicoId && \App\Models\EvolucionClinica::where('paciente_id', $cita->paciente_id)
-                                        ->where('medico_id', $medicoId)
-                                        ->where('status', true)
-                                        ->exists();
-                                @endphp
-                                @if($tieneEvoluciones)
-                                    {{-- Botón para ver todas las evoluciones del paciente con este médico --}}
-                                    <a href="{{ route('historia-clinica.evoluciones.index', $cita->paciente_id) }}" class="btn btn-sm btn-outline text-purple-600" title="Ver Evoluciones Clínicas">
-                                        <i class="bi bi-journal-medical"></i>
-                                    </a>
-                                @endif
-                                @if($cita->estado_cita == 'Confirmada' && !$cita->evolucionClinica)
-                                    {{-- Botón para registrar nueva evolución (solo si cita confirmada/pagada y no tiene evolución) --}}
-                                    <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-success" title="Registrar Evolución del Paciente">
-                                        <i class="bi bi-file-earmark-medical"></i>
-                                    </a>
+                                @if($cita->status == 'confirmada')
+                                <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-success" title="Registrar Evolución">
+                                    <i class="bi bi-file-earmark-medical"></i>
+                                </a>
                                 @endif
                                 @if(in_array($cita->estado_cita, ['Programada', 'Confirmada']))
                                     <form action="{{ route('citas.destroy', $cita->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de cancelar esta cita?')">
@@ -246,13 +221,7 @@
                                     <i class="bi bi-calendar-x text-4xl text-gray-300"></i>
                                 </div>
                                 <p class="text-gray-500 font-medium mb-2">No se encontraron citas</p>
-                                <p class="text-sm text-gray-400 mb-4">Intenta ajustar los filtros de búsqueda</p>
-                                {{-- Botón oculto - Los médicos no pueden agendar citas
-                                <a href="{{ route('citas.create') }}" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-plus-lg"></i>
-                                    Agendar Cita
-                                </a>
-                                --}}
+                                <p class="text-sm text-gray-400">Intenta ajustar los filtros de búsqueda</p>
                             </div>
                         </td>
                     </tr>

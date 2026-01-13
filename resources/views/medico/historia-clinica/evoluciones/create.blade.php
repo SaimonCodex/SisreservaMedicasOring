@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ route('citas.show', $cita->id) }}" class="btn btn-outline">
+        <a href="{{ url('historia-clinica/evoluciones') }}" class="btn btn-outline">
             <i class="bi bi-arrow-left"></i>
         </a>
         <div>
@@ -17,20 +17,7 @@
         </div>
     </div>
 
-    <!-- Alerta informativa si hay datos pre-cargados -->
-    @if(isset($ultimaEvolucion) && $ultimaEvolucion)
-    <div class="p-4 bg-blue-50 rounded-xl border border-blue-200">
-        <div class="flex items-center gap-3">
-            <i class="bi bi-info-circle text-blue-600 text-xl"></i>
-            <div>
-                <p class="font-semibold text-blue-900">Datos pre-cargados de la última consulta</p>
-                <p class="text-sm text-blue-700">Se han cargado los datos de la evolución anterior ({{ \Carbon\Carbon::parse($ultimaEvolucion->created_at)->format('d/m/Y') }}). Puede editarlos según sea necesario.</p>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    <form action="{{ route('historia-clinica.evoluciones.store', $cita->id) }}" method="POST" class="space-y-6">
+    <form action="{{ route('historia-clinica.evoluciones.store', ['citaId' => request('cita') ?? 0]) }}" method="POST" class="space-y-6">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -210,23 +197,7 @@
                             <i class="bi bi-check-lg"></i>
                             Guardar Evolución
                         </button>
-                        
-                        <hr class="border-gray-200">
-                        
-                        @if($cita->estado_cita == 'Confirmada')
-                        <form action="{{ route('citas.cambiar-estado', $cita->id) }}" method="POST" class="w-full">
-                            @csrf
-                            <input type="hidden" name="estado_cita" value="Completada">
-                            <button type="submit" class="btn btn-primary w-full" onclick="return confirm('¿Está seguro de marcar esta cita como COMPLETADA? Esta acción indica que la consulta ha finalizado.')">
-                                <i class="bi bi-check-all"></i>
-                                Marcar Cita Completada
-                            </button>
-                        </form>
-                        @endif
-                        
-                        <hr class="border-gray-200">
-                        
-                        <a href="{{ route('citas.show', $cita->id) }}" class="btn btn-outline w-full" onclick="return confirm('¿Está seguro de cancelar? Se perderán los datos no guardados.')">
+                        <a href="{{ url('historia-clinica/evoluciones') }}" class="btn btn-outline w-full">
                             <i class="bi bi-x-lg"></i>
                             Cancelar
                         </a>
@@ -236,18 +207,16 @@
                 <!-- Quick Stats if previous evolutions exist -->
                 @if(isset($ultimaEvolucion) && $ultimaEvolucion)
                 <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Última Consulta</h3>
-                    <div class="space-y-3 text-sm">
-                        <div>
-                            <p class="text-gray-500">Fecha</p>
-                            <p class="font-semibold">{{ \Carbon\Carbon::parse($ultimaEvolucion->created_at)->format('d/m/Y') }}</p>
-                        </div>
-                        @if($ultimaEvolucion->diagnostico)
-                        <div>
-                            <p class="text-gray-500">Diagnóstico Anterior</p>
-                            <p class="font-semibold text-gray-900">{{ Str::limit($ultimaEvolucion->diagnostico, 80) }}</p>
-                        </div>
-                        @endif
+                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Enlaces Rápidos</h3>
+                    <div class="space-y-2">
+                        <a href="{{ route('ordenes-medicas.create') }}" class="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2">
+                            <i class="bi bi-clipboard-plus"></i>
+                            Crear Orden Médica
+                        </a>
+                        <a href="{{ url('historia-clinica/base/create') }}" class="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2">
+                            <i class="bi bi-file-earmark-medical"></i>
+                            Nueva Historia Clínica
+                        </a>
                     </div>
                 </div>
                 @endif

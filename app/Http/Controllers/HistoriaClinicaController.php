@@ -48,6 +48,12 @@ class HistoriaClinicaController extends Controller
         
         // Pacientes: solo su propia historia (implementar si es necesario)
         $historias = HistoriaClinicaBase::with('paciente')->where('status', true)->paginate(10);
+        
+        // Doctors use their specific view
+        if (auth()->user()->rol_id == 2) {
+            return view('medico.historia-clinica.base.index', compact('historias'));
+        }
+        
         return view('shared.historia-clinica.index', compact('historias'));
     }
 
@@ -68,12 +74,11 @@ class HistoriaClinicaController extends Controller
                            ->with('info', 'El paciente no tiene historia clínica base. Por favor créela.');
         }
 
-        // Médicos: vista específica
-        if ($user->rol_id == 2) {
+        // Doctors use their specific view
+        if (auth()->user()->rol_id == 2) {
             return view('medico.historia-clinica.base.show', compact('paciente', 'historia'));
         }
-        
-        // Pacientes/Representantes: vista compartida
+
         return view('shared.historia-clinica.base.show', compact('paciente', 'historia'));
     }
 

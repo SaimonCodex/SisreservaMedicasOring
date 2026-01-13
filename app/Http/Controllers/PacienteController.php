@@ -208,31 +208,13 @@ class PacienteController extends Controller
 
     public function index()
     {
-        $user = auth()->user();
+        $pacientes = Paciente::with(['usuario', 'estado'])->where('status', true)->paginate(15);
         
-        // Si es médico, filtrar solo sus pacientes (pacientes con citas atendidas por él)
-        if ($user->rol_id == 2) {
-            $medico = $user->medico;
-            if (!$medico) {
-                return redirect()->route('medico.dashboard')->with('error', 'No se encontró el perfil de médico');
-            }
-            
-            // Obtener IDs de pacientes únicos que han tenido citas con este médico
-            $pacienteIds = \App\Models\Cita::where('medico_id', $medico->id)
-                                          ->where('status', true)
-                                          ->distinct()
-                                          ->pluck('paciente_id');
-            
-            $pacientes = Paciente::with(['usuario', 'estado'])
-                                ->whereIn('id', $pacienteIds)
-                                ->where('status', true)
-                                ->get();
-            
+        // Doctors use their specific view
+        if (auth()->user()->rol_id == 2) {
             return view('medico.pacientes.index', compact('pacientes'));
         }
         
-        // Admin: todos los pacientes
-        $pacientes = Paciente::with(['usuario', 'estado'])->where('status', true)->get();
         return view('shared.pacientes.index', compact('pacientes'));
     }
 
@@ -301,14 +283,12 @@ class PacienteController extends Controller
     public function show($id)
     {
         $paciente = Paciente::with(['usuario', 'estado', 'ciudad', 'municipio', 'parroquia', 'historiaClinicaBase'])->findOrFail($id);
-
-        // Retornar vista según el rol
+        
+        // Doctors use their specific view
         if (auth()->user()->rol_id == 2) {
-            // Validar que el médico tenga relación con el paciente (opcional, pero recomendado por seguridad)
-            // Por ahora solo retornamos la vista correcta
-             return view('medico.pacientes.show', compact('paciente'));
+            return view('medico.pacientes.show', compact('paciente'));
         }
-
+        
         return view('shared.pacientes.show', compact('paciente'));
     }
 
@@ -341,7 +321,8 @@ class PacienteController extends Controller
             'numero_tlf' => 'nullable|max:15',
             'genero' => 'nullable|max:20',
             'ocupacion' => 'nullable|max:150',
-            'estado_civil' => 'nullable|max:50'
+            'estado_civil' => 'nullable|max:50',
+            'password' => 'nullable|min:8|confirmed'
         ]);
 
         if ($validator->fails()) {
@@ -350,6 +331,12 @@ class PacienteController extends Controller
 
         $paciente = Paciente::findOrFail($id);
         $paciente->update($request->all());
+
+        if ($request->filled('password')) {
+            $paciente->usuario->update([
+                'password' => $request->password // Mutator handles encryption
+            ]);
+        }
 
         return redirect()->route('pacientes.index')->with('success', 'Paciente actualizado exitosamente');
     }
