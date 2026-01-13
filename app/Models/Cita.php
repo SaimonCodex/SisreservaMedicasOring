@@ -25,6 +25,7 @@ class Cita extends Model
         'tarifa',
         'tarifa_extra',
         'tipo_consulta',
+        'direccion_domicilio',
         'estado_cita',
         'motivo',
         'observaciones',
