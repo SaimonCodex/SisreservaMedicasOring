@@ -143,6 +143,19 @@ class UsuarioController extends Controller
                 }
             });
 
+
+
+            // Redirección especial para Médicos si se solicitó configurar horario
+            if ($request->rol_id == 2 && $request->has('configurar_horario')) {
+                // Recuperar el médico recién creado. 
+                // Buscamos por correo ya que es único, para obtener el ID del usuario y luego su relación medico
+                $usuario = Usuario::where('correo', $request->correo)->first();
+                if ($usuario && $usuario->medico) {
+                    return redirect()->route('medicos.horarios', $usuario->medico->id)
+                                   ->with('success', 'Médico creado. Configure los horarios de atención.');
+                }
+            }
+
             return redirect()->route('usuarios.index')->with('success', 'Usuario creado exitosamente con su perfil.');
 
         } catch (\Exception $e) {
@@ -180,10 +193,10 @@ class UsuarioController extends Controller
             'password' => 'nullable|min:8|confirmed',
             'status' => 'boolean',
             // Profile fields
-            'primer_nombre' => 'required|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
-            'segundo_nombre' => 'nullable|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
-            'primer_apellido' => 'required|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
-            'segundo_apellido' => 'nullable|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
+            'primer_nombre' => 'required|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+            'segundo_nombre' => 'nullable|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+            'primer_apellido' => 'required|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+            'segundo_apellido' => 'nullable|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
             'tipo_documento' => 'required|string|in:V,E,J,P',
             'numero_documento' => 'required|string|max:20',
             'prefijo_tlf' => 'nullable|string|in:+58,+57,+1,+34',

@@ -54,6 +54,7 @@
         @csrf
         <input type="hidden" name="tipo_cita" id="tipo_cita" value="">
         <input type="hidden" name="misma_direccion" id="misma_direccion_input" value="1">
+        <input type="hidden" name="paciente_especial_existente_id" id="paciente_especial_existente_id" value="">
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6">
@@ -176,6 +177,51 @@
                     </div>
                 </div>
 
+                <!-- SELECCIÓN PACIENTE ESPECIAL EXISTENTE -->
+                @if(isset($pacientesEspecialesRegistrados) && $pacientesEspecialesRegistrados->count() > 0)
+                <div id="seccion-select-paciente-especial" class="card p-6 hidden">
+                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="bi bi-person-check text-emerald-600"></i>
+                        Seleccionar Paciente
+                    </h3>
+                    
+                    <div class="mb-4">
+                        <label class="form-label form-label-required">Paciente para la cita</label>
+                        <select id="select_paciente_especial" class="form-select" onchange="seleccionarPacienteEspecial(this.value)">
+                            <option value="">Seleccionar paciente registrado...</option>
+                            @foreach($pacientesEspecialesRegistrados as $pe)
+                            <option value="{{ $pe->id }}" 
+                                    data-paciente-id="{{ $pe->paciente_id }}"
+                                    data-nombre="{{ $pe->nombre_completo }}"
+                                    data-tipo="{{ $pe->tipo }}"
+                                    data-documento="{{ $pe->tipo_documento }}-{{ $pe->numero_documento }}">
+                                {{ $pe->nombre_completo }} ({{ $pe->tipo }}) - {{ $pe->tipo_documento }}-{{ $pe->numero_documento }}
+                            </option>
+                            @endforeach
+                            <option value="nuevo">➕ Registrar nuevo paciente especial</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Paciente especial seleccionado (tarjeta) -->
+                    <div id="paciente_especial_seleccionado_card" class="hidden">
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-xl font-bold" id="pac_esp_iniciales_display">
+                                    --
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-gray-900" id="pac_esp_nombre_display">-</h4>
+                                    <p class="text-sm text-gray-600" id="pac_esp_info_display">-</p>
+                                </div>
+                                <button type="button" onclick="limpiarPacienteEspecialSeleccionado()" class="text-danger-600 hover:text-danger-700">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <!-- DATOS PACIENTE ESPECIAL -->
                 <div id="datos-paciente-especial" class="card p-6 hidden">
                     <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -288,7 +334,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                                 <div>
                                     <label class="form-label">Estado</label>
-                                    <select name="pac_estado_id" id="pac_estado_id" class="form-select" onchange="cargarMunicipiosPac()">
+                                    <select name="pac_estado_id" id="pac_estado_id" class="form-select" onchange="cargarMunicipiosPac(); cargarCiudadesPac();">
                                         <option value="">Seleccionar estado...</option>
                                         @foreach($estados ?? [] as $estado)
                                         <option value="{{ $estado->id_estado }}">{{ $estado->estado }}</option>
@@ -298,6 +344,12 @@
                                 <div>
                                     <label class="form-label">Municipio</label>
                                     <select name="pac_municipio_id" id="pac_municipio_id" class="form-select" onchange="cargarParroquiasPac()">
+                                        <option value="">Primero seleccione estado...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">Ciudad</label>
+                                    <select name="pac_ciudad_id" id="pac_ciudad_id" class="form-select">
                                         <option value="">Primero seleccione estado...</option>
                                     </select>
                                 </div>
@@ -498,17 +550,18 @@
         let valid = true;
         
         if (tipoCita === 'terceros') {
-            // Validar campos requeridos de terceros
-            const camposRequeridos = [
+            // Verificar si se seleccionó un paciente especial existente
+            const pacienteEspecialExistente = document.getElementById('paciente_especial_existente_id').value;
+            
+            // Validar campos del representante (siempre requeridos)
+            const camposRepresentante = [
                 {id: 'rep_primer_nombre', msg: 'Ingrese el primer nombre del representante'},
                 {id: 'rep_primer_apellido', msg: 'Ingrese el primer apellido del representante'},
                 {id: 'rep_numero_documento', msg: 'Ingrese el número de documento del representante'},
                 {id: 'rep_parentesco', msg: 'Seleccione el parentesco'},
-                {id: 'pac_primer_nombre', msg: 'Ingrese el primer nombre del paciente'},
-                {id: 'pac_primer_apellido', msg: 'Ingrese el primer apellido del paciente'},
             ];
             
-            camposRequeridos.forEach(campo => {
+            camposRepresentante.forEach(campo => {
                 const el = document.getElementById(campo.id);
                 if (!el.value.trim()) {
                     mostrarError(campo.id, campo.msg);
@@ -516,18 +569,34 @@
                 }
             });
             
-            // Validar tipo de paciente
-            if (!document.querySelector('input[name="pac_tipo"]:checked')) {
-                document.getElementById('pac_tipo_error').textContent = 'Seleccione el tipo de paciente';
-                document.getElementById('pac_tipo_error').classList.remove('hidden');
-                valid = false;
-            }
-            
-            // Validar tiene documento
-            if (!document.querySelector('input[name="pac_tiene_documento"]:checked')) {
-                document.getElementById('pac_tiene_documento_error').textContent = 'Seleccione si tiene documento';
-                document.getElementById('pac_tiene_documento_error').classList.remove('hidden');
-                valid = false;
+            // Solo validar campos del paciente especial si NO se seleccionó uno existente
+            if (!pacienteEspecialExistente) {
+                const camposPaciente = [
+                    {id: 'pac_primer_nombre', msg: 'Ingrese el primer nombre del paciente'},
+                    {id: 'pac_primer_apellido', msg: 'Ingrese el primer apellido del paciente'},
+                ];
+                
+                camposPaciente.forEach(campo => {
+                    const el = document.getElementById(campo.id);
+                    if (!el.value.trim()) {
+                        mostrarError(campo.id, campo.msg);
+                        valid = false;
+                    }
+                });
+                
+                // Validar tipo de paciente
+                if (!document.querySelector('input[name="pac_tipo"]:checked')) {
+                    document.getElementById('pac_tipo_error').textContent = 'Seleccione el tipo de paciente';
+                    document.getElementById('pac_tipo_error').classList.remove('hidden');
+                    valid = false;
+                }
+                
+                // Validar tiene documento
+                if (!document.querySelector('input[name="pac_tiene_documento"]:checked')) {
+                    document.getElementById('pac_tiene_documento_error').textContent = 'Seleccione si tiene documento';
+                    document.getElementById('pac_tiene_documento_error').classList.remove('hidden');
+                    valid = false;
+                }
             }
         }
         
@@ -557,11 +626,23 @@
             document.getElementById('datos-propios').classList.remove('hidden');
             document.getElementById('datos-representante').classList.add('hidden');
             document.getElementById('datos-paciente-especial').classList.add('hidden');
+            // Ocultar sección de select si existe
+            const seccionSelect = document.getElementById('seccion-select-paciente-especial');
+            if (seccionSelect) seccionSelect.classList.add('hidden');
             document.getElementById('resumen-tipo').textContent = 'Cita Propia';
         } else {
             document.getElementById('datos-propios').classList.add('hidden');
             document.getElementById('datos-representante').classList.remove('hidden');
-            document.getElementById('datos-paciente-especial').classList.remove('hidden');
+            
+            // Si hay pacientes especiales registrados, mostrar el select
+            const seccionSelect = document.getElementById('seccion-select-paciente-especial');
+            if (seccionSelect) {
+                seccionSelect.classList.remove('hidden');
+                document.getElementById('datos-paciente-especial').classList.add('hidden');
+            } else {
+                // Si no hay, mostrar directamente el formulario
+                document.getElementById('datos-paciente-especial').classList.remove('hidden');
+            }
             document.getElementById('resumen-tipo').textContent = 'Cita para Terceros';
         }
     }
@@ -572,6 +653,64 @@
         document.getElementById('datos-propios').classList.add('hidden');
         document.getElementById('datos-representante').classList.add('hidden');
         document.getElementById('datos-paciente-especial').classList.add('hidden');
+        // Ocultar y resetear sección de select si existe
+        const seccionSelect = document.getElementById('seccion-select-paciente-especial');
+        if (seccionSelect) {
+            seccionSelect.classList.add('hidden');
+            document.getElementById('select_paciente_especial').value = '';
+            document.getElementById('paciente_especial_seleccionado_card').classList.add('hidden');
+        }
+        document.getElementById('paciente_especial_existente_id').value = '';
+    }
+    
+    // Seleccionar paciente especial existente
+    function seleccionarPacienteEspecial(value) {
+        const cardDisplay = document.getElementById('paciente_especial_seleccionado_card');
+        const formNuevo = document.getElementById('datos-paciente-especial');
+        const hiddenInput = document.getElementById('paciente_especial_existente_id');
+        
+        if (value === 'nuevo') {
+            // Mostrar formulario de nuevo paciente
+            cardDisplay.classList.add('hidden');
+            formNuevo.classList.remove('hidden');
+            hiddenInput.value = '';
+        } else if (value) {
+            // Paciente existente seleccionado
+            const select = document.getElementById('select_paciente_especial');
+            const selectedOption = select.options[select.selectedIndex];
+            
+            const nombre = selectedOption.dataset.nombre;
+            const tipo = selectedOption.dataset.tipo;
+            const documento = selectedOption.dataset.documento;
+            
+            // Generar iniciales
+            const palabras = nombre.split(' ');
+            const iniciales = palabras.length >= 2 
+                ? (palabras[0][0] + palabras[palabras.length - 1][0]).toUpperCase()
+                : nombre.substring(0, 2).toUpperCase();
+            
+            // Actualizar tarjeta
+            document.getElementById('pac_esp_iniciales_display').textContent = iniciales;
+            document.getElementById('pac_esp_nombre_display').textContent = nombre;
+            document.getElementById('pac_esp_info_display').textContent = tipo + ' | ' + documento;
+            
+            // Mostrar tarjeta, ocultar formulario
+            cardDisplay.classList.remove('hidden');
+            formNuevo.classList.add('hidden');
+            hiddenInput.value = value;
+        } else {
+            // Nada seleccionado
+            cardDisplay.classList.add('hidden');
+            formNuevo.classList.add('hidden');
+            hiddenInput.value = '';
+        }
+    }
+    
+    // Limpiar paciente especial seleccionado
+    function limpiarPacienteEspecialSeleccionado() {
+        document.getElementById('select_paciente_especial').value = '';
+        document.getElementById('paciente_especial_seleccionado_card').classList.add('hidden');
+        document.getElementById('paciente_especial_existente_id').value = '';
     }
 
     function toggleDocumento(tiene) {
@@ -584,12 +723,38 @@
         } else {
             campoDoc.classList.add('hidden');
             infoGenerado.classList.remove('hidden');
-            // Mostrar preview del documento generado
-            const tipoDoc = document.getElementById('rep_tipo_documento').value;
-            const numDoc = document.getElementById('rep_numero_documento').value;
-            document.getElementById('doc-generado-preview').textContent = tipoDoc + '-' + numDoc + '-01';
+            actualizarPreviewDocumento();
         }
     }
+
+    async function actualizarPreviewDocumento() {
+        const tipoDoc = document.getElementById('rep_tipo_documento').value;
+        const numDoc = document.getElementById('rep_numero_documento').value;
+        const preview = document.getElementById('doc-generado-preview');
+        
+        if (!numDoc) {
+            preview.textContent = 'Documento no disponible';
+            return;
+        }
+
+        preview.textContent = 'Generando...';
+        
+        try {
+            const response = await fetch(BASE_URL + '/ajax/citas/get-next-sequence/' + numDoc);
+            if (!response.ok) throw new Error('Error en API');
+            
+            const data = await response.json();
+            // Data.full_id trae "12345678-02", le agregamos el tipo
+            preview.textContent = tipoDoc + '-' + data.full_id;
+        } catch(e) {
+            console.error('Error obteniendo secuencia:', e);
+            preview.textContent = tipoDoc + '-' + numDoc + '-01'; // Fallback
+        }
+    }
+
+    // Listeners para actualizar si cambia el representante (aunque sea readonly para el paciente actual, es bueno tenerlo)
+    document.getElementById('rep_numero_documento')?.addEventListener('change', actualizarPreviewDocumento);
+    document.getElementById('rep_tipo_documento')?.addEventListener('change', actualizarPreviewDocumento);
 
     function toggleDireccionPaciente() {
         const checkbox = document.getElementById('misma_direccion');
@@ -605,6 +770,28 @@
         }
     }
 
+    // Cargar ciudades para paciente
+    async function cargarCiudadesPac() {
+        const estadoId = document.getElementById('pac_estado_id').value;
+        const ciudadSelect = document.getElementById('pac_ciudad_id');
+        
+        if (!estadoId) {
+            ciudadSelect.innerHTML = '<option value="">Primero seleccione estado...</option>';
+            return;
+        }
+        
+        try {
+            const response = await fetch(BASE_URL + '/ubicacion/get-ciudades/' + estadoId);
+            const ciudades = await response.json();
+            ciudadSelect.innerHTML = '<option value="">Seleccionar ciudad...</option>';
+            ciudades.forEach(c => {
+                ciudadSelect.innerHTML += `<option value="${c.id_ciudad}">${c.ciudad}</option>`;
+            });
+        } catch(e) {
+            console.error('Error cargando ciudades:', e);
+        }
+    }
+
     // Cargar municipios para paciente
     async function cargarMunicipiosPac() {
         const estadoId = document.getElementById('pac_estado_id').value;
@@ -616,7 +803,7 @@
         }
         
         try {
-            const response = await fetch(BASE_URL + '/api/ubicacion/municipios/' + estadoId);
+            const response = await fetch(BASE_URL + '/ubicacion/get-municipios/' + estadoId);
             const municipios = await response.json();
             municipioSelect.innerHTML = '<option value="">Seleccionar municipio...</option>';
             municipios.forEach(m => {
@@ -638,7 +825,7 @@
         }
         
         try {
-            const response = await fetch(BASE_URL + '/api/ubicacion/parroquias/' + municipioId);
+            const response = await fetch(BASE_URL + '/ubicacion/get-parroquias/' + municipioId);
             const parroquias = await response.json();
             parroquiaSelect.innerHTML = '<option value="">Seleccionar parroquia...</option>';
             parroquias.forEach(p => {

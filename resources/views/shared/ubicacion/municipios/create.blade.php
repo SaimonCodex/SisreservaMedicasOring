@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/configuracion/ubicacion/municipios') }}" class="btn btn-outline">
+        <a href="{{ route('ubicacion.municipios.index') }}" class="btn btn-outline">
             <i class="bi bi-arrow-left"></i>
         </a>
         <div>
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    <form action="{{ url('index.php/configuracion/ubicacion/municipios') }}" method="POST">
+    <form action="{{ route('ubicacion.municipios.store') }}" method="POST">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -30,11 +30,11 @@
                     <div class="space-y-4">
                         <div>
                             <label class="form-label form-label-required">Estado</label>
-                            <select name="estado_id" class="form-select" required>
+                            <select name="id_estado" class="form-select" required>
                                 <option value="">Seleccionar estado...</option>
                                 @foreach($estados ?? [] as $estado)
-                                <option value="{{ $estado->id }}" {{ old('estado_id') == $estado->id ? 'selected' : '' }}>
-                                    {{ $estado->nombre }}
+                                <option value="{{ $estado->id_estado }}" {{ old('id_estado') == $estado->id_estado ? 'selected' : '' }}>
+                                    {{ $estado->estado }}
                                 </option>
                                 @endforeach
                             </select>
@@ -42,12 +42,7 @@
 
                         <div>
                             <label class="form-label form-label-required">Nombre del Municipio</label>
-                            <input type="text" name="nombre" class="input" placeholder="Ej: Libertador" value="{{ old('nombre') }}" required>
-                        </div>
-
-                        <div>
-                            <label class="form-label">Código</label>
-                            <input type="text" name="codigo" class="input" placeholder="Ej: LIB" value="{{ old('codigo') }}" maxlength="10">
+                            <input type="text" name="municipio" class="input" placeholder="Ej: Libertador" value="{{ old('municipio') }}" required maxlength="100">
                         </div>
                     </div>
                 </div>
@@ -57,7 +52,7 @@
             <div class="space-y-6">
                 <!-- Estado -->
                 <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Estado</h3>
+                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Estatus</h3>
                     <div class="space-y-3">
                         <label class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
                             <input type="radio" name="status" value="1" class="form-radio" {{ old('status', '1') == '1' ? 'checked' : '' }}>
@@ -84,7 +79,7 @@
                             <i class="bi bi-check-lg"></i>
                             Guardar Municipio
                         </button>
-                        <a href="{{ url('index.php/configuracion/ubicacion/municipios') }}" class="btn btn-outline w-full">
+                        <a href="{{ route('ubicacion.municipios.index') }}" class="btn btn-outline w-full">
                             <i class="bi bi-x-lg"></i>
                             Cancelar
                         </a>

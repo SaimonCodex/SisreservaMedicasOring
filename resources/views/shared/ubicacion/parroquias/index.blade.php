@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-display font-bold text-gray-900">Gestión de Parroquias</h1>
             <p class="text-gray-600 mt-1">Administra las parroquias por municipio</p>
         </div>
-        <a href="{{ url('index.php/configuracion/ubicacion/parroquias/create') }}" class="btn btn-primary">
+        <a href="{{ route('ubicacion.parroquias.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i>
             <span>Nueva Parroquia</span>
         </a>
@@ -18,7 +18,7 @@
 
     <!-- Filters -->
     <div class="card p-6">
-        <form method="GET" class="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <form action="{{ route('ubicacion.parroquias.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div>
                 <label class="form-label">Buscar</label>
                 <input type="text" name="search" class="input" placeholder="Nombre..." value="{{ request('search') }}">
@@ -28,8 +28,8 @@
                 <select name="estado_id" class="form-select" id="estado_filter">
                     <option value="">Todos</option>
                     @foreach($estados ?? [] as $estado)
-                    <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
-                        {{ $estado->nombre }}
+                    <option value="{{ $estado->id_estado }}" {{ request('estado_id') == $estado->id_estado ? 'selected' : '' }}>
+                        {{ $estado->estado }}
                     </option>
                     @endforeach
                 </select>
@@ -39,14 +39,14 @@
                 <select name="municipio_id" class="form-select">
                     <option value="">Todos</option>
                     @foreach($municipios ?? [] as $municipio)
-                    <option value="{{ $municipio->id }}" {{ request('municipio_id') == $municipio->id ? 'selected' : '' }}>
-                        {{ $municipio->nombre }}
+                    <option value="{{ $municipio->id_municipio }}" {{ request('municipio_id') == $municipio->id_municipio ? 'selected' : '' }}>
+                        {{ $municipio->municipio }}
                     </option>
                     @endforeach
                 </select>
             </div>
             <div>
-                <label class="form-label">Estado</label>
+                <label class="form-label">Estatus</label>
                 <select name="status" class="form-select">
                     <option value="">Todos</option>
                     <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>Activas</option>
@@ -57,7 +57,7 @@
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-search"></i> Buscar
                 </button>
-                <a href="{{ url('index.php/configuracion/ubicacion/parroquias') }}" class="btn btn-outline">
+                <a href="{{ route('ubicacion.parroquias.index') }}" class="btn btn-outline">
                     <i class="bi bi-x-lg"></i> Limpiar
                 </a>
             </div>
@@ -73,7 +73,7 @@
                         <th>Parroquia</th>
                         <th>Municipio</th>
                         <th>Estado</th>
-                        <th class="w-24">Estado</th>
+                        <th class="w-24">Estatus</th>
                         <th class="w-40">Acciones</th>
                     </tr>
                 </thead>
@@ -86,21 +86,20 @@
                                     <i class="bi bi-building-check text-emerald-600"></i>
                                 </div>
                                 <div>
-                                    <p class="font-semibold text-gray-900">{{ $parroquia->nombre }}</p>
-                                    <p class="text-sm text-gray-500">{{ $parroquia->codigo ?? 'N/A' }}</p>
+                                    <p class="font-semibold text-gray-900">{{ $parroquia->parroquia }}</p>
                                 </div>
                             </div>
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
                                 <i class="bi bi-geo-alt text-amber-600"></i>
-                                <span class="text-gray-700">{{ $parroquia->municipio->nombre ?? 'N/A' }}</span>
+                                <span class="text-gray-700">{{ $parroquia->municipio->municipio ?? 'N/A' }}</span>
                             </div>
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
                                 <i class="bi bi-map text-blue-600"></i>
-                                <span class="text-gray-700">{{ $parroquia->municipio->estado->nombre ?? 'N/A' }}</span>
+                                <span class="text-gray-700">{{ $parroquia->municipio->estado->estado ?? 'N/A' }}</span>
                             </div>
                         </td>
                         <td>
@@ -112,12 +111,16 @@
                         </td>
                         <td>
                             <div class="flex gap-2">
-                                <a href="{{ url('index.php/configuracion/ubicacion/parroquias/' . $parroquia->id . '/edit') }}" class="btn btn-sm btn-outline" title="Editar">
+                                <a href="{{ route('ubicacion.parroquias.edit', $parroquia->id_parroquia) }}" class="btn btn-sm btn-outline" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <button onclick="if(confirm('¿Eliminar esta parroquia?')) { /* submit delete form */ }" class="btn btn-sm btn-outline text-rose-600 hover:bg-rose-50" title="Eliminar">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                <form action="{{ route('ubicacion.parroquias.destroy', $parroquia->id_parroquia) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que deseas desactivar esta parroquia?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline text-rose-600 hover:bg-rose-50" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>

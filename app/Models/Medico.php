@@ -71,6 +71,11 @@ class Medico extends Model
                     ->withPivot('dia_semana', 'turno', 'horario_inicio', 'horario_fin', 'status');
     }
 
+    public function horarios()
+    {
+        return $this->hasMany(MedicoConsultorio::class, 'medico_id');
+    }
+
     public function citas()
     {
         return $this->hasMany(Cita::class, 'medico_id');

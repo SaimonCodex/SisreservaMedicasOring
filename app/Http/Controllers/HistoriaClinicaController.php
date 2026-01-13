@@ -18,12 +18,48 @@ class HistoriaClinicaController extends Controller
 
     public function indexBase()
     {
+        $user = Auth::user();
+        
+        // Administradores NO tienen acceso a historias clínicas
+        if ($user->rol_id == 1) {
+            abort(403, 'Los administradores no tienen acceso a historias clínicas.');
+        }
+        
+        // Médicos: solo historias de sus pacientes
+        if ($user->rol_id == 2) {
+            $medico = $user->medico;
+            if (!$medico) {
+                return redirect()->route('medico.dashboard')->with('error', 'No se encontró el perfil de médico');
+            }
+            
+            // Obtener IDs de pacientes atendidos por este médico
+            $pacienteIds = \App\Models\Cita::where('medico_id', $medico->id)
+                                          ->where('status', true)
+                                          ->distinct()
+                                          ->pluck('paciente_id');
+            
+            $historias = HistoriaClinicaBase::with('paciente')
+                                           ->whereIn('paciente_id', $pacienteIds)
+                                           ->where('status', true)
+                                           ->paginate(10);
+            
+            return view('medico.historia-clinica.base.index', compact('historias'));
+        }
+        
+        // Pacientes: solo su propia historia (implementar si es necesario)
         $historias = HistoriaClinicaBase::with('paciente')->where('status', true)->paginate(10);
         return view('shared.historia-clinica.index', compact('historias'));
     }
 
     public function showBase($pacienteId)
     {
+        $user = Auth::user();
+        
+        // Administradores NO tienen acceso
+        if ($user->rol_id == 1) {
+            abort(403, 'Los administradores no tienen acceso a historias clínicas.');
+        }
+        
         $paciente = Paciente::with(['historiaClinicaBase', 'usuario'])->findOrFail($pacienteId);
         $historia = $paciente->historiaClinicaBase;
         
@@ -32,6 +68,12 @@ class HistoriaClinicaController extends Controller
                            ->with('info', 'El paciente no tiene historia clínica base. Por favor créela.');
         }
 
+        // Médicos: vista específica
+        if ($user->rol_id == 2) {
+            return view('medico.historia-clinica.base.show', compact('paciente', 'historia'));
+        }
+        
+        // Pacientes/Representantes: vista compartida
         return view('shared.historia-clinica.base.show', compact('paciente', 'historia'));
     }
 
@@ -41,7 +83,7 @@ class HistoriaClinicaController extends Controller
             abort(403, 'Solo los médicos pueden crear historias clínicas.');
         }
         $paciente = Paciente::with('usuario')->findOrFail($pacienteId);
-        return view('shared.historia-clinica.base.create', compact('paciente'));
+        return view('medico.historia-clinica.base.create', compact('paciente'));
     }
 // ...
     public function editBase($pacienteId)
@@ -56,18 +98,37 @@ class HistoriaClinicaController extends Controller
             return redirect()->route('historia-clinica.base.create', $pacienteId);
         }
 
-        return view('shared.historia-clinica.base.edit', compact('paciente', 'historia'));
+        return view('medico.historia-clinica.base.edit', compact('paciente', 'historia'));
     }
 // ...
     public function indexEvoluciones($pacienteId)
     {
+        $user = Auth::user();
+        
+        // Administradores NO tienen acceso
+        if ($user->rol_id == 1) {
+            abort(403, 'Los administradores no tienen acceso a historias clínicas.');
+        }
+        
         $paciente = Paciente::with('usuario')->findOrFail($pacienteId);
-        $evoluciones = EvolucionClinica::with(['cita', 'medico'])
+        
+        $evolucionesQuery = EvolucionClinica::with(['cita.especialidad', 'medico'])
                                      ->where('paciente_id', $pacienteId)
-                                     ->where('status', true)
-                                     ->orderBy('created_at', 'desc')
-                                     ->get();
+                                     ->where('status', true);
+        
+        // Médicos: solo ver sus propias evoluciones con este paciente
+        if ($user->rol_id == 2 && $user->medico) {
+            $evolucionesQuery->where('medico_id', $user->medico->id);
+        }
+        
+        $evoluciones = $evolucionesQuery->orderBy('created_at', 'desc')->get();
 
+        // Médicos: vista específica
+        if ($user->rol_id == 2) {
+            return view('medico.historia-clinica.evoluciones.index', compact('paciente', 'evoluciones'));
+        }
+        
+        // Pacientes/Representantes: vista compartida
         return view('shared.historia-clinica.evoluciones.index', compact('paciente', 'evoluciones'));
     }
 
@@ -76,28 +137,117 @@ class HistoriaClinicaController extends Controller
         if (Auth::user()->rol_id != 2) {
             abort(403, 'Solo los médicos pueden crear evoluciones clínicas.');
         }
-        $cita = Cita::with(['paciente', 'medico', 'especialidad'])->findOrFail($citaId);
         
-        // Verificar que la cita esté en estado completada
-        if ($cita->estado_cita !== 'Completada') {
-            return redirect()->back()->with('error', 'Solo se puede crear evolución clínica para citas completadas.');
+        $cita = Cita::with(['paciente', 'medico', 'especialidad'])->findOrFail($citaId);
+        $medicoId = Auth::user()->medico->id;
+        
+        // Verificar que la cita esté en estado Confirmada o Completada
+        if (!in_array($cita->estado_cita, ['Confirmada', 'Completada'])) {
+            return redirect()->back()->with('error', 'Solo se puede crear evolución clínica para citas confirmadas (pagadas) o completadas.');
         }
 
         // Verificar que no exista ya una evolución para esta cita
         $existeEvolucion = EvolucionClinica::where('cita_id', $citaId)->exists();
         if ($existeEvolucion) {
-            return redirect()->route('historia-clinica.evoluciones.show', $citaId)
-                           ->with('error', 'Ya existe una evolución clínica para esta cita.');
+            return redirect()->route('citas.show', $citaId)
+                           ->with('info', 'Ya existe una evolución clínica para esta cita.');
+        }
+        
+        // Obtener la última evolución del paciente con este médico para pre-cargar datos
+        $ultimaEvolucion = EvolucionClinica::where('paciente_id', $cita->paciente_id)
+            ->where('medico_id', $medicoId)
+            ->where('status', true)
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        return view('medico.historia-clinica.evoluciones.create', compact('cita', 'ultimaEvolucion'));
+    }
+
+    public function storeEvolucion(Request $request, $citaId)
+    {
+        if (Auth::user()->rol_id != 2) {
+            abort(403, 'Solo los médicos pueden crear evoluciones clínicas.');
+        }
+        
+        $cita = Cita::findOrFail($citaId);
+        $medicoId = Auth::user()->medico->id;
+        
+        // Validación
+        $validator = Validator::make($request->all(), [
+            'motivo_consulta' => 'required|string|max:255',
+            'enfermedad_actual' => 'required|string',
+            'diagnostico' => 'required|string',
+            'tratamiento' => 'required|string',
+            'peso_kg' => 'nullable|numeric|min:0|max:500',
+            'talla_cm' => 'nullable|numeric|min:0|max:300',
+            'tension_sistolica' => 'nullable|integer|min:50|max:300',
+            'tension_diastolica' => 'nullable|integer|min:30|max:200',
+            'frecuencia_cardiaca' => 'nullable|integer|min:30|max:250',
+            'temperatura_c' => 'nullable|numeric|min:30|max:45',
+            'frecuencia_respiratoria' => 'nullable|integer|min:5|max:60',
+            'saturacion_oxigeno' => 'nullable|numeric|min:50|max:100',
+            'examen_fisico' => 'nullable|string',
+            'recomendaciones' => 'nullable|string',
+            'notas_adicionales' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        return view('shared.historia-clinica.evoluciones.create', compact('cita'));
+        // Calcular IMC si peso y talla están presentes
+        $imc = null;
+        if ($request->peso_kg && $request->talla_cm) {
+            $tallaMetros = $request->talla_cm / 100;
+            $imc = $request->peso_kg / ($tallaMetros * $tallaMetros);
+        }
+
+        // Crear la evolución clínica
+        EvolucionClinica::create([
+            'cita_id' => $citaId,
+            'paciente_id' => $cita->paciente_id,
+            'medico_id' => $medicoId,
+            'peso_kg' => $request->peso_kg,
+            'talla_cm' => $request->talla_cm,
+            'imc' => $imc,
+            'tension_sistolica' => $request->tension_sistolica,
+            'tension_diastolica' => $request->tension_diastolica,
+            'frecuencia_cardiaca' => $request->frecuencia_cardiaca,
+            'temperatura_c' => $request->temperatura_c,
+            'frecuencia_respiratoria' => $request->frecuencia_respiratoria,
+            'saturacion_oxigeno' => $request->saturacion_oxigeno,
+            'motivo_consulta' => $request->motivo_consulta,
+            'enfermedad_actual' => $request->enfermedad_actual,
+            'examen_fisico' => $request->examen_fisico,
+            'diagnostico' => $request->diagnostico,
+            'tratamiento' => $request->tratamiento,
+            'recomendaciones' => $request->recomendaciones,
+            'notas_adicionales' => $request->notas_adicionales,
+            'status' => true
+        ]);
+
+        return redirect()->route('citas.show', $citaId)
+                        ->with('success', 'Evolución clínica registrada exitosamente.');
     }
 // ...
     public function showEvolucion($citaId)
     {
+        $user = Auth::user();
+        
+        // Administradores NO tienen acceso
+        if ($user->rol_id == 1) {
+            abort(403, 'Los administradores no tienen acceso a historias clínicas.');
+        }
+        
         $cita = Cita::with(['paciente', 'medico', 'especialidad'])->findOrFail($citaId);
         $evolucion = EvolucionClinica::where('cita_id', $citaId)->firstOrFail();
 
+        // Médicos: vista específica
+        if ($user->rol_id == 2) {
+            return view('medico.historia-clinica.evoluciones.show', compact('cita', 'evolucion'));
+        }
+        
+        // Pacientes/Representantes: vista compartida
         return view('shared.historia-clinica.evoluciones.show', compact('cita', 'evolucion'));
     }
 
@@ -109,7 +259,7 @@ class HistoriaClinicaController extends Controller
         $cita = Cita::with(['paciente', 'medico'])->findOrFail($citaId);
         $evolucion = EvolucionClinica::where('cita_id', $citaId)->firstOrFail();
 
-        return view('shared.historia-clinica.evoluciones.edit', compact('cita', 'evolucion'));
+        return view('medico.historia-clinica.evoluciones.edit', compact('cita', 'evolucion'));
     }
 // ...
     public function historialCompleto($pacienteId)

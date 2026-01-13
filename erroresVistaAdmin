@@ -1,0 +1,2 @@
+1) al registrar un medico con un correo ya existente sale error debido a que el campo del correo de la tabla usuarios es unique, lo cual esta bien, pero el sistema debe ser capaz de guardar a un usuario con distintos roles ejemplo el usuario, puede ser admin y medico a la vez y viceversa y el sistema debe darle acceso a ambas configuraciones.
+2) al registrar medico y giuardar su contraseña se guarda en texto plano deberia ser con doble md5 revisar controlador y el modelo de medico.
