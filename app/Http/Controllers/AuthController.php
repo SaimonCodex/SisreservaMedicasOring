@@ -223,7 +223,7 @@ class AuthController extends Controller
             $usuario = Usuario::create([
                 'rol_id' => $request->rol_id,
                 'correo' => $request->correo,
-                'password' => md5(md5($request->password)),
+                'password' => $request->password,
                 'status' => true
             ]);
 
@@ -401,7 +401,7 @@ class AuthController extends Controller
             return redirect()->back()->with('error', 'Usuario no encontrado');
         }
 
-        $usuario->update(['password' => md5(md5($request->password))]);
+        $usuario->update(['password' => $request->password]);
 
         HistorialPassword::create([
             'user_id' => $usuario->id,

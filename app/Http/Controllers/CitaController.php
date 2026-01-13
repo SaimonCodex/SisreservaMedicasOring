@@ -210,6 +210,11 @@ class CitaController extends Controller
     {
         $user = auth()->user();
         
+        // Doctors cannot create appointments
+        if ($user->rol_id == 2) {
+            return redirect()->route('citas.index')->with('error', 'No tienes permiso para agendar citas.');
+        }
+        
         // Para paciente: vista específica con datos precargados
         if ($user->rol_id == 3) {
             $paciente = $user->paciente;
@@ -233,7 +238,7 @@ class CitaController extends Controller
             return view('paciente.citas.create', compact('paciente', 'especialidades', 'consultorios', 'estados', 'pacientesEspecialesRegistrados'));
         }
         
-        // Para médico y admin: vista compartida
+        // Para admin: vista compartida
         $medicos = Medico::with('especialidades')->where('status', true)->get();
         $pacientes = Paciente::where('status', true)->get();
         $especialidades = Especialidad::where('status', true)->get();
@@ -879,6 +884,13 @@ class CitaController extends Controller
 
     public function edit($id)
     {
+        $user = auth()->user();
+        
+        // Doctors cannot edit appointments
+        if ($user->rol_id == 2) {
+            return redirect()->route('citas.index')->with('error', 'No tienes permiso para editar citas.');
+        }
+        
         $cita = Cita::findOrFail($id);
         $medicos = Medico::with('especialidades')->where('status', true)->get();
         $pacientes = Paciente::where('status', true)->get();

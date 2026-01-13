@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-display font-bold text-gray-900">Historias Clínicas</h1>
             <p class="text-gray-600 mt-1">Registro médico completo de pacientes</p>
         </div>
-        <a href="{{ url('index.php/historia-clinica/base/create') }}" class="btn btn-primary">
+        <a href="{{ url('historia-clinica/base/create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i>
             <span>Nueva Historia Clínica</span>
         </a>
@@ -50,7 +50,7 @@
                     <i class="bi bi-search"></i>
                     Buscar
                 </button>
-                <a href="{{ url('index.php/historia-clinica/base') }}" class="btn btn-outline">
+                <a href="{{ route('historia-clinica.base.index') }}" class="btn btn-outline">
                     <i class="bi bi-x-lg"></i>
                 </a>
             </div>
@@ -185,10 +185,10 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
-                                <a href="{{ url('index.php/historia-clinica/base/' . $historia->id) }}" class="btn btn-sm btn-outline" title="Ver">
+                                <a href="{{ route('historia-clinica.base.show', $historia->paciente_id) }}" class="btn btn-sm btn-outline" title="Ver">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="{{ url('index.php/historia-clinica/base/' . $historia->id . '/edit') }}" class="btn btn-sm btn-primary" title="Editar">
+                                <a href="{{ route('historia-clinica.base.edit', $historia->paciente_id) }}" class="btn btn-sm btn-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                             </div>
@@ -203,7 +203,7 @@
                                 </div>
                                 <p class="text-gray-500 font-medium mb-2">No se encontraron historias clínicas</p>
                                 <p class="text-sm text-gray-400 mb-4">Crea una nueva historia clínica para comenzar</p>
-                                <a href="{{ url('index.php/historia-clinica/base/create') }}" class="btn btn-sm btn-primary">
+                                <a href="{{ url('historia-clinica/base/create') }}" class="btn btn-sm btn-primary">
                                     <i class="bi bi-plus-lg"></i>
                                     Nueva Historia Clínica
                                 </a>

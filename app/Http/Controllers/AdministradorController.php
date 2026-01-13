@@ -253,7 +253,7 @@ class AdministradorController extends Controller
         // Si se envió contraseña, actualizarla en el usuario
         if ($request->filled('password')) {
             $administrador->usuario->update([
-                'password' => $request->password // El mutator se encarga del hash
+                'password' => $request->password // Mutator handles encryption
             ]);
         }
 

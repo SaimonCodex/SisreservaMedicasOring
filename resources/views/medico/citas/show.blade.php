@@ -98,6 +98,31 @@
                                     </a>
                                 @endif
                             </div>
+
+<!-- ... other blocks ... -->
+
+                        <div class="pt-4 border-t border-gray-200">
+                            <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-outline">
+                                <i class="bi bi-eye"></i> Ver Evolución Completa
+                            </a>
+                        </div>
+
+<!-- ... other blocks ... -->
+
+            <!-- Quick Actions -->
+            <div class="card p-6">
+                <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
+                <div class="space-y-2">
+                    <a href="{{ route('ordenes-medicas.create', ['paciente' => $cita->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
+                        <i class="bi bi-clipboard-plus"></i>
+                        Nueva Orden Médica
+                    </a>
+                    <a href="{{ route('historia-clinica.base.index', ['paciente' => $cita->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
+                        <i class="bi bi-folder2-open"></i>
+                        Ver Expediente
+                    </a>
+                </div>
+            </div>
                         </div>
                     </div>
                 </div>

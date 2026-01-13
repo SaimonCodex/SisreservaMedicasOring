@@ -1,4 +1,4 @@
-@extends(auth()->user()->rol_id == 1 ? 'layouts.admin' : 'layouts.medico')
+@extends('layouts.medico')
 
 @section('title', 'Órdenes Médicas')
 
@@ -11,12 +11,12 @@
             <p class="text-gray-600 mt-1">Gestión de recetas, exámenes y referencias médicas</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ url('index.php/ordenes-medicas/recetas') }}" class="btn btn-outline">
+            <a href="{{ route('ordenes-medicas.recetas') }}" class="btn btn-outline">
                 <i class="bi bi-prescription"></i>
                 <span>Recetas</span>
             </a>
             @if(auth()->user()->rol_id == 2)
-            <a href="{{ url('index.php/ordenes-medicas/create') }}" class="btn btn-primary">
+            <a href="{{ route('ordenes-medicas.create') }}" class="btn btn-primary">
                 <i class="bi bi-plus-lg"></i>
                 <span>Nueva Orden</span>
             </a>
@@ -108,7 +108,7 @@
                     <i class="bi bi-search"></i>
                     Filtrar
                 </button>
-                <a href="{{ url('index.php/ordenes-medicas') }}" class="btn btn-outline">
+                <a href="{{ route('ordenes-medicas.index') }}" class="btn btn-outline">
                     <i class="bi bi-x-lg"></i>
                 </a>
             </div>
@@ -199,11 +199,11 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
-                                <a href="{{ url('index.php/ordenes-medicas/' . $orden->id) }}" class="btn btn-sm btn-outline" title="Ver">
+                                <a href="{{ route('ordenes-medicas.show', $orden->id) }}" class="btn btn-sm btn-outline" title="Ver">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 @if($orden->status != 'completada' && auth()->user()->rol_id == 2)
-                                <a href="{{ url('index.php/ordenes-medicas/' . $orden->id . '/edit') }}" class="btn btn-sm btn-primary" title="Editar">
+                                <a href="{{ route('ordenes-medicas.edit', $orden->id) }}" class="btn btn-sm btn-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 @endif
@@ -220,7 +220,7 @@
                                 <p class="text-gray-500 font-medium mb-2">No se encontraron órdenes médicas</p>
                                 <p class="text-sm text-gray-400 mb-4">Crea una nueva orden para comenzar</p>
                                 @if(auth()->user()->rol_id == 2)
-                                <a href="{{ url('index.php/ordenes-medicas/create') }}" class="btn btn-sm btn-primary">
+                                <a href="{{ route('ordenes-medicas.create') }}" class="btn btn-sm btn-primary">
                                     <i class="bi bi-plus-lg"></i>
                                     Nueva Orden
                                 </a>
@@ -242,7 +242,7 @@
 
     <!-- Quick Links -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <a href="{{ url('index.php/ordenes-medicas/recetas') }}" class="card card-hover p-6 bg-gradient-to-br from-purple-50 to-white border-purple-200">
+        <a href="{{ route('ordenes-medicas.recetas') }}" class="card card-hover p-6 bg-gradient-to-br from-purple-50 to-white border-purple-200">
             <div class="flex items-center gap-4">
                 <div class="w-14 h-14 rounded-xl bg-purple-600 flex items-center justify-center">
                     <i class="bi bi-prescription text-white text-2xl"></i>
@@ -254,7 +254,7 @@
             </div>
         </a>
 
-        <a href="{{ url('index.php/ordenes-medicas/laboratorios') }}" class="card card-hover p-6 bg-gradient-to-br from-blue-50 to-white border-blue-200">
+        <a href="{{ route('ordenes-medicas.laboratorios') }}" class="card card-hover p-6 bg-gradient-to-br from-blue-50 to-white border-blue-200">
             <div class="flex items-center gap-4">
                 <div class="w-14 h-14 rounded-xl bg-blue-600 flex items-center justify-center">
                     <i class="bi bi-activity text-white text-2xl"></i>
@@ -266,7 +266,7 @@
             </div>
         </a>
 
-        <a href="{{ url('index.php/ordenes-medicas/imagenologias') }}" class="card card-hover p-6 bg-gradient-to-br from-emerald-50 to-white border-emerald-200">
+        <a href="{{ route('ordenes-medicas.imagenologias') }}" class="card card-hover p-6 bg-gradient-to-br from-emerald-50 to-white border-emerald-200">
             <div class="flex items-center gap-4">
                 <div class="w-14 h-14 rounded-xl bg-emerald-600 flex items-center justify-center">
                     <i class="bi bi-x-ray text-white text-2xl"></i>
@@ -278,7 +278,7 @@
             </div>
         </a>
 
-        <a href="{{ url('index.php/ordenes-medicas/referencias') }}" class="card card-hover p-6 bg-gradient-to-br from-amber-50 to-white border-amber-200">
+        <a href="{{ route('ordenes-medicas.referencias') }}" class="card card-hover p-6 bg-gradient-to-br from-amber-50 to-white border-amber-200">
             <div class="flex items-center gap-4">
                 <div class="w-14 h-14 rounded-xl bg-amber-600 flex items-center justify-center">
                     <i class="bi bi-arrow-right-circle text-white text-2xl"></i>

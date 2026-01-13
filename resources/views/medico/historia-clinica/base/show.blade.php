@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <a href="{{ url('index.php/historia-clinica/base') }}" class="btn btn-outline">
+            <a href="{{ route('historia-clinica.base.index') }}" class="btn btn-outline">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
@@ -16,7 +16,7 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ url('index.php/historia-clinica/base/' . ($historia->id ?? 1) . '/edit') }}" class="btn btn-primary">
+            <a href="{{ route('historia-clinica.base.edit', $historia->paciente_id ?? 1) }}" class="btn btn-primary">
                 <i class="bi bi-pencil"></i>
                 <span>Editar</span>
             </a>
@@ -239,7 +239,7 @@
                             </p>
                         </div>
                         <div class="flex-shrink-0">
-                            <a href="{{ url('index.php/historia-clinica/evoluciones/' . $evolucion->id) }}" class="btn btn-sm btn-outline">
+                            <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $evolucion->cita_id ?? 0]) }}" class="btn btn-sm btn-outline">
                                 <i class="bi bi-eye"></i>
                             </a>
                         </div>

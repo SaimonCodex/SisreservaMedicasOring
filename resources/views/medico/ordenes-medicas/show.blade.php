@@ -1,4 +1,4 @@
-@extends(auth()->user()->rol_id == 1 ? 'layouts.admin' : 'layouts.medico')
+@extends('layouts.medico')
 
 @section('title', 'Detalle de Orden Médica')
 
@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <a href="{{ url('index.php/ordenes-medicas') }}" class="btn btn-outline">
+            <a href="{{ route('ordenes-medicas.index') }}" class="btn btn-outline">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
@@ -19,7 +19,7 @@
         </div>
         <div class="flex items-center gap-2">
             @if($orden->status != 'completada')
-            <a href="{{ url('index.php/ordenes-medicas/' . ($orden->id ?? 1) . '/edit') }}" class="btn btn-primary">
+            <a href="{{ route('ordenes-medicas.edit', $orden->id ?? 1) }}" class="btn btn-primary">
                 <i class="bi bi-pencil"></i>
                 <span>Editar</span>
             </a>
@@ -384,7 +384,7 @@
                 <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones</h3>
                 <div class="space-y-2">
                     @if($orden->tipo == 'laboratorio' && !($orden->laboratorio->resultados ?? null))
-                    <a href="{{ url('index.php/ordenes-medicas/registrar-resultados?laboratorio=' . $orden->laboratorio->id) }}" class="btn btn-success w-full justify-start">
+                    <a href="{{ route('ordenes-medicas.registrar-resultados', ['id' => $orden->id, 'laboratorio' => $orden->laboratorio->id]) }}" class="btn btn-success w-full justify-start">
                         <i class="bi bi-clipboard-check"></i>
                         Registrar Resultados
                     </a>

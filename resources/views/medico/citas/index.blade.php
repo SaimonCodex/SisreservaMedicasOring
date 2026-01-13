@@ -8,7 +8,7 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-display font-bold text-gray-900">Mis Citas Médicas</h1>
-            <p class="text-gray-600 mt-1">Gestiona tu agenda y consultas programadas</p>
+            <p class="text-gray-600 mt-1">Consulta tu agenda y citas programadas</p>
         </div>
         {{-- Botón oculto - Los médicos no pueden agendar citas. Descomentar si se requiere habilitar --}}
         {{-- <a href="{{ route('citas.create') }}" class="btn btn-primary">

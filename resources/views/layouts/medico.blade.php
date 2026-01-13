@@ -167,11 +167,12 @@
                                 <p class="text-xs text-gray-500">Médico</p>
                             </div>
                             <div class="p-2">
-                                <a href="{{ url('index.php/medico/perfil') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700">
+                            <div class="p-2">
+                                <a href="{{ url('medico/perfil') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700">
                                     <i class="bi bi-person"></i>
                                     <span>Mi Perfil</span>
                                 </a>
-                                <a href="{{ url('index.php/medico/configuracion') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700">
+                                <a href="{{ url('medico/configuracion') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700">
                                     <i class="bi bi-gear"></i>
                                     <span>Configuración</span>
                                 </a>

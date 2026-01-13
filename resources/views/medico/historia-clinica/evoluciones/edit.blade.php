@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/historia-clinica/evoluciones/' . ($evolucion->id ?? 1)) }}" class="btn btn-outline">
+        <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $evolucion->cita_id ?? 0]) }}" class="btn btn-outline">
             <i class="bi bi-arrow-left"></i>
         </a>
         <div>
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    <form action="{{ url('index.php/historia-clinica/evoluciones/' . ($evolucion->id ?? 1)) }}" method="POST" class="space-y-6">
+    <form action="{{ route('historia-clinica.evoluciones.update', ['citaId' => $evolucion->cita_id ?? 0]) }}" method="POST" class="space-y-6">
         @csrf
         @method('PUT')
 
@@ -168,7 +168,7 @@
                             <i class="bi bi-check-lg"></i>
                             Actualizar Evolución
                         </button>
-                        <a href="{{ url('index.php/historia-clinica/evoluciones/' . ($evolucion->id ?? 1)) }}" class="btn btn-outline w-full">
+                        <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $evolucion->cita_id ?? 0]) }}" class="btn btn-outline w-full">
                             <i class="bi bi-x-lg"></i>
                             Cancelar
                         </a>

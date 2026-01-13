@@ -341,7 +341,8 @@ class PacienteController extends Controller
             'numero_tlf' => 'nullable|max:15',
             'genero' => 'nullable|max:20',
             'ocupacion' => 'nullable|max:150',
-            'estado_civil' => 'nullable|max:50'
+            'estado_civil' => 'nullable|max:50',
+            'password' => 'nullable|min:8|confirmed'
         ]);
 
         if ($validator->fails()) {
@@ -350,6 +351,12 @@ class PacienteController extends Controller
 
         $paciente = Paciente::findOrFail($id);
         $paciente->update($request->all());
+
+        if ($request->filled('password')) {
+            $paciente->usuario->update([
+                'password' => $request->password // Mutator handles encryption
+            ]);
+        }
 
         return redirect()->route('pacientes.index')->with('success', 'Paciente actualizado exitosamente');
     }
