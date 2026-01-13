@@ -218,9 +218,30 @@
                                         @endif
                                     </p>
                                 </div>
-                                <span class="badge badge-{{ $estadoColor }} mt-2 md:mt-0 self-start">
-                                    <i class="bi {{ $estadoIcon }} mr-1"></i> {{ $cita->estado_cita }}
-                                </span>
+                                <div class="flex flex-wrap gap-2 mt-2 md:mt-0">
+                                    <span class="badge badge-{{ $estadoColor }} self-start">
+                                        <i class="bi {{ $estadoIcon }} mr-1"></i> {{ $cita->estado_cita }}
+                                    </span>
+
+                                    @if($cita->facturaPaciente && $cita->facturaPaciente->pagos->where('status', true)->count() > 0)
+                                        @php
+                                            $ultimoPago = $cita->facturaPaciente->pagos->where('status', true)->sortByDesc('created_at')->first();
+                                            $pagoBadge = match($ultimoPago->estado) {
+                                                'Confirmado' => 'success',
+                                                'Pendiente' => 'warning',
+                                                'Rechazado' => 'danger',
+                                                default => 'gray'
+                                            };
+                                        @endphp
+                                        <a href="{{ route('pagos.index', ['buscar' => $cita->paciente->numero_documento]) }}" class="badge badge-{{ $pagoBadge }} self-start hover:scale-105 transition-transform" title="Ver detalles del pago">
+                                            <i class="bi bi-credit-card mr-1"></i> Pago: {{ $ultimoPago->estado }}
+                                        </a>
+                                    @elseif($cita->facturaPaciente)
+                                        <span class="badge badge-gray self-start opacity-75" title="No se ha registrado ningún pago para esta factura">
+                                            <i class="bi bi-credit-card mr-1"></i> Sin Pago
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm mt-3">
@@ -279,6 +300,15 @@
                                 @if(in_array($cita->estado_cita, ['Confirmada', 'En Progreso']))
                                     <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-primary">
                                         <i class="bi bi-clipboard-pulse mr-1"></i> Atender / Evolución
+                                    </a>
+                                @endif
+
+                                @if($cita->facturaPaciente && $cita->facturaPaciente->pagos && $cita->facturaPaciente->pagos->count() > 0)
+                                    @php
+                                        $pago = $cita->facturaPaciente->pagos->sortByDesc('created_at')->first();
+                                    @endphp
+                                    <a href="{{ route('pagos.show', $pago->id_pago) }}" class="btn btn-sm bg-indigo-600 text-white hover:bg-indigo-700" title="Ver detalles del pago">
+                                        <i class="bi bi-receipt mr-1"></i> Ver Pago
                                     </a>
                                 @endif
 

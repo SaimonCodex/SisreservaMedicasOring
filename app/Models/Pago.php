@@ -20,6 +20,7 @@ class Pago extends Model
         'tasa_aplicada_id',
         'referencia',
         'comentarios',
+        'comprobante',
         'estado',
         'confirmado_por',
         'status'

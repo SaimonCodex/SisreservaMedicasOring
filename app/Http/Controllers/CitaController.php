@@ -39,7 +39,7 @@ class CitaController extends Controller
             }
             
             // 1. Citas propias del paciente
-            $citasPropias = Cita::with(['medico', 'especialidad', 'consultorio', 'paciente'])
+            $citasPropias = Cita::with(['medico', 'especialidad', 'consultorio', 'paciente', 'facturaPaciente.pagos'])
                          ->where('paciente_id', $paciente->id)
                          ->where('status', true)
                          ->orderBy('fecha_cita', 'desc')
@@ -66,7 +66,7 @@ class CitaController extends Controller
                 $pacienteIds = $pacientesEspeciales->pluck('paciente_id')->filter();
                 
                 if ($pacienteIds->isNotEmpty()) {
-                    $citasTerceros = Cita::with(['medico', 'especialidad', 'consultorio', 'paciente', 'paciente.pacienteEspecial'])
+                    $citasTerceros = Cita::with(['medico', 'especialidad', 'consultorio', 'paciente', 'paciente.pacienteEspecial', 'facturaPaciente.pagos'])
                                          ->whereIn('paciente_id', $pacienteIds)
                                          ->where('status', true)
                                          ->orderBy('fecha_cita', 'desc')
@@ -97,7 +97,8 @@ class CitaController extends Controller
             'medico', 
             'especialidad', 
             'consultorio',
-            'evolucionClinica'
+            'evolucionClinica',
+            'facturaPaciente.pagos'
         ])->where('status', true);
 
         // Filtro por Rol Médico (solo ve sus citas)
@@ -161,7 +162,7 @@ class CitaController extends Controller
 
         // Ordenamiento: priorizar citas confirmadas (pagadas) primero, luego por fecha más próxima
         $citas = $query->orderByRaw("FIELD(estado_cita, 'Confirmada', 'En Progreso', 'Programada', 'Completada', 'Cancelada', 'No Asistió')")
-                       ->orderBy('fecha_cita', 'asc')
+                       ->orderBy('fecha_cita', 'desc')
                        ->orderBy('hora_inicio', 'asc')
                        ->paginate(10)
                        ->withQueryString();
@@ -722,7 +723,7 @@ class CitaController extends Controller
                                     ->where('fecha_cita', $request->fecha_cita)
                                     ->where('hora_inicio', $request->hora_inicio)
                                     ->where('status', true)
-                                    ->whereNotIn('estado_cita', ['Cancelada', 'No Asistió'])
+                                    ->whereIn('estado_cita', ['Programada', 'Confirmada', 'En Progreso', 'Completada'])
                                     ->exists();
 
                 if ($citaExistente) {
@@ -777,7 +778,8 @@ class CitaController extends Controller
             'consultorio' => function($q) { $q->with(['estado', 'ciudad', 'municipio', 'parroquia']); },
             'pacienteEspecial',
             'representante',
-            'evolucionClinica'
+            'evolucionClinica',
+            'facturaPaciente.pagos'
         ])->findOrFail($id);
 
         // Si es paciente, mostrar vista personalizada
@@ -1113,7 +1115,7 @@ class CitaController extends Controller
         $citasOcupadas = Cita::where('medico_id', $medicoId)
             ->where('fecha_cita', $fecha)
             ->where('status', true)
-            ->whereNotIn('estado_cita', ['Cancelada', 'No Asistió'])
+            ->whereIn('estado_cita', ['Programada', 'Confirmada', 'En Progreso', 'Completada'])
             ->pluck('hora_inicio')
             ->toArray();
         
