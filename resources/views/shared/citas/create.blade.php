@@ -20,7 +20,7 @@
         </h3>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button type="button" onclick="selectTipoCita('propia')" class="tipo-cita-btn p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left">
+            <button type="button" data-tipo-cita="propia" class="tipo-cita-btn p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left">
                 <div class="flex items-center gap-4">
                     <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
                         <i class="bi bi-person-fill text-2xl text-blue-600"></i>
@@ -32,7 +32,7 @@
                 </div>
             </button>
             
-            <button type="button" onclick="selectTipoCita('terceros')" class="tipo-cita-btn p-6 border-2 border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left">
+            <button type="button" data-tipo-cita="terceros" class="tipo-cita-btn p-6 border-2 border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left">
                 <div class="flex items-center gap-4">
                     <div class="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
                         <i class="bi bi-people-fill text-2xl text-emerald-600"></i>
@@ -67,7 +67,7 @@
                         Buscar Paciente
                     </h3>
                     
-                    <div class="form-group mb-4">
+                    <div id="pac-buscador-container" class="form-group mb-4">
                         <label class="form-label">Buscar por nombre, apellido o cédula</label>
                         <div class="relative">
                             <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>

@@ -8,7 +8,7 @@
             Representante (Quien agenda)
         </h3>
         
-        <div class="form-group mb-4">
+        <div id="rep-buscador-container" class="form-group mb-4">
             <label class="form-label">Buscar representante existente</label>
             <div class="relative">
                 <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -28,9 +28,9 @@
         
         <!-- Representante seleccionado -->
         <div id="representante_seleccionado" class="hidden mt-4">
-            <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+            <div class="bg-success-50 border border-success-200 rounded-xl p-4">
                 <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold" id="rep_iniciales_display">
+                    <div class="w-14 h-14 rounded-full bg-gradient-to-br from-success-500 to-success-600 flex items-center justify-center text-white text-xl font-bold" id="rep_iniciales_display">
                         --
                     </div>
                     <div class="flex-1">
@@ -189,13 +189,25 @@
             Paciente Especial
         </h3>
         
-        <div class="form-group mb-4">
-            <label class="form-label">Buscar paciente especial existente</label>
-            <div class="relative">
-                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input type="text" id="buscar_pac_especial" class="input pl-10" placeholder="Buscar por nombre o ID..." autocomplete="off">
+        <!-- SELECT PACIENTES ESPECIALES DEL REPRESENTANTE (cargado dinámicamente) -->
+        <div id="seccion-select-pac-esp-representante" class="hidden mb-4">
+            <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <label class="form-label flex items-center gap-2">
+                    <i class="bi bi-person-check text-emerald-600"></i>
+                    <span class="font-medium text-emerald-800">Pacientes registrados de este representante</span>
+                </label>
+                <select id="select_pac_esp_representante" class="form-select mt-2" onchange="seleccionarPacEspDeRepresentante(this.value)">
+                    <option value="">Seleccionar paciente...</option>
+                </select>
             </div>
-            <div id="resultados-pac-especial" class="absolute z-50 w-full bg-white border rounded-lg shadow-lg mt-1 hidden max-h-60 overflow-y-auto"></div>
+        </div>
+        
+        <!-- Mensaje cuando no hay representante seleccionado o no tiene pacientes -->
+        <div id="mensaje-seleccionar-representante" class="p-4 bg-gray-50 border border-gray-200 rounded-lg mb-4">
+            <p class="text-gray-600 text-sm flex items-center gap-2">
+                <i class="bi bi-info-circle"></i>
+                <span>Seleccione o ingrese un representante primero para ver sus pacientes registrados.</span>
+            </p>
         </div>
         
         <!-- Alerta tipo incorrecto -->
@@ -259,8 +271,31 @@
                     <span class="text-sm">Otro</span>
                 </label>
             </div>
+            <span class="error-message text-red-500 text-xs mt-1 hidden" id="pac_esp_tipo_error"></span>
         </div>
         
+        <!-- ¿Tiene documento? -->
+        <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <label class="form-label form-label-required mb-3">¿El paciente tiene documento de identidad?</label>
+            <div class="flex gap-4">
+                <label class="flex items-center gap-2 p-3 border bg-white rounded-lg cursor-pointer hover:bg-green-50 has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                    <input type="radio" name="pac_esp_tiene_documento" value="si" class="text-green-600" onchange="togglePacEspDocumento(true)">
+                    <span class="font-medium">Sí, tiene documento</span>
+                </label>
+                <label class="flex items-center gap-2 p-3 border bg-white rounded-lg cursor-pointer hover:bg-orange-50 has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
+                    <input type="radio" name="pac_esp_tiene_documento" value="no" class="text-orange-600" onchange="togglePacEspDocumento(false)">
+                    <span class="font-medium">No tiene documento</span>
+                </label>
+            </div>
+            
+            <div id="pac-esp-doc-generado-info" class="mt-3 p-3 bg-white rounded-lg border border-amber-300 hidden">
+                <p class="text-sm text-amber-800"><i class="bi bi-info-circle"></i> Se generará el identificador:</p>
+                <p class="text-lg font-bold text-amber-900 mt-1" id="pac-esp-documento-preview">-</p>
+                <input type="hidden" name="pac_esp_numero_documento_generado" id="pac_esp_numero_documento_generado">
+            </div>
+            <span class="error-message text-red-500 text-xs mt-1 hidden" id="pac_esp_tiene_documento_error"></span>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="form-label form-label-required">Primer Nombre</label>
@@ -281,6 +316,22 @@
                 <input type="text" name="pac_esp_segundo_apellido" id="pac_esp_segundo_apellido" class="input" placeholder="Segundo apellido" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')">
             </div>
             
+            <!-- Documento Paciente Especial (manual) -->
+            <div id="campo-documento-pac-esp" class="hidden md:col-span-2">
+                <label class="form-label form-label-required">Documento de Identidad</label>
+                <div class="flex gap-2">
+                    <select name="pac_esp_tipo_documento" id="pac_esp_tipo_documento" class="form-select w-20">
+                        <option value="V">V</option>
+                        <option value="E">E</option>
+                        <option value="P">P</option>
+                    </select>
+                    <input type="text" name="pac_esp_numero_documento" id="pac_esp_numero_documento" class="input flex-1" 
+                           placeholder="Número" maxlength="12"
+                           oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+                <span class="error-message text-red-500 text-xs mt-1 hidden" id="pac_esp_numero_documento_error"></span>
+            </div>
+            
             <div>
                 <label class="form-label form-label-required">Fecha Nacimiento</label>
                 <input type="date" name="pac_esp_fecha_nac" id="pac_esp_fecha_nac" class="input" max="{{ date('Y-m-d') }}">
@@ -295,7 +346,7 @@
                     <option value="Femenino">Femenino</option>
                 </select>
             </div>
-
+        
             <!-- Ubicación Paciente Especial -->
             <div class="md:col-span-2 mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                 <div class="md:col-span-2">
@@ -333,16 +384,7 @@
                     <textarea name="pac_esp_direccion_detallada" id="pac_esp_direccion_detallada" class="form-textarea" rows="2" placeholder="Calle, avenida, edificio..."></textarea>
                 </div>
             </div>
-
-            <!-- ID Generado -->
-            <div class="md:col-span-2">
-                <label class="form-label">Documento del Paciente (Auto-generado)</label>
-                <div class="flex gap-2 items-center">
-                    <input type="text" id="pac_esp_documento_preview" class="input flex-1 bg-gray-100 font-mono" readonly placeholder="Se generará automáticamente">
-                    <span class="text-sm text-gray-500">Basado en documento del representante</span>
-                </div>
-                <input type="hidden" name="pac_esp_numero_documento" id="pac_esp_numero_documento">
-            </div>
         </div>
     </div>
 </div>
+```

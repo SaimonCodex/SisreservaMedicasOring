@@ -35,7 +35,7 @@
             <!-- Dashboard -->
             <a href="{{ route('medico.dashboard') }}" 
                class="flex items-center px-3 py-2.5 rounded-lg mb-4 transition-all duration-200 group {{ request()->routeIs('medico.dashboard') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-speedometer2 text-lg mr-3 {{ request()->routeIs('medico.dashboard') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+                <i class="bi bi-speedometer2 text-lg mr-3 {{ request()->is('*/medico/dashboard') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Dashboard</span>
             </a>
             
@@ -46,25 +46,25 @@
             
             <a href="{{ route('citas.index') }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('citas.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-calendar-check-fill text-lg mr-3 {{ request()->routeIs('citas.*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+                <i class="bi bi-calendar-check-fill text-lg mr-3 {{ request()->is('*/citas*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mis Citas</span>
             </a>
             
             <a href="{{ route('pacientes.index') }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('pacientes.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-people-fill text-lg mr-3 {{ request()->routeIs('pacientes.*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+                <i class="bi bi-people-fill text-lg mr-3 {{ request()->is('*/pacientes*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mis Pacientes</span>
             </a>
             
             <a href="{{ route('historia-clinica.base.index') }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('historia-clinica.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-file-earmark-medical-fill text-lg mr-3 {{ request()->routeIs('historia-clinica.*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+                <i class="bi bi-file-earmark-medical-fill text-lg mr-3 {{ request()->is('*/historia-clinica*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Historias Clínicas</span>
             </a>
             
             <a href="{{ route('ordenes-medicas.index') }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('ordenes-medicas.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-clipboard2-pulse-fill text-lg mr-3 {{ request()->routeIs('ordenes-medicas.*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+                <i class="bi bi-clipboard2-pulse-fill text-lg mr-3 {{ request()->is('*/ordenes-medicas*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Órdenes Médicas</span>
             </a>
             
@@ -73,15 +73,15 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Gestión</p>
             </div>
             
-            <a href="{{ url('medico/agenda') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('medico/agenda*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-calendar-week-fill text-lg mr-3 {{ request()->is('medico/agenda*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+            <a href="{{ route('medicos.horarios', auth()->id()) }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('medicos.horarios') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+                <i class="bi bi-calendar-week-fill text-lg mr-3 {{ request()->is('*/medico/agenda*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mi Agenda</span>
             </a>
             
-            <a href="{{ url('medico/estadisticas') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('medico/estadisticas*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-graph-up-arrow text-lg mr-3 {{ request()->is('medico/estadisticas*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+            <a href="{{ route('ordenes-medicas.estadisticas') }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('ordenes-medicas.estadisticas') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+                <i class="bi bi-graph-up-arrow text-lg mr-3 {{ request()->is('*/medico/estadisticas*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Estadísticas</span>
             </a>
             
@@ -90,9 +90,9 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cuenta</p>
             </div>
             
-            <a href="{{ url('medico/perfil') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('medico/perfil*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-person-fill text-lg mr-3 {{ request()->is('medico/perfil*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+            <a href="{{ route('medicos.show', auth()->id()) }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('medicos.show') || request()->is('*/medico/perfil*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+                <i class="bi bi-person-fill text-lg mr-3 {{ request()->is('*/medico/perfil*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mi Perfil</span>
             </a>
             

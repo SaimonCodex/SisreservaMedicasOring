@@ -91,8 +91,14 @@ class CitaController extends Controller
         // PARA MÉDICO (ROL 2) Y ADMIN (ROL 1)
         // =========================================================================
         
-        $query = Cita::with(['paciente', 'medico', 'especialidad', 'consultorio'])
-                     ->where('status', true);
+        $query = Cita::with([
+            'paciente.historiaClinicaBase', 
+            'paciente.usuario',
+            'medico', 
+            'especialidad', 
+            'consultorio',
+            'evolucionClinica'
+        ])->where('status', true);
 
         // Filtro por Rol Médico (solo ve sus citas)
         if ($user->rol_id == 2) {
@@ -132,23 +138,30 @@ class CitaController extends Controller
 
         // Filtro por Estado de Cita
         if ($request->filled('estado')) {
-            // Mapeo simple de valores del select a valores de la BD si es necesario,
-            // asumiendo que el value del select coincide con la BD o hacemos un map.
-            // Valores BD esperados: 'Programada', 'Confirmada', 'En Progreso', 'Completada', 'Cancelada', 'No Asistió'
-            $estadoMap = [
-                'pendiente' => ['Programada'],
-                'confirmada' => ['Confirmada'],
-                'completada' => ['Completada'],
-                'cancelada' => ['Cancelada', 'No Asistió']
-            ];
+            // Valores BD válidos: 'Programada', 'Confirmada', 'En Progreso', 'Completada', 'Cancelada', 'No Asistió'
+            $estadosValidos = ['Programada', 'Confirmada', 'En Progreso', 'Completada', 'Cancelada', 'No Asistió'];
             
-            if (array_key_exists($request->estado, $estadoMap)) {
-                $query->whereIn('estado_cita', $estadoMap[$request->estado]);
+            // Si el valor viene directamente como enum válido
+            if (in_array($request->estado, $estadosValidos)) {
+                $query->where('estado_cita', $request->estado);
+            } else {
+                // Mapeo de valores legacy del select (compatibilidad hacia atrás)
+                $estadoMap = [
+                    'pendiente' => ['Programada'],
+                    'confirmada' => ['Confirmada'],
+                    'completada' => ['Completada'],
+                    'cancelada' => ['Cancelada', 'No Asistió']
+                ];
+                
+                if (array_key_exists($request->estado, $estadoMap)) {
+                    $query->whereIn('estado_cita', $estadoMap[$request->estado]);
+                }
             }
         }
 
-        // Ordenamiento
-        $citas = $query->orderBy('fecha_cita', 'desc')
+        // Ordenamiento: priorizar citas confirmadas (pagadas) primero, luego por fecha más próxima
+        $citas = $query->orderByRaw("FIELD(estado_cita, 'Confirmada', 'En Progreso', 'Programada', 'Completada', 'Cancelada', 'No Asistió')")
+                       ->orderBy('fecha_cita', 'asc')
                        ->orderBy('hora_inicio', 'asc')
                        ->paginate(10)
                        ->withQueryString();
@@ -183,12 +196,13 @@ class CitaController extends Controller
             $medicos = Medico::where('status', true)->orderBy('primer_nombre')->get();
         }
 
-        // Si es médico, retornar la vista específica de médico
+        // Retornar vista según el rol
         if ($user->rol_id == 2) {
-            $consultorios = Consultorio::where('status', true)->orderBy('nombre')->get();
-            return view('medico.citas.index', compact('citas', 'stats', 'consultorios'));
+            // Médico: vista específica
+            return view('medico.citas.index', compact('citas', 'stats'));
         }
-
+        
+        // Admin: vista compartida
         return view('shared.citas.index', compact('citas', 'stats', 'medicos'));
     }
 
@@ -208,7 +222,20 @@ class CitaController extends Controller
             $consultorios = Consultorio::where('status', true)->get();
             $estados = Estado::where('status', true)->orderBy('estado')->get();
             
-            return view('paciente.citas.create', compact('paciente', 'especialidades', 'consultorios', 'estados'));
+            // Buscar si este paciente es representante de pacientes especiales
+            $pacientesEspecialesRegistrados = collect();
+            $representante = Representante::where('tipo_documento', $paciente->tipo_documento)
+                                          ->where('numero_documento', $paciente->numero_documento)
+                                          ->first();
+            
+            if ($representante) {
+                $pacientesEspecialesRegistrados = $representante->pacientesEspeciales()
+                    ->with('paciente')
+                    ->where('pacientes_especiales.status', true)
+                    ->get();
+            }
+            
+            return view('paciente.citas.create', compact('paciente', 'especialidades', 'consultorios', 'estados', 'pacientesEspecialesRegistrados'));
         }
         
         // Para admin: vista compartida
@@ -559,89 +586,115 @@ class CitaController extends Controller
                         
                         Log::info('Representante creado/encontrado', ['id' => $representanteId]);
                         
-                        // 2. Determinar documento del paciente especial
-                        $tieneDocumento = $request->pac_tiene_documento == 'si';
-                        $pacTipoDoc = null;
-                        $pacNumeroDoc = null;
-                        
-                        if ($tieneDocumento) {
-                            $pacTipoDoc = $request->pac_tipo_documento;
-                            $pacNumeroDoc = $request->pac_numero_documento;
+                        // ===========================================
+                        // VERIFICAR SI SE SELECCIONÓ UN PACIENTE ESPECIAL EXISTENTE
+                        // ===========================================
+                        if ($request->paciente_especial_existente_id) {
+                            // Usar paciente especial existente
+                            $pacienteEspecialExistente = PacienteEspecial::find($request->paciente_especial_existente_id);
+                            if ($pacienteEspecialExistente) {
+                                $pacienteId = $pacienteEspecialExistente->paciente_id;
+                                $pacienteEspecialId = $pacienteEspecialExistente->id;
+                                
+                                Log::info('Usando paciente especial existente', [
+                                    'paciente_especial_id' => $pacienteEspecialId,
+                                    'paciente_id' => $pacienteId
+                                ]);
+                                
+                                // Vincular representante si no existe el vínculo
+                                if (!$pacienteEspecialExistente->representantes()->where('representante_id', $representanteId)->exists()) {
+                                    $pacienteEspecialExistente->representantes()->attach($representanteId, [
+                                        'tipo_responsabilidad' => 'Secundario',
+                                        'status' => true
+                                    ]);
+                                    Log::info('Representante vinculado a paciente especial existente');
+                                }
+                            }
                         } else {
-                            // Generar documento basado en representante
-                            $pacTipoDoc = $request->rep_tipo_documento;
-                            $pacNumeroDoc = $this->calculateNextId($request->rep_numero_documento);
-                        }
-                        
-                        Log::info('Documento paciente especial', ['tipo' => $pacTipoDoc, 'numero' => $pacNumeroDoc]);
-                        
-                        // Determinar ubicación del paciente (propia o del representante)
-                        $usarMismaDireccion = $request->misma_direccion == 'on' || $request->misma_direccion == '1';
-                        $pacEstadoId = $usarMismaDireccion ? $representante->estado_id : $request->pac_estado_id;
-                        $pacCiudadId = $usarMismaDireccion ? $representante->ciudad_id : $request->pac_ciudad_id;
-                        $pacMunicipioId = $usarMismaDireccion ? $representante->municipio_id : $request->pac_municipio_id;
-                        $pacParroquiaId = $usarMismaDireccion ? $representante->parroquia_id : $request->pac_parroquia_id;
-                        $pacDireccion = $usarMismaDireccion ? $representante->direccion_detallada : $request->pac_direccion_detallada;
-                        
-                        // 3. Crear registro en tabla PACIENTES (datos principales)
-                        $paciente = Paciente::firstOrCreate(
-                            [
-                                'tipo_documento' => $pacTipoDoc,
-                                'numero_documento' => $pacNumeroDoc
-                            ],
-                            [
-                                'primer_nombre' => $request->pac_primer_nombre,
-                                'segundo_nombre' => $request->pac_segundo_nombre,
-                                'primer_apellido' => $request->pac_primer_apellido,
-                                'segundo_apellido' => $request->pac_segundo_apellido,
-                                'fecha_nac' => $request->pac_fecha_nac,
-                                'estado_id' => $pacEstadoId,
-                                'ciudad_id' => $pacCiudadId,
-                                'municipio_id' => $pacMunicipioId,
-                                'parroquia_id' => $pacParroquiaId,
-                                'direccion_detallada' => $pacDireccion,
-                                'status' => true
-                            ]
-                        );
-                        $pacienteId = $paciente->id;
-                        
-                        Log::info('Paciente creado/encontrado', ['id' => $pacienteId]);
-                        
-                        // 4. Crear registro en tabla PACIENTES_ESPECIALES (datos adicionales)
-                        $pacienteEspecial = PacienteEspecial::firstOrCreate(
-                            [
-                                'paciente_id' => $pacienteId,
-                                'tipo' => $request->pac_tipo
-                            ],
-                            [
-                                'primer_nombre' => $request->pac_primer_nombre,
-                                'segundo_nombre' => $request->pac_segundo_nombre,
-                                'primer_apellido' => $request->pac_primer_apellido,
-                                'segundo_apellido' => $request->pac_segundo_apellido,
-                                'tipo_documento' => $pacTipoDoc,
-                                'numero_documento' => $pacNumeroDoc,
-                                'fecha_nac' => $request->pac_fecha_nac,
-                                'tiene_documento' => $tieneDocumento,
-                                'estado_id' => $pacEstadoId,
-                                'ciudad_id' => $pacCiudadId,
-                                'municipio_id' => $pacMunicipioId,
-                                'parroquia_id' => $pacParroquiaId,
-                                'direccion_detallada' => $pacDireccion,
-                                'observaciones' => $request->pac_observaciones,
-                                'status' => true
-                            ]
-                        );
-                        $pacienteEspecialId = $pacienteEspecial->id;
-                        
-                        Log::info('PacienteEspecial creado/encontrado', ['id' => $pacienteEspecialId]);
-                        
-                        // 5. Vincular representante con paciente especial (tabla pivote)
-                        if (!$pacienteEspecial->representantes()->where('representante_id', $representanteId)->exists()) {
-                            $pacienteEspecial->representantes()->attach($representanteId, [
-                                'tipo_responsabilidad' => 'Principal',
-                                'status' => true
-                            ]);
-                            Log::info('Representante vinculado a paciente especial');
+                            // 2. Determinar documento del paciente especial (crear nuevo)
+                            $tieneDocumento = $request->pac_tiene_documento == 'si';
+                            $pacTipoDoc = null;
+                            $pacNumeroDoc = null;
+                            
+                            if ($tieneDocumento) {
+                                $pacTipoDoc = $request->pac_tipo_documento;
+                                $pacNumeroDoc = $request->pac_numero_documento;
+                            } else {
+                                // Generar documento basado en representante
+                                $pacTipoDoc = $request->rep_tipo_documento;
+                                $pacNumeroDoc = $this->calculateNextId($request->rep_numero_documento);
+                            }
+                            
+                            Log::info('Documento paciente especial', ['tipo' => $pacTipoDoc, 'numero' => $pacNumeroDoc]);
+                            
+                            // Determinar ubicación del paciente (propia o del representante)
+                            $usarMismaDireccion = $request->misma_direccion == 'on' || $request->misma_direccion == '1';
+                            $pacEstadoId = $usarMismaDireccion ? $representante->estado_id : $request->pac_estado_id;
+                            $pacCiudadId = $usarMismaDireccion ? $representante->ciudad_id : $request->pac_ciudad_id;
+                            $pacMunicipioId = $usarMismaDireccion ? $representante->municipio_id : $request->pac_municipio_id;
+                            $pacParroquiaId = $usarMismaDireccion ? $representante->parroquia_id : $request->pac_parroquia_id;
+                            $pacDireccion = $usarMismaDireccion ? $representante->direccion_detallada : $request->pac_direccion_detallada;
+                            
+                            // 3. Crear registro en tabla PACIENTES (datos principales)
+                            $paciente = Paciente::firstOrCreate(
+                                [
+                                    'tipo_documento' => $pacTipoDoc,
+                                    'numero_documento' => $pacNumeroDoc
+                                ],
+                                [
+                                    'primer_nombre' => $request->pac_primer_nombre,
+                                    'segundo_nombre' => $request->pac_segundo_nombre,
+                                    'primer_apellido' => $request->pac_primer_apellido,
+                                    'segundo_apellido' => $request->pac_segundo_apellido,
+                                    'fecha_nac' => $request->pac_fecha_nac,
+                                    'estado_id' => $pacEstadoId,
+                                    'ciudad_id' => $pacCiudadId,
+                                    'municipio_id' => $pacMunicipioId,
+                                    'parroquia_id' => $pacParroquiaId,
+                                    'direccion_detallada' => $pacDireccion,
+                                    'status' => true
+                                ]
+                            );
+                            $pacienteId = $paciente->id;
+                            
+                            Log::info('Paciente creado/encontrado', ['id' => $pacienteId]);
+                            
+                            // 4. Crear registro en tabla PACIENTES_ESPECIALES (datos adicionales)
+                            $pacienteEspecial = PacienteEspecial::firstOrCreate(
+                                [
+                                    'paciente_id' => $pacienteId,
+                                    'tipo' => $request->pac_tipo
+                                ],
+                                [
+                                    'primer_nombre' => $request->pac_primer_nombre,
+                                    'segundo_nombre' => $request->pac_segundo_nombre,
+                                    'primer_apellido' => $request->pac_primer_apellido,
+                                    'segundo_apellido' => $request->pac_segundo_apellido,
+                                    'tipo_documento' => $pacTipoDoc,
+                                    'numero_documento' => $pacNumeroDoc,
+                                    'fecha_nac' => $request->pac_fecha_nac,
+                                    'tiene_documento' => $tieneDocumento,
+                                    'estado_id' => $pacEstadoId,
+                                    'ciudad_id' => $pacCiudadId,
+                                    'municipio_id' => $pacMunicipioId,
+                                    'parroquia_id' => $pacParroquiaId,
+                                    'direccion_detallada' => $pacDireccion,
+                                    'observaciones' => $request->pac_observaciones,
+                                    'status' => true
+                                ]
+                            );
+                            $pacienteEspecialId = $pacienteEspecial->id;
+                            
+                            Log::info('PacienteEspecial creado/encontrado', ['id' => $pacienteEspecialId]);
+                            
+                            // 5. Vincular representante con paciente especial (tabla pivote)
+                            if (!$pacienteEspecial->representantes()->where('representante_id', $representanteId)->exists()) {
+                                $pacienteEspecial->representantes()->attach($representanteId, [
+                                    'tipo_responsabilidad' => 'Principal',
+                                    'status' => true
+                                ]);
+                                Log::info('Representante vinculado a paciente especial');
+                            }
                         }
                     } // Fin else rol 3
                 } // Fin terceros
@@ -717,12 +770,13 @@ class CitaController extends Controller
     public function show($id)
     {
         $cita = Cita::with([
-            'paciente', 
+            'paciente.historiaClinicaBase', 
+            'paciente.usuario',
             'medico',
             'especialidad', 
             'consultorio' => function($q) { $q->with(['estado', 'ciudad', 'municipio', 'parroquia']); },
             'pacienteEspecial',
-            'pacienteEspecial.representantes', 
+            'representante',
             'evolucionClinica'
         ])->findOrFail($id);
 
@@ -747,19 +801,24 @@ class CitaController extends Controller
                 }
             }
 
-            // Validacion básica de seguridad
-            // if (!$esPropia && !$esTercero) {
-            //     abort(403, 'No autorizado para ver esta cita.');
-            // }
-
             return view('paciente.citas.show', compact('cita'));
         }
 
-        // Si es médico, retornar la vista específica de médico
+        // Retornar vista según el rol
         if (auth()->user()->rol_id == 2) {
-            return view('medico.citas.show', compact('cita'));
+            // Médico: cargar evoluciones previas del paciente con este médico
+            $evolucionesPrevias = \App\Models\EvolucionClinica::where('paciente_id', $cita->paciente_id)
+                ->where('medico_id', auth()->user()->medico->id)
+                ->where('cita_id', '!=', $cita->id) // Excluir la evolución de esta misma cita
+                ->with(['cita.especialidad'])
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+            
+            return view('medico.citas.show', compact('cita', 'evolucionesPrevias'));
         }
 
+        // Admin: vista compartida
         return view('shared.citas.show', compact('cita'));
     }
 
@@ -1107,6 +1166,31 @@ class CitaController extends Controller
             'full_id' => $nextId
         ]);
     }
+    
+    // API para obtener pacientes especiales de un representante
+    public function getPacientesEspecialesPorRepresentante($representanteId)
+    {
+        $representante = Representante::with(['pacientesEspeciales' => function($q) {
+            $q->with('paciente')->where('pacientes_especiales.status', true);
+        }])->find($representanteId);
+        
+        if (!$representante) {
+            return response()->json([]);
+        }
+        
+        $pacientes = $representante->pacientesEspeciales->map(function($pe) {
+            return [
+                'id' => $pe->id,
+                'paciente_id' => $pe->paciente_id,
+                'nombre_completo' => $pe->nombre_completo,
+                'tipo' => $pe->tipo,
+                'tipo_documento' => $pe->tipo_documento,
+                'numero_documento' => $pe->numero_documento,
+            ];
+        });
+        
+        return response()->json($pacientes);
+    }
 
     private function calculateNextId($baseDocumento)
     {
@@ -1290,14 +1374,64 @@ class CitaController extends Controller
     public function verificarCorreo(Request $request)
     {
         $correo = $request->get('correo', '');
+        $rol = $request->get('rol', null);
         
         if (empty($correo)) {
             return response()->json(['existe' => false]);
         }
 
-        $existe = Usuario::where('correo', $correo)->exists();
+        $query = Usuario::where('correo', $correo);
+        
+        // Filtrar por rol si se proporciona
+        if ($rol) {
+            $query->where('rol_id', $rol);
+        }
+        
+        $existe = $query->exists();
         
         return response()->json(['existe' => $existe]);
+    }
+
+    /**
+     * Verificar si un documento (tipo+numero) ya existe en el sistema
+     */
+    public function verificarDocumento(Request $request)
+    {
+        $tipoDocumento = strtoupper($request->get('tipo_documento', ''));
+        $numeroDocumento = $request->get('numero_documento', '');
+        
+        if (empty($tipoDocumento) || empty($numeroDocumento)) {
+            return response()->json(['existe' => false]);
+        }
+
+        // Buscar en tabla pacientes
+        $existePaciente = Paciente::where('tipo_documento', $tipoDocumento)
+            ->where('numero_documento', $numeroDocumento)
+            ->exists();
+        
+        if ($existePaciente) {
+            return response()->json(['existe' => true, 'tabla' => 'pacientes', 'mensaje' => 'Este documento ya está registrado como paciente.']);
+        }
+        
+        // Buscar en tabla representantes
+        $existeRepresentante = Representante::where('tipo_documento', $tipoDocumento)
+            ->where('numero_documento', $numeroDocumento)
+            ->exists();
+        
+        if ($existeRepresentante) {
+            return response()->json(['existe' => true, 'tabla' => 'representantes', 'mensaje' => 'Este documento ya está registrado como representante.']);
+        }
+        
+        // Buscar en tabla usuarios
+        $existeUsuario = Usuario::where('tipo_documento', $tipoDocumento)
+            ->where('numero_documento', $numeroDocumento)
+            ->exists();
+        
+        if ($existeUsuario) {
+            return response()->json(['existe' => true, 'tabla' => 'usuarios', 'mensaje' => 'Este documento ya está registrado en el sistema.']);
+        }
+        
+        return response()->json(['existe' => false]);
     }
 
 

@@ -273,6 +273,10 @@ class MedicoController extends Controller
         $consultorios = Consultorio::with('especialidades')->where('status', true)->get();
         $horarios = \App\Models\MedicoConsultorio::where('medico_id', $id)->get();
 
+        if (auth()->user()->rol_id == 2) {
+            return view('medico.horarios', compact('medico', 'consultorios', 'horarios'));
+        }
+
         return view('shared.medicos.horarios', compact('medico', 'consultorios', 'horarios'));
     }
 

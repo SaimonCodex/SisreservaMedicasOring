@@ -102,6 +102,7 @@
             <div>
                 <label for="fecha_nac" class="block text-sm font-medium text-slate-700">Fecha Nacimiento *</label>
                 <input type="date" name="fecha_nac" id="fecha_nac" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm @error('fecha_nac') border-red-500 @enderror" required value="{{ old('fecha_nac') }}">
+                <span id="label-edad" class="text-xs text-slate-500 font-medium mt-1 block">Para Crear una Cuenta Debe ser Mayor de Edad</span>
                 <span id="error-fecha_nac" class="text-xs text-red-600 mt-1 hidden"></span>
                 @error('fecha_nac')<span class="text-xs text-red-600 mt-1">{{ $message }}</span>@enderror
             </div>
@@ -291,6 +292,12 @@
     window.currentStep = 1;
     window.totalSteps = 3;
 
+    // Estado global de validaciones asíncronas
+    window.asyncValidations = {
+        documento: false, // false = no validado o inválido, true = válido
+        correo: false
+    };
+
     window.checkPasswordStrength = function(password) {
         const hasUpperCase = /[A-Z]/.test(password);
         const hasNumber = /[0-9]/.test(password);
@@ -316,6 +323,119 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
+        // --- VALIDACIÓN DE EDAD ---
+        const fechaNacInput = document.getElementById('fecha_nac');
+        const labelEdad = document.getElementById('label-edad');
+
+        if(fechaNacInput && labelEdad) {
+            fechaNacInput.addEventListener('change', () => {
+                const fechaNac = new Date(fechaNacInput.value);
+                const hoy = new Date();
+                let edad = hoy.getFullYear() - fechaNac.getFullYear();
+                const m = hoy.getMonth() - fechaNac.getMonth();
+                
+                if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) {
+                    edad--;
+                }
+
+                if (isNaN(edad)) {
+                    // Resetear si no hay fecha válida
+                    labelEdad.className = "text-xs text-slate-500 font-medium mt-1 block";
+                    return;
+                }
+
+                if (edad >= 18) {
+                    labelEdad.className = "text-xs text-green-600 font-medium mt-1 block";
+                } else {
+                    labelEdad.className = "text-xs text-red-600 font-medium mt-1 block";
+                }
+            });
+        }
+
+        // --- VALIDACIÓN DE DOCUMENTO AJAX ---
+        const tipoDocInput = document.getElementById('tipo_documento');
+        const numDocInput = document.getElementById('numero_documento');
+
+        async function validarDocumento() {
+            const tipo = tipoDocInput.value;
+            const numero = numDocInput.value;
+
+            if(!numero) {
+                window.asyncValidations.documento = false;
+                return; 
+            }
+
+            try {
+                const response = await fetch('{{ route("validate.document") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                    },
+                    body: JSON.stringify({ tipo: tipo, numero: numero })
+                });
+                const data = await response.json();
+                
+                if(data.exists) {
+                    showError('numero_documento', 'Este documento ya se encuentra registrado en el sistema');
+                    window.asyncValidations.documento = false;
+                } else {
+                    clearError('numero_documento');
+                    window.asyncValidations.documento = true;
+                }
+            } catch (error) {
+                console.error('Error validando documento:', error);
+            }
+        }
+
+        if(tipoDocInput && numDocInput) {
+            tipoDocInput.addEventListener('change', validarDocumento);
+            numDocInput.addEventListener('blur', validarDocumento);
+            numDocInput.addEventListener('input', () => {
+                clearError('numero_documento'); // Limpiar error al escribir
+                window.asyncValidations.documento = false; // Invalidar hasta que se haga blur o check
+            });
+        }
+
+        // --- VALIDACIÓN DE CORREO AJAX ---
+        const correoInput = document.getElementById('correo');
+        
+        async function validarCorreo() {
+            const correo = correoInput.value;
+            if(!correo || !validateField('correo', correo, 'input')) return; // Basic regex check first
+
+            try {
+                const response = await fetch('{{ route("validate.email") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                    },
+                    body: JSON.stringify({ email: correo })
+                });
+                const data = await response.json();
+
+                if(data.exists) {
+                    showError('correo', 'El correo ya esta en uso, por favor ingrese uno diferente');
+                    window.asyncValidations.correo = false;
+                } else {
+                    clearError('correo');
+                    window.asyncValidations.correo = true;
+                }
+            } catch (error) {
+                 console.error('Error validando correo:', error);
+            }
+        }
+
+        if(correoInput) {
+            correoInput.addEventListener('blur', validarCorreo);
+            correoInput.addEventListener('input', () => {
+                clearError('correo');
+                window.asyncValidations.correo = false;
+            });
+        }
+
+        // Password logic (existing)
         const passInput = document.getElementById('password');
         if(passInput) {
             passInput.addEventListener('input', function() {
@@ -402,11 +522,13 @@
         });
     }
 
-    window.changeStep = function(dir) {
+    window.changeStep = async function(dir) {
         const nextStep = window.currentStep + dir;
         
         if (dir === 1) {
-            if (!window.validateStep(window.currentStep)) return;
+            // Validaciones al intentar avanzar
+            const stepValid = await window.validateStep(window.currentStep);
+            if (!stepValid) return;
         }
 
         if (nextStep >= 1 && nextStep <= window.totalSteps) {
@@ -503,7 +625,30 @@
         if(!valid && errorMsg) {
              showError(id, errorMsg);
         } else {
-             clearError(id);
+             // Solo limpiar si no hay errores previos (ej: AJAX error)
+             // Pero como esta función es básica, limpiamos. 
+             // Ojo con conflictos con AJAX.
+             // Como AJAX se activa en BLUR después de esto, está bien.
+             // Pero cuidado con 'input' limpiando errores de AJAX.
+             // En los listeners de input de AJAX ya limpiamos explícitamente.
+             if(id !== 'numero_documento' && id !== 'correo') {
+                 clearError(id);
+             } else {
+                 // Para campos AJAX, validamos formato básico aqui. 
+                 // Si falla formato básico, mostramos error y limpiamos estado AJAX.
+                 if(valid) {
+                     // Si formato valido, quitamos error de formato. 
+                     // Si habia error AJAX, se mantiene hasta que el usuario escriba (input listener)
+                     // Pero este validateField corre en INPUT también.
+                     // Estrategia: Si validateField pasa (formato ok), NO limpiamos error inmediatamente 
+                     // si es un campo ajax, dejamos que el listener de input especifico maneje el reset.
+                     // Pero en BLUR si debemos limpiar si es valido BASICAMENTE, para dar paso al check ajax?
+                     // Mejor: clearError solo quita el borde rojo y texto.
+                     // Si el formato es valido, quitamos el error visual DE FORMATO.
+                     // Si hay error AJAX, ese se pone DESPUES en el blur async.
+                     clearError(id);
+                 }
+             }
         }
         return valid;
     }
@@ -519,7 +664,7 @@
         });
     });
 
-    window.validateStep = function(step) {
+    window.validateStep = async function(step) {
         // Validation now delegates to individual checks
         let isValid = true;
         let idsToCheck = [];
@@ -535,6 +680,7 @@
                            'pregunta_seguridad_3', 'respuesta_seguridad_3'];
         }
 
+        // Sync checks
         idsToCheck.forEach(id => {
             const el = document.getElementById(id);
             if(el) {
@@ -544,14 +690,71 @@
             }
         });
 
-        // Special check for password strength only on step 3 submit attempt
+        // Specific Step 1 Checks (Age & Document AJAX)
+        if (step === 1) {
+            const fechaNac = document.getElementById('fecha_nac').value;
+            if(fechaNac) {
+                const hoy = new Date();
+                const nac = new Date(fechaNac);
+                let edad = hoy.getFullYear() - nac.getFullYear();
+                const m = hoy.getMonth() - nac.getMonth();
+                if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) {
+                    edad--;
+                }
+                if(edad < 18) {
+                    isValid = false;
+                    // Asegurar que el mensaje esté rojo (ya lo hace el listener, pero por si acaso intenta enviar directo)
+                    const label = document.getElementById('label-edad');
+                    if(label) label.className = "text-xs text-red-600 font-medium mt-1 block";
+                }
+            }
+
+            // AJAX Check for Document must be passed
+            if (isValid) { // Solo chequear si el formato básico es válido
+                const tipo = document.getElementById('tipo_documento').value;
+                const doc = document.getElementById('numero_documento').value;
+                
+                // Forzamos validación AJAX si no se ha hecho o si cambio
+                // Hacemos una llamada await explicita para asegurar
+                try {
+                    const response = await fetch('{{ route("validate.document") }}', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value},
+                        body: JSON.stringify({ tipo: tipo, numero: doc })
+                    });
+                    const data = await response.json();
+                    if(data.exists) {
+                        showError('numero_documento', 'Este documento ya se encuentra registrado en el sistema');
+                        isValid = false;
+                    }
+                } catch(e) { console.error(e); }
+            }
+        }
+
+        // Specific Step 3 Checks (Email AJAX & Password)
         if (step === 3) {
              const p1 = document.getElementById('password').value;
              const strength = window.checkPasswordStrength(p1);
              if (!strength.valid) {
                  isValid = false;
-                 // Error is already shown by strength meter visual, but we ensure field is red
                  showError('password', 'Contraseña débil');
+             }
+
+             // AJAX Check for Email
+             if(isValid) {
+                 const email = document.getElementById('correo').value;
+                 try {
+                    const response = await fetch('{{ route("validate.email") }}', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value},
+                        body: JSON.stringify({ email: email })
+                    });
+                    const data = await response.json();
+                    if(data.exists) {
+                        showError('correo', 'El correo ya esta en uso, por favor ingrese uno diferente');
+                        isValid = false;
+                    }
+                 } catch(e) { console.error(e); }
              }
         }
 
@@ -559,25 +762,32 @@
     };
 
     // Intercept submit for final validation
-    document.getElementById('registerForm').addEventListener('submit', function(e) {
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); // Siempre prevenimos para validar async
+
         const p1 = document.getElementById('password').value;
         const p2 = document.getElementById('password_confirmation').value;
         
         if (p1 !== p2) {
-             e.preventDefault();
              alert('Las contraseñas no coinciden');
              return;
         }
 
         const strength = window.checkPasswordStrength(p1);
         if (!strength.valid) {
-             e.preventDefault();
              let msg = 'La contraseña debe tener:\n';
              if(!strength.requirements.length) msg += '- Al menos 8 caracteres\n';
              if(!strength.requirements.upper) msg += '- Al menos una mayúscula\n';
              if(!strength.requirements.number) msg += '- Al menos un número\n';
              if(!strength.requirements.symbol) msg += '- Al menos un símbolo (@$!%*#?&.)';
              alert(msg);
+             return;
+        }
+
+        // Final validación de todo (especialmente email si cambiaron algo rapido)
+        const valid = await window.validateStep(3);
+        if(valid) {
+            this.submit();
         }
     });
 
