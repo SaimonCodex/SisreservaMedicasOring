@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\EvolucionClinica;
 
 class HistoriaClinicaBase extends Model
 {
@@ -28,5 +29,13 @@ class HistoriaClinicaBase extends Model
     public function paciente()
     {
         return $this->belongsTo(Paciente::class, 'paciente_id');
+    }
+
+    /**
+     * Get the evoluciones clínicas for this patient through the paciente relationship
+     */
+    public function evoluciones()
+    {
+        return $this->hasMany(EvolucionClinica::class, 'paciente_id', 'paciente_id');
     }
 }

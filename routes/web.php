@@ -61,6 +61,10 @@ Route::get('buscar-medicos-publico', [MedicoController::class, 'buscar'])->name(
 // =========================================================================
 Route::get('/ajax/verificar-correo', [AuthController::class, 'verificarCorreo'])->name('ajax.verificar-correo');
 
+// Rutas de validación AJAX
+Route::post('/validate/email', [App\Http\Controllers\ValidationController::class, 'checkEmail'])->name('validate.email');
+Route::post('/validate/document', [App\Http\Controllers\ValidationController::class, 'checkDocument'])->name('validate.document');
+
 Route::prefix('ajax/citas')->group(function () {
     Route::get('/consultorios-por-estado/{estadoId}', [CitaController::class, 'getConsultoriosPorEstado']);
     Route::get('/especialidades-por-consultorio/{consultorioId}', [CitaController::class, 'getEspecialidadesPorConsultorio']);

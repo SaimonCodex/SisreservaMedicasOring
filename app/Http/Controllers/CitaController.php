@@ -91,8 +91,14 @@ class CitaController extends Controller
         // PARA MÉDICO (ROL 2) Y ADMIN (ROL 1)
         // =========================================================================
         
-        $query = Cita::with(['paciente', 'medico', 'especialidad', 'consultorio'])
-                     ->where('status', true);
+        $query = Cita::with([
+            'paciente.historiaClinicaBase', 
+            'paciente.usuario',
+            'medico', 
+            'especialidad', 
+            'consultorio',
+            'evolucionClinica'
+        ])->where('status', true);
 
         // Filtro por Rol Médico (solo ve sus citas)
         if ($user->rol_id == 2) {
@@ -132,23 +138,30 @@ class CitaController extends Controller
 
         // Filtro por Estado de Cita
         if ($request->filled('estado')) {
-            // Mapeo simple de valores del select a valores de la BD si es necesario,
-            // asumiendo que el value del select coincide con la BD o hacemos un map.
-            // Valores BD esperados: 'Programada', 'Confirmada', 'En Progreso', 'Completada', 'Cancelada', 'No Asistió'
-            $estadoMap = [
-                'pendiente' => ['Programada'],
-                'confirmada' => ['Confirmada'],
-                'completada' => ['Completada'],
-                'cancelada' => ['Cancelada', 'No Asistió']
-            ];
+            // Valores BD válidos: 'Programada', 'Confirmada', 'En Progreso', 'Completada', 'Cancelada', 'No Asistió'
+            $estadosValidos = ['Programada', 'Confirmada', 'En Progreso', 'Completada', 'Cancelada', 'No Asistió'];
             
-            if (array_key_exists($request->estado, $estadoMap)) {
-                $query->whereIn('estado_cita', $estadoMap[$request->estado]);
+            // Si el valor viene directamente como enum válido
+            if (in_array($request->estado, $estadosValidos)) {
+                $query->where('estado_cita', $request->estado);
+            } else {
+                // Mapeo de valores legacy del select (compatibilidad hacia atrás)
+                $estadoMap = [
+                    'pendiente' => ['Programada'],
+                    'confirmada' => ['Confirmada'],
+                    'completada' => ['Completada'],
+                    'cancelada' => ['Cancelada', 'No Asistió']
+                ];
+                
+                if (array_key_exists($request->estado, $estadoMap)) {
+                    $query->whereIn('estado_cita', $estadoMap[$request->estado]);
+                }
             }
         }
 
-        // Ordenamiento
-        $citas = $query->orderBy('fecha_cita', 'desc')
+        // Ordenamiento: priorizar citas confirmadas (pagadas) primero, luego por fecha más próxima
+        $citas = $query->orderByRaw("FIELD(estado_cita, 'Confirmada', 'En Progreso', 'Programada', 'Completada', 'Cancelada', 'No Asistió')")
+                       ->orderBy('fecha_cita', 'asc')
                        ->orderBy('hora_inicio', 'asc')
                        ->paginate(10)
                        ->withQueryString();
@@ -752,12 +765,13 @@ class CitaController extends Controller
     public function show($id)
     {
         $cita = Cita::with([
-            'paciente', 
+            'paciente.historiaClinicaBase', 
+            'paciente.usuario',
             'medico',
             'especialidad', 
             'consultorio' => function($q) { $q->with(['estado', 'ciudad', 'municipio', 'parroquia']); },
             'pacienteEspecial',
-            'pacienteEspecial.representantes', 
+            'representante',
             'evolucionClinica'
         ])->findOrFail($id);
 
@@ -782,19 +796,21 @@ class CitaController extends Controller
                 }
             }
 
-            // Si es admin o medico bypass this check, but here we are inside if rol_id == 3
-            // Validacion básica de seguridad
-            // if (!$esPropia && !$esTercero) {
-            //     abort(403, 'No autorizado para ver esta cita.');
-            // }
-
             return view('paciente.citas.show', compact('cita'));
         }
 
         // Retornar vista según el rol
         if (auth()->user()->rol_id == 2) {
-            // Médico: vista específica
-            return view('medico.citas.show', compact('cita'));
+            // Médico: cargar evoluciones previas del paciente con este médico
+            $evolucionesPrevias = \App\Models\EvolucionClinica::where('paciente_id', $cita->paciente_id)
+                ->where('medico_id', auth()->user()->medico->id)
+                ->where('cita_id', '!=', $cita->id) // Excluir la evolución de esta misma cita
+                ->with(['cita.especialidad'])
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+            
+            return view('medico.citas.show', compact('cita', 'evolucionesPrevias'));
         }
 
         // Admin: vista compartida
