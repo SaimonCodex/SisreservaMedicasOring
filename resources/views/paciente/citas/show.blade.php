@@ -184,9 +184,71 @@
         
         <!-- Acciones -->
         @if(in_array($cita->estado_cita, ['Programada', 'Confirmada', 'Pendiente']))
-        <div class="card p-6 border-t-4 border-t-red-500 sticky top-6">
+        <div class="card p-6 border-t-4 border-t-emerald-500 sticky top-6 space-y-4">
             <h4 class="font-bold text-gray-900 mb-4">Gestión de Cita</h4>
-            <p class="text-sm text-gray-600 mb-4">
+            
+            @php
+                $pagosActivos = $cita->facturaPaciente ? $cita->facturaPaciente->pagos()->where('status', true)->get() : collect();
+                $tienePago = $pagosActivos->count() > 0;
+                $pagoConfirmado = $pagosActivos->where('estado', 'Confirmado')->isNotEmpty();
+                $pagoPendiente = $pagosActivos->where('estado', 'Pendiente')->isNotEmpty();
+                $pagoRechazado = $pagosActivos->where('estado', 'Rechazado')->isNotEmpty() && !$pagoConfirmado && !$pagoPendiente;
+                $ultimoRechazo = $pagoRechazado ? $pagosActivos->where('estado', 'Rechazado')->sortByDesc('created_at')->first() : null;
+            @endphp
+
+            <!-- Botón Registrar Pago -->
+            @if($cita->estado_cita == 'Programada' && (!$tienePago || $pagoRechazado))
+                @if($pagoRechazado)
+                <div class="mb-6 overflow-hidden rounded-2xl border border-red-100 bg-red-50/30 backdrop-blur-sm">
+                    <div class="flex items-stretch">
+                        <div class="w-1.5 bg-red-500"></div>
+                        <div class="p-5 flex-1">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                </div>
+                                <h5 class="font-bold text-red-900">Pago Rechazado por Administración</h5>
+                            </div>
+                            
+                            @if($ultimoRechazo && $ultimoRechazo->comentarios)
+                                <div class="bg-white/60 rounded-xl p-4 border border-red-100 mb-3 shadow-sm">
+                                    <p class="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1">Motivo del rechazo</p>
+                                    <p class="text-gray-800 italic leading-relaxed">"{{ $ultimoRechazo->comentarios }}"</p>
+                                </div>
+                            @endif
+                            
+                            <p class="text-sm text-red-700">Para confirmar su cita, por favor proceda a registrar un nuevo comprobante de pago con la información solicitada.</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+                <a href="{{ route('paciente.pagos.registrar', $cita->id) }}" class="btn w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0 shadow-lg shadow-emerald-200 transition-all group">
+                    <i class="bi bi-credit-card mr-2 group-hover:scale-110 transition-transform"></i> 
+                    {{ $pagoRechazado ? 'Volver a Registrar Pago' : 'Registrar Pago' }}
+                </a>
+                <p class="text-xs text-gray-500 text-center">
+                    Registre su pago para confirmar la cita
+                </p>
+            @elseif($pagoPendiente)
+                <div class="alert alert-warning">
+                    <i class="bi bi-clock-history"></i>
+                    <div class="text-sm">
+                        <p class="font-bold">Pago en Revisión</p>
+                        <p>Su pago está siendo verificado por nuestro equipo</p>
+                    </div>
+                </div>
+            @elseif($pagoConfirmado || $cita->estado_cita == 'Confirmada')
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i>
+                    <div class="text-sm">
+                        <p class="font-bold">¡Pago Confirmado!</p>
+                        <p>Su cita está confirmada</p>
+                    </div>
+                </div>
+            @endif
+
+            <!-- Botón Cancelación -->
+            <p class="text-sm text-gray-600">
                 Si no puedes asistir a tu cita, por favor solicita una cancelación o reprogramación con anticipación.
             </p>
             <button onclick="document.getElementById('modal-cancelacion').showModal()" class="btn w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 shadow-sm transition-all group">
@@ -280,7 +342,11 @@
                         name="explicacion" 
                         class="textarea textarea-bordered h-24 w-full focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all resize-none text-gray-900 placeholder:text-gray-400 bg-gray-50" 
                         placeholder="Detalles adicionales..."
+                        oninput="document.getElementById('form_error').classList.add('hidden')"
                     ></textarea>
+                    <p id="form_error" class="hidden text-xs font-bold text-red-500 mt-1 flex items-center gap-1">
+                        <i class="bi bi-exclamation-circle"></i> Complete todos los campos
+                    </p>
                 </div>
                 
                 <div class="flex items-center justify-end gap-3">
@@ -299,10 +365,37 @@
     </form>
 </dialog>
 
-<!-- SweetAlert2 CDN -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Custom Success Modal -->
+<div id="modalSuccess" class="fixed inset-0 z-[60] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
+    <div class="modal-content relative bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300 border border-gray-100">
+        <div class="h-2 bg-gradient-to-r from-emerald-500 to-teal-600"></div>
+        <div class="p-8 text-center">
+            <div class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6 mx-auto ring-8 ring-emerald-50/50">
+                <i class="bi bi-check-circle-fill text-emerald-500 text-4xl animate-bounce"></i>
+            </div>
+            <h3 class="text-2xl font-display font-bold text-gray-900 mb-2">¡Solicitud Enviada!</h3>
+            <p id="success_message" class="text-gray-500 mb-8 font-medium">Su solicitud ha sido procesada correctamente.</p>
+            <button onclick="location.reload()" 
+                class="w-full px-6 py-3.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all active:scale-95">
+                Entendido
+            </button>
+        </div>
+    </div>
+</div>
 
 <script>
+    function openSuccessModal(message) {
+        document.getElementById('success_message').innerText = message;
+        const modal = document.getElementById('modalSuccess');
+        const modalContent = modal.querySelector('.modal-content');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-95', 'opacity-0');
+        }, 10);
+    }
+
     async function enviarSolicitud(e) {
         e.preventDefault();
         
@@ -310,12 +403,7 @@
         const explicacion = document.getElementById('explicacion').value;
 
         if (!motivo || !explicacion) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Campos incompletos',
-                text: 'Por favor complete todos los campos para continuar.',
-                confirmButtonColor: '#d33'
-            });
+            document.getElementById('form_error').classList.remove('hidden');
             return;
         }
         
@@ -323,7 +411,7 @@
         const btnSubmit = e.target.querySelector('button[type="submit"]');
         const originalText = btnSubmit.innerHTML;
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<span class="loading loading-spinner text-white"></span> Enviando...';
+        btnSubmit.innerHTML = '<i class="bi bi-hourglass-split animate-spin mr-2"></i> Enviando...';
 
         try {
             const formData = new FormData();
@@ -334,33 +422,23 @@
             const response = await fetch("{{ route('citas.solicitar-cancelacion', $cita->id) }}", {
                 method: 'POST',
                 body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
             const data = await response.json();
 
             if (data.success) {
                 document.getElementById('modal-cancelacion').close();
-                Swal.fire({
-                    title: '¡Solicitud Enviada!',
-                    text: data.message,
-                    icon: 'success',
-                    confirmButtonColor: '#10b981',
-                    confirmButtonText: 'Entendido'
-                }).then(() => {
-                    location.reload();
-                });
+                openSuccessModal(data.message);
             } else {
-                Swal.fire('Error', data.message || 'Ocurrió un error al procesar la solicitud', 'error');
+                alert(data.message || 'Error al procesar la solicitud');
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = originalText;
             }
 
         } catch (error) {
             console.error(error);
-            Swal.fire('Error', 'Hubo un problema de conexión. Intente nuevamente.', 'error');
+            alert('Error de conexión. Intente nuevamente.');
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = originalText;
         }
