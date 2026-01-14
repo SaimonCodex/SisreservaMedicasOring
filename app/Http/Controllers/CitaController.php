@@ -1127,16 +1127,11 @@ class CitaController extends Controller
         $citasOcupadas = Cita::where('medico_id', $medicoId)
             ->where('fecha_cita', $fecha)
             ->where('status', true)
-<<<<<<< HEAD
-            ->whereNotIn('estado_cita', ['Cancelada', 'No Asistió'])
-            ->get()
-            ->map(function($cita) {
-                return substr($cita->hora_inicio, 0, 5);
-            })
-=======
             ->whereIn('estado_cita', ['Programada', 'Confirmada', 'En Progreso', 'Completada'])
             ->pluck('hora_inicio')
->>>>>>> origin/RamaFusionn
+            ->map(function($hora) {
+                return substr($hora, 0, 5);
+            })
             ->toArray();
         
         // Generar slots de 30 minutos

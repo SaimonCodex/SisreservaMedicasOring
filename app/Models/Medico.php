@@ -31,7 +31,12 @@ class Medico extends Model
         'nro_colegiatura',
         'formacion_academica',
         'experiencia_profesional',
-        'status'
+        'experiencia_profesional',
+        'status',
+        'foto_perfil',
+        'banner_perfil',
+        'banner_color',
+        'tema_dinamico'
     ];
 
     public function usuario()

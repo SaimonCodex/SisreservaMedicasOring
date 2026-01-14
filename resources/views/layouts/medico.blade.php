@@ -1,3 +1,44 @@
+@php
+    $medico = auth()->user()->medico;
+    $temaDinamico = $medico?->tema_dinamico ?? false;
+    $baseColor = '#10b981'; // Emerald Default
+    
+    if ($temaDinamico && $medico->banner_color) {
+        if (str_starts_with($medico->banner_color, '#')) {
+            $baseColor = $medico->banner_color;
+        } elseif (str_contains($medico->banner_color, 'from-')) {
+            // Extraer color del gradiente de Tailwind
+            if (preg_match('/from-([a-z]+)-(\d+)/', $medico->banner_color, $matches)) {
+                $colorName = $matches[1];
+                $shade = $matches[2];
+                // Mapa aproximado de colores Tailwind 500/600 a Hex
+                $colors = [
+                    'slate' => '#64748b', 'gray' => '#6b7280', 'zinc' => '#71717a', 'neutral' => '#737373', 'stone' => '#78716c',
+                    'red' => '#ef4444', 'orange' => '#f97316', 'amber' => '#f59e0b', 'yellow' => '#eab308', 'lime' => '#84cc16',
+                    'green' => '#22c55e', 'emerald' => '#10b981', 'teal' => '#14b8a6', 'cyan' => '#06b6d4', 'sky' => '#0ea5e9',
+                    'blue' => '#3b82f6', 'indigo' => '#6366f1', 'violet' => '#8b5cf6', 'purple' => '#a855f7', 'fuchsia' => '#d946ef',
+                    'pink' => '#ec4899', 'rose' => '#f43f5e'
+                ];
+                $baseColor = $colors[$colorName] ?? '#10b981';
+            }
+        }
+    }
+
+    // Calcular contraste y color oscuro para sidebar
+    $hex = str_replace('#', '', $baseColor);
+    if(strlen($hex) == 3) {
+        $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+    }
+    $r = hexdec(substr($hex, 0, 2));
+    $g = hexdec(substr($hex, 2, 2));
+    $b = hexdec(substr($hex, 4, 2));
+    $luminance = ($r * 0.299 + $g * 0.587 + $b * 0.114) / 255;
+    $textColorOnPrimary = $luminance > 0.6 ? '#0f172a' : '#ffffff';
+    
+    // Sidebar Dark Bg
+    $darkSidebar = sprintf("#%02x%02x%02x", max(0, $r * 0.15), max(0, $g * 0.15), max(0, $b * 0.15));
+    $sidebarBg = isset($darkSidebar) ? "linear-gradient(180deg, $darkSidebar 0%, #020617 100%)" : "linear-gradient(180deg, #0f172a 0%, #020617 100%)";
+@endphp
 <!doctype html>
 <html lang="es">
 <head>
@@ -9,23 +50,65 @@
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
+    <style>
+        :root {
+            --medical-500: {{ $baseColor }};
+            --medical-600: {{ $baseColor }}cc; /* A bit lighter/transparent for gradients */
+            --medical-400: {{ $baseColor }}eb;
+            --medical-200: {{ $baseColor }}33;
+            --medical-50: {{ $baseColor }}1a;
+            --text-on-medical: {{ $textColorOnPrimary }};
+            --sidebar-bg: {{ $sidebarBg }};
+        }
+        /* Override Emerald Classes if Dynamic Theme Active */
+        @if($temaDinamico)
+        .bg-emerald-500, .bg-medical-500 { background-color: var(--medical-500) !important; }
+        .text-emerald-500, .text-medical-500 { color: var(--medical-500) !important; }
+        .text-emerald-600, .text-medical-600 { color: var(--medical-600) !important; }
+        .text-emerald-400, .text-medical-400 { color: var(--medical-400) !important; }
+        .bg-emerald-50, .bg-medical-50 { background-color: var(--medical-50) !important; }
+        .border-emerald-500, .border-medical-500 { border-color: var(--medical-500) !important; }
+        .ring-emerald-500 { --tw-ring-color: var(--medical-500) !important; }
+        .bg-emerald-600\/20 { background-color: var(--medical-200) !important; }
+        
+        /* Gradients overrides */
+        .from-emerald-500 { --tw-gradient-from: var(--medical-500) !important; }
+        .to-emerald-700 { --tw-gradient-to: var(--medical-600) !important; }
+        @endif
+        
+        .animate-float-orb { animation: float-orb 15s ease-in-out infinite; }
+        .animate-float-orb-slow { animation: float-orb 25s ease-in-out infinite reverse; }
+        @keyframes float-orb {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(20px, -20px) scale(1.1); }
+        }
+    </style>
     @stack('styles')
 </head>
 <body class="min-h-screen bg-smoke-50 font-sans antialiased">
+    <!-- Background Ambiance -->
+    <div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full animate-float-orb blur-[120px]"
+             style="background-color: var(--medical-500, #10b981); opacity: 0.1;"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full animate-float-orb-slow blur-[120px]"
+             style="background-color: var(--medical-500, #10b981); opacity: 0.08;"></div>
+    </div>
+
     <!-- Sidebar Overlay (Mobile) -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden lg:hidden"></div>
     
     <!-- Sidebar -->
-    <aside id="sidebar" class="fixed top-0 left-0 h-screen w-64 bg-slate-900 shadow-2xl z-50 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col border-r border-white/5" style="background: linear-gradient(180deg, #0f172a 0%, #020617 100%);">
+    <aside id="sidebar" class="fixed top-0 left-0 h-screen w-64 shadow-2xl z-50 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col border-r border-white/5" 
+           style="background: var(--sidebar-bg, linear-gradient(180deg, #0f172a 0%, #020617 100%));">
         <!-- Sidebar Header -->
         <div class="h-20 flex items-center px-6 border-b border-white/5 bg-white/5 backdrop-blur-sm">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg ring-1 ring-white/10">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center shadow-lg ring-1 ring-white/10">
                     <i class="bi bi-heart-pulse-fill text-white text-lg"></i>
                 </div>
                 <div>
                     <h4 class="font-display font-bold text-white text-base leading-tight tracking-wide">{{ config('app.name', 'Sistema Médico') }}</h4>
-                    <p class="text-emerald-400/80 text-[10px] uppercase tracking-wider font-semibold mt-0.5">Portal Médico</p>
+                    <p class="text-medical-500 text-[10px] uppercase tracking-wider font-bold mt-0.5">Portal Médico</p>
                 </div>
             </div>
         </div>
@@ -103,10 +186,14 @@
         <div class="p-4 border-t border-white/5 bg-black/20">
              <div class="flex items-center gap-3">
                 <div class="relative flex-shrink-0">
-                    <div class="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-xs font-bold text-white shadow-sm ring-2 ring-white/10">
-                        {{ strtoupper(substr(auth()->user()->correo, 0, 1)) }}
-                    </div>
-                    <div class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-blue-500 border-2 border-slate-900 rounded-full"></div>
+                    @if($medico && $medico->foto_perfil)
+                        <img src="{{ asset('storage/' . $medico->foto_perfil) }}" class="w-9 h-9 rounded-lg object-cover ring-2 ring-white/10 shadow-sm">
+                    @else
+                        <div class="w-9 h-9 rounded-lg bg-medical-500 flex items-center justify-center text-xs font-bold text-white shadow-sm ring-2 ring-white/10">
+                            {{ strtoupper(substr(auth()->user()->primer_nombre ?? 'M', 0, 1)) }}
+                        </div>
+                    @endif
+                    <div class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full"></div>
                 </div>
                 <div class="overflow-hidden flex-1">
                     <p class="text-xs font-semibold text-slate-200 truncate">{{ auth()->user()->correo }}</p>
@@ -150,9 +237,13 @@
                     <!-- User Dropdown -->
                     <div class="relative group">
                         <button class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-danger-500 to-danger-600 flex items-center justify-center text-white font-semibold shadow-md">
-                                {{ strtoupper(substr(auth()->user()->correo, 0, 1)) }}
-                            </div>
+                            @if($medico && $medico->foto_perfil)
+                                <img src="{{ asset('storage/' . $medico->foto_perfil) }}" class="w-9 h-9 rounded-full object-cover shadow-md ring-2 ring-white">
+                            @else
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center text-white font-semibold shadow-md">
+                                    {{ strtoupper(substr(auth()->user()->primer_nombre ?? 'M', 0, 1)) }}
+                                </div>
+                            @endif
                             <div class="hidden md:block text-left">
                                 <p class="text-sm font-semibold text-gray-900">{{ auth()->user()->correo }}</p>
                                 <p class="text-xs text-gray-500">Médico</p>
@@ -168,7 +259,7 @@
                             </div>
                             <div class="p-2">
                             <div class="p-2">
-                                <a href="{{ url('medico/perfil') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700">
+                                <a href="{{ route('medico.perfil.edit') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700">
                                     <i class="bi bi-person"></i>
                                     <span>Mi Perfil</span>
                                 </a>

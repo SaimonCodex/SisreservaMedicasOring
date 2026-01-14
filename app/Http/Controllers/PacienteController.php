@@ -24,43 +24,53 @@ class PacienteController extends Controller
                 'historial_reciente' => collect(),
                 'recetas_activas' => collect(),
                 'stats' => [
-                    'citas_proximás' => 0,
+                    'citas_proximas' => 0,
                     'historias' => 0,
                     'recetas_activas' => 0,
-                    'consultas_mes' => 0
+                    'consultas_mes' => 0,
+                    'total_citas' => 0
                 ]
             ]);
         }
+
+        // Cargar paciente con historia clínica para el tipo de sangre
+        $paciente->load('historiaClinicaBase');
         
         $citas_proximas = \App\Models\Cita::with(['medico','consultorio','facturaPaciente.pagos'])
                                        ->where('paciente_id', $paciente->id)
                                        ->where('fecha_cita', '>=', today())
                                        ->where('status', true)
                                        ->orderBy('fecha_cita')
+                                       ->orderBy('hora_inicio')
                                        ->limit(5)
                                        ->get();
 
-        $historial_reciente = \App\Models\Cita::where('paciente_id', $paciente->id)
+        $historial_reciente = \App\Models\Cita::with(['medico.usuario'])
+                                         ->where('paciente_id', $paciente->id)
                                          ->where('fecha_cita', '<', today())
                                          ->where('status', true)
                                          ->orderBy('fecha_cita', 'desc')
                                          ->limit(10)
                                          ->get();
 
-        $recetas_activas = collect();
+        // Asumimos que las recetas vienen de OrdenMedica
+        $recetas_activas = \App\Models\OrdenMedica::where('paciente_id', $paciente->id)
+                                             ->where('status', true) // O el campo que indique que está activa
+                                             ->get();
 
         // Estadísticas
         $stats = [
-            'citas_proximás' => $citas_proximas->count(),
+            'citas_proximas' => $citas_proximas->count(),
             'historias' => $historial_reciente->count(),
-            'recetas_activas' => 0,
+            'recetas_activas' => $recetas_activas->count(),
+            'total_citas' => \App\Models\Cita::where('paciente_id', $paciente->id)->count(),
             'consultas_mes' => \App\Models\Cita::where('paciente_id', $paciente->id)
                                               ->whereMonth('fecha_cita', now()->month)
                                               ->whereYear('fecha_cita', now()->year)
                                               ->count()
         ];
 
-        return view('paciente.dashboard', compact('citas_proximas', 'historial_reciente', 'recetas_activas', 'stats'));
+        return view('paciente.dashboard', compact('paciente', 'citas_proximas', 'historial_reciente', 'recetas_activas', 'stats'));
     }
 
     public function historial()
@@ -409,5 +419,124 @@ class PacienteController extends Controller
         }
 
         return redirect()->back()->with('success', 'Historia clínica actualizada exitosamente');
+    }
+
+    /**
+     * Mostrar formulario de edición de perfil para el paciente autenticado
+     */
+    public function editPerfil()
+    {
+        $paciente = auth()->user()->paciente;
+        
+        if (!$paciente) {
+            return redirect()->route('paciente.dashboard')->with('error', 'No se encontró el perfil de paciente');
+        }
+
+        $estados = Estado::where('status', true)->get();
+        $ciudades = Ciudad::where('status', true)->get();
+        $municipios = Municipio::where('status', true)->get();
+        $parroquias = Parroquia::where('status', true)->get();
+
+        return view('paciente.editar-perfil', compact('paciente', 'estados', 'ciudades', 'municipios', 'parroquias'));
+    }
+
+    /**
+     * Actualizar perfil del paciente autenticado
+     */
+    public function updatePerfil(Request $request)
+    {
+        $paciente = auth()->user()->paciente;
+        
+        if (!$paciente) {
+            return redirect()->route('paciente.dashboard')->with('error', 'No se encontró el perfil de paciente');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'primer_nombre' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'segundo_nombre' => ['nullable', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'primer_apellido' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'segundo_apellido' => ['nullable', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'fecha_nac' => 'nullable|date|before:today',
+            'estado_id' => 'nullable|exists:estados,id_estado',
+            'ciudad_id' => 'nullable|exists:ciudades,id_ciudad',
+            'municipio_id' => 'nullable|exists:municipios,id_municipio',
+            'parroquia_id' => 'nullable|exists:parroquias,id_parroquia',
+            'direccion_detallada' => 'nullable|string|max:500',
+            'prefijo_tlf' => 'nullable|in:+58,+57,+1,+34',
+            'numero_tlf' => 'nullable|max:15',
+            'genero' => 'nullable|in:Masculino,Femenino,Otro',
+            'ocupacion' => 'nullable|max:150',
+            'estado_civil' => 'nullable|in:Soltero,Casado,Divorciado,Viudo,Unión Libre',
+            'foto_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'banner_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
+            'banner_color' => 'nullable|string|max:100',
+            'tema_dinamico' => 'nullable|boolean',
+            'password' => 'nullable|min:8|confirmed'
+        ], [
+            'primer_nombre.required' => 'El primer nombre es requerido',
+            'primer_apellido.required' => 'El primer apellido es requerido',
+            'fecha_nac.before' => 'La fecha de nacimiento debe ser anterior a hoy',
+            'foto_perfil.image' => 'El archivo de foto debe ser una imagen',
+            'foto_perfil.max' => 'La foto no debe superar los 2MB',
+            'banner_perfil.image' => 'El archivo de banner debe ser una imagen',
+            'banner_perfil.max' => 'El banner no debe superar los 3MB',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres',
+            'password.confirmed' => 'Las contraseñas no coinciden'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $paciente) {
+                $data = $request->except(['foto_perfil', 'banner_perfil', 'password', 'password_confirmation']);
+                $data['tema_dinamico'] = $request->has('tema_dinamico') ? 1 : 0;
+
+                // Manejar foto de perfil
+                if ($request->hasFile('foto_perfil')) {
+                    // Eliminar foto anterior si existe
+                    if ($paciente->foto_perfil && \Storage::disk('public')->exists($paciente->foto_perfil)) {
+                        \Storage::disk('public')->delete($paciente->foto_perfil);
+                    }
+
+                    // Guardar nueva foto
+                    $file = $request->file('foto_perfil');
+                    $filename = 'perfil_' . $paciente->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                    $path = $file->storeAs('perfiles', $filename, 'public');
+                    $data['foto_perfil'] = $path;
+                }
+
+                // Manejar banner de perfil
+                if ($request->hasFile('banner_perfil')) {
+                    // Eliminar banner anterior si existe
+                    if ($paciente->banner_perfil && \Storage::disk('public')->exists($paciente->banner_perfil)) {
+                        \Storage::disk('public')->delete($paciente->banner_perfil);
+                    }
+
+                    // Guardar nuevo banner
+                    $file = $request->file('banner_perfil');
+                    $filename = 'banner_' . $paciente->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                    $path = $file->storeAs('banners', $filename, 'public');
+                    $data['banner_perfil'] = $path;
+                }
+
+                // Actualizar paciente
+                $paciente->update($data);
+
+                // Actualizar contraseña si se proporcionó
+                if ($request->filled('password')) {
+                    $paciente->usuario->update([
+                        'password' => $request->password
+                    ]);
+                }
+            });
+
+            return redirect()->route('paciente.dashboard')->with('success', '¡Perfil actualizado exitosamente!');
+
+        } catch (\Exception $e) {
+            \Log::error('Error al actualizar perfil del paciente: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al actualizar el perfil: ' . $e->getMessage())->withInput();
+        }
     }
 }

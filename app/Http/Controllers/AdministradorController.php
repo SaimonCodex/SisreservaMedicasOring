@@ -108,6 +108,88 @@ class AdministradorController extends Controller
         return view('admin.dashboard', compact('stats', 'actividadReciente', 'tareas'));
     }
 
+    public function editPerfil()
+    {
+        $administrador = auth()->user()->administrador;
+        
+        if (!$administrador) {
+            return redirect()->route('admin.dashboard')->with('error', 'No se encontró el perfil de administrador.');
+        }
+
+        $estados = Estado::where('status', true)->get();
+        $ciudades = Ciudad::where('status', true)->get();
+        $municipios = Municipio::where('status', true)->get();
+        $parroquias = Parroquia::where('status', true)->get();
+
+        return view('admin.perfil.editar', compact('administrador', 'estados', 'ciudades', 'municipios', 'parroquias'));
+    }
+
+    public function updatePerfil(Request $request)
+    {
+        $administrador = auth()->user()->administrador;
+        
+        if (!$administrador) {
+            return redirect()->route('admin.dashboard')->with('error', 'No se encontró el perfil de administrador.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'primer_nombre' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'segundo_nombre' => ['nullable', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍ ÓÚÑ$ +ñÜüÜ\s]+$/'],
+            'primer_apellido' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'segundo_apellido' => ['nullable', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'fecha_nac' => 'nullable|date|before:today',
+            'genero' => 'nullable|max:20',
+            'prefijo_tlf' => 'nullable|in:+58,+57,+1,+34',
+            'numero_tlf' => 'nullable|max:15',
+            'direccion_detallada' => 'nullable|string',
+            'estado_id' => 'nullable|exists:estados,id_estado',
+            'ciudad_id' => 'nullable|exists:ciudades,id_ciudad',
+            'municipio_id' => 'nullable|exists:municipios,id_municipio',
+            'parroquia_id' => 'nullable|exists:parroquias,id_parroquia',
+            'foto_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'banner_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
+            'banner_color' => 'nullable|string|max:255',
+            'tema_dinamico' => 'nullable|boolean',
+            'password' => 'nullable|min:8|confirmed'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $data = $request->except(['foto_perfil', 'banner_perfil', 'password', 'password_confirmation']);
+
+        // Manejar foto de perfil
+        if ($request->hasFile('foto_perfil')) {
+            if ($administrador->foto_perfil) {
+                \Storage::disk('public')->delete($administrador->foto_perfil);
+            }
+            $data['foto_perfil'] = $request->file('foto_perfil')->store('perfiles_admin', 'public');
+        }
+
+        // Manejar banner de perfil
+        if ($request->hasFile('banner_perfil')) {
+            if ($administrador->banner_perfil) {
+                \Storage::disk('public')->delete($administrador->banner_perfil);
+            }
+            $data['banner_perfil'] = $request->file('banner_perfil')->store('banners_admin', 'public');
+        }
+
+        // Manejar tema dinámico
+        $data['tema_dinamico'] = $request->has('tema_dinamico') ? 1 : 0;
+
+        $administrador->update($data);
+
+        // Actualizar contraseña si se proporcionó
+        if ($request->filled('password')) {
+            $administrador->usuario->update([
+                'password' => $request->password
+            ]);
+        }
+
+        return redirect()->route('admin.perfil.edit')->with('success', 'Perfil actualizado exitosamente');
+    }
+
     public function index(Request $request)
     {
         $query = Administrador::with(['usuario', 'estado', 'ciudad']);

@@ -30,6 +30,10 @@ class Paciente extends Model
         'genero',
         'ocupacion',
         'estado_civil',
+        'foto_perfil',
+        'banner_perfil',
+        'banner_color',
+        'tema_dinamico',
         'status'
     ];
 

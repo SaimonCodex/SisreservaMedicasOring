@@ -104,7 +104,16 @@ Route::middleware(['auth'])->group(function () {
         // Rutas de pago del paciente
         Route::get('/pagos/registrar/{cita}', [PagoController::class, 'mostrarRegistroPago'])->name('paciente.pagos.registrar');
         Route::post('/pagos/registrar', [PagoController::class, 'registrarPagoPaciente'])->name('paciente.pagos.store');
+        
+        // Rutas de perfil del paciente
+        Route::get('/perfil/editar', [PacienteController::class, 'editPerfil'])->name('paciente.perfil.edit');
+        Route::put('/perfil', [PacienteController::class, 'updatePerfil'])->name('paciente.perfil.update');
     });
+
+    // Rutas Globales de Ubicación (AJAX)
+    Route::get('/ubicacion/get-ciudades/{estadoId}', [UbicacionController::class, 'getCiudadesByEstado']);
+    Route::get('/ubicacion/get-municipios/{estadoId}', [UbicacionController::class, 'getMunicipiosByEstado']);
+    Route::get('/ubicacion/get-parroquias/{municipioId}', [UbicacionController::class, 'getParroquiasByMunicipio']);
     
     // =========================================================================
     // ADMINISTRACIÓN DEL SISTEMA
@@ -123,6 +132,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('get-ciudades/{estadoId}', [AdministradorController::class, 'getCiudades'])->name('admin.get-ciudades');
         Route::get('get-municipios/{estadoId}', [AdministradorController::class, 'getMunicipios'])->name('admin.get-municipios');
         Route::get('get-parroquias/{municipioId}', [AdministradorController::class, 'getParroquias'])->name('admin.get-parroquias');
+        
+        // Perfil Admin
+        Route::get('perfil/editar', [AdministradorController::class, 'editPerfil'])->name('admin.perfil.edit');
+        Route::put('perfil', [AdministradorController::class, 'updatePerfil'])->name('admin.perfil.update');
     });
     
     // =========================================================================
@@ -133,6 +146,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('medicos/{id}/horarios', [MedicoController::class, 'horarios'])->name('medicos.horarios');
     Route::post('medicos/{id}/guardar-horario', [MedicoController::class, 'guardarHorario'])->name('medicos.guardar-horario');
     Route::get('buscar-medicos', [MedicoController::class, 'buscar'])->name('medicos.buscar');
+
+    Route::prefix('medico')->middleware(['auth'])->group(function () {
+        Route::get('/perfil/editar', [MedicoController::class, 'editPerfil'])->name('medico.perfil.edit');
+        Route::put('/perfil', [MedicoController::class, 'updatePerfil'])->name('medico.perfil.update');
+    });
     
     // =========================================================================
     // PACIENTES
