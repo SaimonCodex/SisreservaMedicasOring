@@ -1142,7 +1142,7 @@
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = h.ocupada 
-                    ? 'p-2 text-sm rounded border bg-gray-200 text-gray-400 cursor-not-allowed'
+                    ? 'p-2 text-sm rounded border bg-red-50 text-red-500 border-red-200 cursor-not-allowed opacity-75 line-through'
                     : 'p-2 text-sm rounded border hover:border-blue-500 hover:bg-blue-50 transition-colors hora-btn';
                 btn.textContent = h.hora;
                 btn.disabled = h.ocupada;

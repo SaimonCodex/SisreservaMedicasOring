@@ -1008,8 +1008,8 @@
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.textContent = slot.hora;
-                btn.className = 'p-2 text-sm rounded-lg font-medium transition-all ' + 
-                    (slot.disponible ? 'bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer' : 'bg-red-100 text-red-400 cursor-not-allowed');
+                btn.className = 'p-2 text-sm rounded-lg font-medium transition-all border ' + 
+                    (slot.disponible ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200 cursor-pointer' : 'bg-red-50 text-red-500 border-red-200 cursor-not-allowed opacity-75 line-through');
                 if (slot.disponible) {
                     btn.onclick = () => selectHorario(slot.hora, btn);
                 } else {

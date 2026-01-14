@@ -1126,7 +1126,10 @@ class CitaController extends Controller
             ->where('fecha_cita', $fecha)
             ->where('status', true)
             ->whereNotIn('estado_cita', ['Cancelada', 'No Asistió'])
-            ->pluck('hora_inicio')
+            ->get()
+            ->map(function($cita) {
+                return substr($cita->hora_inicio, 0, 5);
+            })
             ->toArray();
         
         // Generar slots de 30 minutos
