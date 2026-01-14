@@ -34,52 +34,88 @@
 </div>
 @endif
 
-<div class="card">
+<div class="card overflow-hidden border-0 shadow-sm">
     @if($pagos && $pagos->count() > 0)
         <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paciente</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-100">
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Fecha / Ref</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Paciente</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Servicio</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Monto (USD)</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Estado Pago</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Acciones</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="divide-y divide-gray-50">
                     @foreach($pagos as $pago)
-                    <tr class="hover:bg-gray-50 pago-row"
+                    @php
+                        $ultimoPago = $pago->pagos->where('status', true)->sortByDesc('created_at')->first();
+                        $statusText = 'Sin Registro';
+                        $statusBadge = 'gray';
+                        
+                        if ($ultimoPago) {
+                            $statusText = $ultimoPago->estado;
+                            $statusBadge = match($statusText) {
+                                'Confirmado' => 'success',
+                                'Pendiente' => 'warning',
+                                'Rechazado' => 'danger',
+                                default => 'gray'
+                            };
+                        } elseif ($pago->status_factura == 'Cancelada') {
+                             $statusText = 'Anulada';
+                             $statusBadge = 'gray';
+                        } else {
+                             $statusText = 'Pendiente por Pagar';
+                             $statusBadge = 'danger';
+                        }
+                    @endphp
+                    <tr class="hover:bg-emerald-50/30 transition-colors pago-row"
                         data-tipo="{{ $pago->tipo_pago_display ?? 'propia' }}"
                         data-paciente-especial="{{ $pago->paciente_especial_info->id ?? '' }}">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ \Carbon\Carbon::parse($pago->created_at)->format('d/m/Y') }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            @if(($pago->tipo_pago_display ?? 'propia') == 'terceros' && $pago->paciente_especial_info)
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                                    <i class="bi bi-person-heart"></i> {{ $pago->paciente_especial_info->primer_nombre }}
-                                </span>
-                            @else
-                                <span class="text-gray-500 italic">Yo</span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-900">
-                            {{ $pago->descripcion ?? 'Consulta Médica' }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            ${{ number_format($pago->monto ?? 0, 2) }}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-900">{{ \Carbon\Carbon::parse($pago->created_at)->format('d M, Y') }}</span>
+                                <span class="text-[10px] font-mono text-gray-400">#{{ $pago->numero_factura }}</span>
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="badge {{ $pago->status ? 'badge-success' : 'badge-warning' }}">
-                                {{ $pago->status ? 'Pagado' : 'Pendiente' }}
+                            @if(($pago->tipo_pago_display ?? 'propia') == 'terceros' && $pago->paciente_especial_info)
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-xs font-bold">
+                                        {{ substr($pago->paciente_especial_info->primer_nombre, 0, 1) }}
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-700">{{ $pago->paciente_especial_info->primer_nombre }}</span>
+                                </div>
+                            @else
+                                <div class="flex items-center gap-2 text-emerald-600">
+                                    <i class="bi bi-person-check-fill text-sm"></i>
+                                    <span class="text-sm font-semibold italic">Titular</span>
+                                </div>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900 font-medium">
+                                {{ $pago->cita->especialidad->nombre ?? 'Consulta Médica' }}
+                            </div>
+                            <div class="text-[10px] text-gray-400 capitalize">
+                                {{ \App\Models\Cita::find($pago->cita_id)->tipo_consulta ?? 'Presencial' }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-bold text-gray-900">${{ number_format($pago->monto_usd, 2) }}</div>
+                            <div class="text-[11px] text-gray-500">{{ number_format($pago->monto_bs, 2) }} Bs.</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="badge badge-{{ $statusBadge }} uppercase font-bold tracking-wider text-[10px] py-1 px-3">
+                                {{ $statusText }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <button class="btn btn-sm btn-outline">
-                                <i class="bi bi-eye"></i> Ver
-                            </button>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <a href="{{ route('paciente.citas.show', $pago->cita_id) }}" class="btn btn-xs btn-ghost text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all font-bold">
+                                <i class="bi bi-info-circle mr-1"></i> Detalles
+                            </a>
                         </td>
                     </tr>
                     @endforeach
@@ -87,16 +123,21 @@
             </table>
         </div>
 
-        <div class="p-4 border-t border-gray-100">
+        <div class="p-4 border-t border-gray-50 bg-gray-50/50">
             {{ $pagos->links() }}
         </div>
     @else
-        <div class="p-12 text-center">
-            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-50 mb-4">
-                <i class="bi bi-wallet2 text-5xl text-gray-300"></i>
+        <div class="p-16 text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 border border-gray-100 mb-6 shadow-inner">
+                <i class="bi bi-credit-card-2-back text-4xl text-gray-300"></i>
             </div>
-            <p class="text-gray-500 mb-2 font-medium text-lg">No tienes pagos registrados</p>
-            <p class="text-gray-400 text-sm">Tus pagos aparecerán aquí después de tus consultas</p>
+            <h3 class="text-xl font-display font-bold text-gray-900 mb-2">Sin Historial de Pagos</h3>
+            <p class="text-gray-500 max-w-sm mx-auto text-sm leading-relaxed">
+                Aún no tienes registros de facturación. Tus pagos y facturas aparecerán aquí una vez que agendes y pagues tus consultas.
+            </p>
+            <a href="{{ route('paciente.citas.create') }}" class="btn btn-primary mt-8">
+                Agendar Mi Primera Cita
+            </a>
         </div>
     @endif
 </div>

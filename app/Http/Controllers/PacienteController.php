@@ -32,7 +32,8 @@ class PacienteController extends Controller
             ]);
         }
         
-        $citas_proximas = \App\Models\Cita::where('paciente_id', $paciente->id)
+        $citas_proximas = \App\Models\Cita::with(['medico','consultorio','facturaPaciente.pagos'])
+                                       ->where('paciente_id', $paciente->id)
                                        ->where('fecha_cita', '>=', today())
                                        ->where('status', true)
                                        ->orderBy('fecha_cita')
@@ -147,7 +148,8 @@ class PacienteController extends Controller
         }
 
         // 1. Pagos propios
-        $pagosPropios = \App\Models\FacturaPaciente::where('paciente_id', $paciente->id)
+        $pagosPropios = \App\Models\FacturaPaciente::with(['cita.especialidad', 'pagos'])
+                                            ->where('paciente_id', $paciente->id)
                                             ->orderBy('created_at', 'desc')
                                             ->get()
                                             ->map(function($pago) {
@@ -172,7 +174,8 @@ class PacienteController extends Controller
             $pacienteIds = $pacientesEspeciales->pluck('paciente_id')->filter();
             
             if ($pacienteIds->isNotEmpty()) {
-                $pagosTerceros = \App\Models\FacturaPaciente::whereIn('paciente_id', $pacienteIds)
+                $pagosTerceros = \App\Models\FacturaPaciente::with(['cita.especialidad', 'pagos', 'paciente'])
+                                     ->whereIn('paciente_id', $pacienteIds)
                                      ->orderBy('created_at', 'desc')
                                      ->get()
                                      ->map(function($pago) use ($pacientesEspeciales) {

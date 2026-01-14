@@ -332,4 +332,25 @@ class FacturacionController extends Controller
 
         return redirect()->route('facturacion.liquidaciones')->with('success', 'Liquidación creada exitosamente');
     }
+
+    /**
+     * Mostrar vista de liquidaciones con totales pendientes
+     */
+    public function liquidaciones()
+    {
+        // Obtener totales pendientes agrupados por entidad
+        $totalesPendientes = FacturaTotal::with(['medico', 'consultorio'])
+                                        ->where('estado_liquidacion', 'Pendiente')
+                                        ->where('status', true)
+                                        ->get();
+
+        // Calcular totales por tipo de entidad
+        $totalesPorEntidad = [
+            'Medico' => $totalesPendientes->where('entidad_tipo', 'Medico')->sum('total_final_usd'),
+            'Consultorio' => $totalesPendientes->where('entidad_tipo', 'Consultorio')->sum('total_final_usd'),
+            'Sistema' => $totalesPendientes->where('entidad_tipo', 'Sistema')->sum('total_final_usd'),
+        ];
+
+        return view('shared.facturacion.liquidaciones', compact('totalesPendientes', 'totalesPorEntidad'));
+    }
 }

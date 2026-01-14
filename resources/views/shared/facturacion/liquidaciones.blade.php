@@ -3,211 +3,214 @@
 @section('title', 'Liquidaciones')
 
 @section('content')
-<div class="mb-6">
-    <div class="flex items-center justify-between gap-4">
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
         <div>
-            <h2 class="text-3xl font-display font-bold text-gray-900">Liquidaciones</h2>
-            <p class="text-gray-500 mt-1">Pagos a médicos y liquidación de honorarios</p>
+            <h1 class="text-3xl font-display font-bold text-gray-900">Liquidaciones</h1>
+            <p class="text-gray-600 mt-1">Gestión de liquidaciones quincenales y mensuales</p>
         </div>
-        <div class="flex gap-2">
-            <a href="{{ route('facturacion.exportar-liquidaciones') }}" class="btn btn-success">
-                <i class="bi bi-file-excel mr-2"></i>
-                Exportar Excel
-            </a>
-            <a href="{{ route('facturacion.index') }}" class="btn btn-outline">
-                <i class="bi bi-arrow-left mr-2"></i>
-                Volver
-            </a>
-        </div>
+        <button onclick="document.getElementById('modal-nueva-liquidacion').showModal()" class="btn btn-primary shadow-lg shadow-emerald-200">
+            <i class="bi bi-plus-lg mr-2"></i>
+            <span>Nueva Liquidación</span>
+        </button>
     </div>
-</div>
 
-<!-- Filtros -->
-<div class="card p-6 mb-6">
-    <form method="GET" action="{{ route('facturacion.liquidaciones') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-            <label class="form-label">Fecha Inicio</label>
-            <input type="date" name="fecha_inicio" class="input" value="{{ request('fecha_inicio') }}">
-        </div>
-
-        <div>
-            <label class="form-label">Fecha Fin</label>
-            <input type="date" name="fecha_fin" class="input" value="{{ request('fecha_fin') }}">
-        </div>
-
-        <div>
-            <label class="form-label">Médico</label>
-            <select name="medico_id" class="form-select">
-                <option value="">Todos los médicos</option>
-                @foreach($medicos ?? [] as $medico)
-                <option value="{{ $medico->id }}" {{ request('medico_id') == $medico->id ? 'selected' : '' }}>
-                    Dr. {{ $medico->primer_nombre }} {{ $medico->primer_apellido }}
-                </option>
-                @endforeach
-            </select>
-        </div>
-
-        <div>
-            <label class="form-label">Estado</label>
-            <select name="estado" class="form-select">
-                <option value="">Todos</option>
-                <option value="Pendiente" {{ request('estado') == 'Pendiente' ? 'selected' : '' }}>Pendiente</option>
-                <option value="Procesada" {{ request('estado') == 'Procesada' ? 'selected' : '' }}>Procesada</option>
-                <option value="Pagada" {{ request('estado') == 'Pagada' ? 'selected' : '' }}>Pagada</option>
-            </select>
-        </div>
-
-        <div class="md:col-span-4 flex gap-3">
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-funnel mr-2"></i>
-                Filtrar
-            </button>
-            <a href="{{ route('facturacion.liquidaciones') }}" class="btn btn-outline">
-                <i class="bi bi-x-lg mr-2"></i>
-                Limpiar
-            </a>
-        </div>
-    </form>
-</div>
-
-<!-- Estadísticas -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    <div class="card p-4 border-l-4 border-l-info-500">
-        <div class="flex items-center justify-between">
+    <!-- Filtros -->
+    <div class="card p-6">
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Total Liquidaciones</p>
-                <p class="text-2xl font-bold text-gray-900">{{ $liquidaciones->count() }}</p>
+                <label class="label"><span class="label-text font-bold">Tipo</span></label>
+                <select name="tipo" class="select select-bordered w-full">
+                    <option value="">Todos</option>
+                    <option value="Quincenal" {{ request('tipo') == 'Quincenal' ? 'selected' : '' }}>Quincenal</option>
+                    <option value="Mensual" {{ request('tipo') == 'Mensual' ? 'selected' : '' }}>Mensual</option>
+                </select>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-info-50 flex items-center justify-center">
-                <i class="bi bi-file-text text-info-600 text-2xl"></i>
-            </div>
-        </div>
-    </div>
-
-    <div class="card p-4 border-l-4 border-l-success-500">
-        <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Total a Pagar</p>
-                <p class="text-2xl font-bold text-gray-900">${{ number_format($liquidaciones->sum('monto_medico'), 2) }}</p>
+                <label class="label"><span class="label-text font-bold">Estado</span></label>
+                <select name="estado" class="select select-bordered w-full">
+                    <option value="">Todos</option>
+                    <option value="Pendiente" {{ request('estado') == 'Pendiente' ? 'selected' : '' }}>Pendiente</option>
+                    <option value="Procesada" {{ request('estado') == 'Procesada' ? 'selected' : '' }}>Procesada</option>
+                    <option value="Pagada" {{ request('estado') == 'Pagada' ? 'selected' : '' }}>Pagada</option>
+                </select>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-success-50 flex items-center justify-center">
-                <i class="bi bi-cash-stack text-success-600 text-2xl"></i>
-            </div>
-        </div>
-    </div>
-
-    <div class="card p-4 border-l-4 border-l-warning-500">
-        <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Pendientes</p>
-                <p class="text-2xl font-bold text-gray-900">{{ $liquidaciones->where('estado_pago', 'Pendiente')->count() }}</p>
+                <label class="label"><span class="label-text font-bold">Período</span></label>
+                <input type="month" name="periodo" class="input input-bordered w-full" value="{{ request('periodo') }}">
             </div>
-            <div class="w-12 h-12 rounded-xl bg-warning-50 flex items-center justify-center">
-                <i class="bi bi-clock text-warning-600 text-2xl"></i>
+            <div class="flex items-end">
+                <button type="submit" class="btn btn-primary w-full">
+                    <i class="bi bi-search mr-2"></i>
+                    Filtrar
+                </button>
             </div>
+        </form>
+    </div>
+
+    <!-- Vista por Entidad -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Médicos -->
+        <div class="card p-6 bg-gradient-to-br from-blue-50 to-white border-blue-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-900">Médicos</h3>
+                <i class="bi bi-person-badge text-blue-600 text-2xl"></i>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">${{ number_format($totalesPorEntidad['Medico'] ?? 0, 2) }}</p>
+            <p class="text-sm text-gray-500 mt-1">Total pendiente de liquidar</p>
+        </div>
+
+        <!-- Consultorios -->
+        <div class="card p-6 bg-gradient-to-br from-emerald-50 to-white border-emerald-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-900">Consultorios</h3>
+                <i class="bi bi-building text-emerald-600 text-2xl"></i>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">${{ number_format($totalesPorEntidad['Consultorio'] ?? 0, 2) }}</p>
+            <p class="text-sm text-gray-500 mt-1">Total pendiente de liquidar</p>
+        </div>
+
+        <!-- Sistema -->
+        <div class="card p-6 bg-gradient-to-br from-purple-50 to-white border-purple-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-900">Sistema</h3>
+                <i class="bi bi-gear text-purple-600 text-2xl"></i>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">${{ number_format($totalesPorEntidad['Sistema'] ?? 0, 2) }}</p>
+            <p class="text-sm text-gray-500 mt-1">Total comisiones</p>
         </div>
     </div>
 
-    <div class="card p-4 border-l-4 border-l-medical-500">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm text-gray-500 mb-1">Pagadas</p>
-                <p class="text-2xl font-bold text-gray-900">{{ $liquidaciones->where('estado_pago', 'Pagada')->count() }}</p>
-            </div>
-            <div class="w-12 h-12 rounded-xl bg-medical-50 flex items-center justify-center">
-                <i class="bi bi-check-circle text-medical-600 text-2xl"></i>
-            </div>
+    <!-- Tabla de Totales Pendientes por Entidad -->
+    <div class="card">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-bold text-gray-900">Totales Pendientes por Entidad</h3>
         </div>
-    </div>
-</div>
-
-<!-- Tabla de Liquidaciones -->
-<div class="card overflow-hidden">
-    <div class="px-6 py-4 bg-gradient-to-r from-medical-600 to-medical-500">
-        <h3 class="text-lg font-semibold text-white">Resumen de Liquidaciones</h3>
-    </div>
-    
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-200">
-                <tr>
-                    <th class="px-6 py-3 text-left font-semibold text-gray-900">Factura</th>
-                    <th class="px-6 py-3 text-left font-semibold text-gray-900">Fecha</th>
-                    <th class="px-6 py-3 text-left font-semibold text-gray-900">Médico</th>
-                    <th class="px-6 py-3 text-left font-semibold text-gray-900">Paciente</th>
-                    <th class="px-6 py-3 text-right font-semibold text-gray-900">Total Factura</th>
-                    <th class="px-6 py-3 text-right font-semibold text-gray-900">Honorarios</th>
-                    <th class="px-6 py-3 text-center font-semibold text-gray-900">Estado</th>
-                    <th class="px-6 py-3 text-center font-semibold text-gray-900">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                @forelse($liquidaciones as $liquidacion)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">
-                        <span class="font-mono font-semibold text-medical-600">{{ $liquidacion->numero_factura }}</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="font-semibold text-gray-900">{{ $liquidacion->fecha_factura->format('d/m/Y') }}</p>
-                        <p class="text-xs text-gray-500">{{ $liquidacion->fecha_factura->format('H:i') }}</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="font-semibold text-gray-900">
-                            Dr. {{ $liquidacion->cita->medico->primer_nombre }} {{ $liquidacion->cita->medico->primer_apellido }}
-                        </p>
-                        <p class="text-xs text-gray-500">{{ $liquidacion->cita->especialidad->nombre_especialidad ?? 'N/A' }}</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="font-semibold text-gray-900">
-                            {{ $liquidacion->cita->paciente->primer_nombre }} {{ $liquidacion->cita->paciente->primer_apellido }}
-                        </p>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        <p class="font-semibold text-gray-900">${{ number_format($liquidacion->monto_total, 2) }}</p>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        <p class="font-bold text-success-600">${{ number_format($liquidacion->monto_medico, 2) }}</p>
-                        <p class="text-xs text-gray-500">{{ $liquidacion->porcentaje_medico }}%</p>
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                        <span class="badge badge-{{ $liquidacion->estado_pago == 'Pagada' ? 'success' : ($liquidacion->estado_pago == 'Procesada' ? 'info' : 'warning') }}">
-                            {{ $liquidacion->estado_pago }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center justify-center gap-2">
-                            <a href="{{ route('facturacion.show', $liquidacion->id) }}" class="btn btn-sm btn-ghost text-info-600" title="Ver detalle">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            @if($liquidacion->estado_pago != 'Pagada')
-                            <form action="{{ route('facturacion.marcar-pagada', $liquidacion->id) }}" method="POST" class="inline">
-                                @csrf
-                                <button type="submit" class="btn btn-sm btn-ghost text-success-600" title="Marcar como pagada">
-                                    <i class="bi bi-check-circle"></i>
-                                </button>
-                            </form>
+        <div class="overflow-x-auto">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Entidad</th>
+                        <th>Tipo</th>
+                        <th>Total USD</th>
+                        <th>Total BS</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($totalesPendientes as $total)
+                    <tr>
+                        <td>
+                            @if($total->entidad_tipo == 'Medico' && $total->medico)
+                                <div class="flex items-center gap-2">
+                                    <i class="bi bi-person-badge text-blue-600"></i>
+                                    <span>Dr. {{ $total->medico->primer_nombre }} {{ $total->medico->primer_apellido }}</span>
+                                </div>
+                            @elseif($total->entidad_tipo == 'Consultorio' && $total->consultorio)
+                                <div class="flex items-center gap-2">
+                                    <i class="bi bi-building text-emerald-600"></i>
+                                    <span>{{ $total->consultorio->nombre }}</span>
+                                </div>
+                            @else
+                                <div class="flex items-center gap-2">
+                                    <i class="bi bi-gear text-purple-600"></i>
+                                    <span>Sistema</span>
+                                </div>
                             @endif
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="8" class="text-center py-12">
-                        <i class="bi bi-inbox text-5xl text-gray-300 mb-3"></i>
-                        <p class="text-gray-500">No se encontraron liquidaciones</p>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-            <tfoot class="bg-gray-50 border-t-2 border-gray-300">
-                <tr>
-                    <td colspan="4" class="px-6 py-4 text-right font-bold text-gray-900">TOTALES:</td>
-                    <td class="px-6 py-4 text-right font-bold text-gray-900">${{ number_format($liquidaciones->sum('monto_total'), 2) }}</td>
-                    <td class="px-6 py-4 text-right font-bold text-success-600">${{ number_format($liquidaciones->sum('monto_medico'), 2) }}</td>
-                    <td colspan="2"></td>
-                </tr>
-            </tfoot>
-        </table>
+                        </td>
+                        <td><span class="badge badge-info">{{ $total->entidad_tipo }}</span></td>
+                        <td class="font-bold text-gray-900">${{ number_format($total->total_final_usd, 2) }}</td>
+                        <td class="text-gray-600">Bs. {{ number_format($total->total_final_bs, 2) }}</td>
+                        <td>
+                            @if($total->estado_liquidacion == 'Pendiente')
+                            <span class="badge badge-warning">Pendiente</span>
+                            @elseif($total->estado_liquidacion == 'Procesada')
+                            <span class="badge badge-info">Procesada</span>
+                            @else
+                            <span class="badge badge-success">Pagada</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($total->estado_liquidacion == 'Pendiente')
+                            <button onclick="generarLiquidacion('{{ $total->entidad_tipo }}', {{ $total->entidad_id ?? 'null' }})" class="btn btn-sm btn-primary">
+                                <i class="bi bi-file-earmark-check"></i>
+                                Generar Liquidación
+                            </button>
+                            @endif
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="text-center py-12">
+                            <div class="flex flex-col items-center">
+                                <i class="bi bi-inbox text-6xl text-gray-300 mb-3"></i>
+                                <p class="text-gray-500 font-medium">No hay totales pendientes</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+<!-- Modal Nueva Liquidación -->
+<dialog id="modal-nueva-liquidacion" class="modal backdrop-blur-sm">
+    <div class="modal-box max-w-2xl">
+        <h3 class="font-bold text-lg mb-4">Nueva Liquidación</h3>
+        <form action="{{ route('facturacion.crear-liquidacion') }}" method="POST">
+            @csrf
+            <div class="space-y-4">
+                <div>
+                    <label class="label"><span class="label-text font-bold">Tipo de Período</span></label>
+                    <select name="tipo_periodo" class="select select-bordered w-full" required>
+                        <option value="Quincenal">Quincenal</option>
+                        <option value="Mensual">Mensual</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="label"><span class="label-text font-bold">Fecha Inicio</span></label>
+                        <input type="date" name="fecha_inicio" class="input input-bordered w-full" required>
+                    </div>
+                    <div>
+                        <label class="label"><span class="label-text font-bold">Fecha Fin</span></label>
+                        <input type="date" name="fecha_fin" class="input input-bordered w-full" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('modal-nueva-liquidacion').close()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Generar Liquidación</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function generarLiquidacion(tipoEntidad, entidadId) {
+    Swal.fire({
+        title: '¿Generar Liquidación?',
+        text: `Se procesarán todos los totales pendientes para este ${tipoEntidad}`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, Generar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Implementar lógica de generación
+            Swal.fire('¡Generado!', 'La liquidación ha sido generada exitosamente', 'success');
+        }
+    });
+}
+</script>
 @endsection
