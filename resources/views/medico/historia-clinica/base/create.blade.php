@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/historia-clinica/base') }}" class="btn btn-outline">
+        <a href="{{ route('historia-clinica.base.index') }}" class="btn btn-outline">
             <i class="bi bi-arrow-left"></i>
         </a>
         <div>
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    <form action="{{ url('index.php/historia-clinica/base') }}" method="POST" class="space-y-6">
+    <form id="createHistoriaForm" action="{{ route('historia-clinica.base.store', '0') }}" method="POST" class="space-y-6">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -209,7 +209,7 @@
                             <i class="bi bi-check-lg"></i>
                             Crear Historia Clínica
                         </button>
-                        <a href="{{ url('index.php/historia-clinica/base') }}" class="btn btn-outline w-full">
+                        <a href="{{ route('historia-clinica.base.index') }}" class="btn btn-outline w-full">
                             <i class="bi bi-x-lg"></i>
                             Cancelar
                         </a>
@@ -230,4 +230,26 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+    const form = document.getElementById('createHistoriaForm');
+    const pacienteSelect = document.getElementById('paciente_id');
+    // Store original action with placeholder 0
+    const originalAction = "{{ route('historia-clinica.base.store', '0') }}";
+
+    if (pacienteSelect && form) {
+        pacienteSelect.addEventListener('change', function() {
+            const pacienteId = this.value;
+            if (pacienteId) {
+                // Replace last segment (0) with actual ID
+                const newAction = originalAction.replace('/0', '/' + pacienteId);
+                form.action = newAction;
+            } else {
+                form.action = originalAction;
+            }
+        });
+    }
+</script>
+@endpush
 @endsection

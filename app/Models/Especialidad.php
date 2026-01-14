@@ -13,7 +13,14 @@ class Especialidad extends Model
     protected $primaryKey = 'id';
     protected $fillable = [
         'nombre',
+        'codigo',
         'descripcion',
+        'duracion_cita_default',
+        'color',
+        'icono',
+        'prioridad',
+        'requisitos',
+        'observaciones',
         'status'
     ];
 

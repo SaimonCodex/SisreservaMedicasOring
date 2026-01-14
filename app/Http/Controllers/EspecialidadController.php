@@ -8,10 +8,35 @@ use Illuminate\Support\Facades\Validator;
 
 class EspecialidadController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $especialidades = Especialidad::where('status', true)->get();
-        return view('shared.especialidades.index', compact('especialidades'));
+        // Estadísticas Generales
+        $totalEspecialidades = Especialidad::count();
+        $especialidadesActivas = Especialidad::where('status', true)->count();
+        
+        // Contar el total de médicos a través de la relación o modelo directo
+        // Si no tienes el modelo Medico importado, impórtalo o usa DB.
+        // Asumiendo que existe el modelo Medico y queremos el total de médicos en el sistema:
+        $totalMedicos = \App\Models\Medico::count();
+
+        // Citas del mes (Asumiendo modelo Cita)
+        $citasMes = \App\Models\Cita::whereMonth('fecha_cita', now()->month)
+                                    ->whereYear('fecha_cita', now()->year)
+                                    ->count();
+
+        $query = Especialidad::withCount('medicos');
+
+        if ($request->filled('buscar')) {
+            $query->where('nombre', 'like', '%' . $request->buscar . '%')
+                  ->orWhere('descripcion', 'like', '%' . $request->buscar . '%');
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $especialidades = $query->get();
+        return view('shared.especialidades.index', compact('especialidades', 'totalEspecialidades', 'especialidadesActivas', 'totalMedicos', 'citasMes'));
     }
 
     public function create()
@@ -23,7 +48,14 @@ class EspecialidadController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|max:100|unique:especialidades,nombre',
-            'descripcion' => 'nullable|string'
+            'codigo' => 'nullable|max:50',
+            'descripcion' => 'required|string',
+            'duracion_cita_default' => 'required|integer|min:15|max:120',
+            'color' => 'nullable|string|max:50',
+            'icono' => 'nullable|string|max:50',
+            'prioridad' => 'required|integer',
+            'requisitos' => 'nullable|string',
+            'observaciones' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -37,7 +69,15 @@ class EspecialidadController extends Controller
 
     public function show($id)
     {
-        $especialidad = Especialidad::with(['medicos', 'consultorios'])->findOrFail($id);
+        $especialidad = Especialidad::with(['medicos', 'consultorios'])
+            ->withCount([
+                'citas as total_citas',
+                'citas as citas_pendientes' => function ($query) {
+                    $query->whereIn('estado_cita', ['programada', 'confirmada', 'pendiente']);
+                }
+            ])
+            ->findOrFail($id);
+            
         return view('shared.especialidades.show', compact('especialidad'));
     }
 
@@ -51,7 +91,14 @@ class EspecialidadController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|max:100|unique:especialidades,nombre,' . $id,
-            'descripcion' => 'nullable|string'
+            'codigo' => 'nullable|max:50',
+            'descripcion' => 'required|string',
+            'duracion_cita_default' => 'required|integer|min:15|max:120',
+            'color' => 'nullable|string|max:50',
+            'icono' => 'nullable|string|max:50',
+            'prioridad' => 'required|integer',
+            'requisitos' => 'nullable|string',
+            'observaciones' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {

@@ -90,8 +90,8 @@ class MedicoController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'primer_nombre' => 'required|max:100',
-            'primer_apellido' => 'required|max:100',
+            'primer_nombre' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'primer_apellido' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
             'tipo_documento' => 'nullable|in:V,E,P,J',
             'numero_documento' => 'nullable|max:20',
             'fecha_nac' => 'nullable|date',
@@ -107,6 +107,11 @@ class MedicoController extends Controller
             'experiencia_profesional' => 'nullable|string',
             'especialidades' => 'required|array',
             'especialidades.*' => 'exists:especialidades,id',
+            'especialidades_data' => 'required|array',
+            'especialidades_data.*.tarifa' => 'required|numeric|min:0',
+            'especialidades_data.*.anos_experiencia' => 'nullable|integer|min:0',
+            'especialidades_data.*.atiende_domicilio' => 'nullable|boolean',
+            'especialidades_data.*.tarifa_extra_domicilio' => 'nullable|numeric|min:0',
             // User credentials
             'correo' => 'required|email|unique:usuarios,correo',
             'password' => 'required|min:8|confirmed'
@@ -127,15 +132,25 @@ class MedicoController extends Controller
                 ]);
 
                 // 2. Create Medico Profile
-                $medicoData = $request->except(['correo', 'password', 'password_confirmation', 'especialidades', 'status']);
+                $medicoData = $request->except(['correo', 'password', 'password_confirmation', 'especialidades', 'especialidades_data', 'status']);
                 $medicoData['user_id'] = $usuario->id;
                 $medicoData['status'] = $request->has('status');
 
                 $medico = Medico::create($medicoData);
                 
-                // 3. Assign Specialties
-                if ($request->has('especialidades')) {
-                    $medico->especialidades()->attach($request->especialidades);
+                // 3. Assign Specialties with Pivot Data
+                if ($request->has('especialidades_data')) {
+                    $syncData = [];
+                    foreach ($request->especialidades_data as $id => $data) {
+                        $syncData[$id] = [
+                            'tarifa' => $data['tarifa'],
+                            'anos_experiencia' => $data['anos_experiencia'] ?? 0,
+                            'atiende_domicilio' => isset($data['atiende_domicilio']) ? 1 : 0,
+                            'tarifa_extra_domicilio' => $data['tarifa_extra_domicilio'] ?? 0.00,
+                            'status' => true
+                        ];
+                    }
+                    $medico->especialidades()->attach($syncData);
                 }
             });
 
@@ -148,7 +163,15 @@ class MedicoController extends Controller
 
     public function show($id)
     {
-        $medico = Medico::with(['usuario', 'especialidades', 'consultorios', 'estado', 'ciudad'])->findOrFail($id);
+        $medico = Medico::with([
+            'usuario', 
+            'especialidades', 
+            'consultorios', 
+            'estado', 
+            'ciudad',
+            'horarios.consultorio',
+            'horarios.especialidad'
+        ])->findOrFail($id);
         return view('shared.medicos.show', compact('medico'));
     }
 
@@ -169,8 +192,8 @@ class MedicoController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'user_id' => 'nullable|exists:usuarios,id|unique:medicos,user_id,' . $id,
-            'primer_nombre' => 'required|max:100',
-            'primer_apellido' => 'required|max:100',
+            'primer_nombre' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'primer_apellido' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
             'tipo_documento' => 'nullable|in:V,E,P,J',
             'numero_documento' => 'nullable|max:20',
             'fecha_nac' => 'nullable|date',
@@ -185,7 +208,13 @@ class MedicoController extends Controller
             'formacion_academica' => 'nullable|string',
             'experiencia_profesional' => 'nullable|string',
             'especialidades' => 'required|array',
-            'especialidades.*' => 'exists:especialidades,id'
+            'especialidades.*' => 'exists:especialidades,id',
+            'especialidades_data' => 'required|array',
+            'especialidades_data.*.tarifa' => 'required|numeric|min:0',
+            'especialidades_data.*.anos_experiencia' => 'nullable|integer|min:0',
+            'especialidades_data.*.atiende_domicilio' => 'nullable|boolean',
+            'especialidades_data.*.tarifa_extra_domicilio' => 'nullable|numeric|min:0',
+            'password' => 'nullable|min:8|confirmed'
         ]);
 
         if ($validator->fails()) {
@@ -195,14 +224,35 @@ class MedicoController extends Controller
         $medico = Medico::findOrFail($id);
         
         // Excluir datos sensibles y de relación de usuario
-        $data = $request->except(['especialidades', 'user_id', 'correo', 'password', 'password_confirmation']);
+        $data = $request->except(['especialidades', 'especialidades_data', 'user_id', 'correo', 'password', 'password_confirmation']);
         $data['status'] = $request->has('status'); // Si se envía status en el form
 
         $medico->update($data);
+
+        // Update User Password if provided
+        if ($request->filled('password')) {
+            $medico->usuario->update([
+                'password' => $request->password // Mutator handles encryption
+            ]);
+        }
+
+
         
-        // Sincronizar especialidades
-        if ($request->has('especialidades')) {
-            $medico->especialidades()->sync($request->especialidades);
+        // Sincronizar especialidades con datos pivote
+        if ($request->has('especialidades_data')) {
+            $syncData = [];
+            foreach ($request->especialidades_data as $idEsp => $pivotData) {
+                // Ensure ID corresponds to the loop key if needed, or use $pivotData['id']
+                // The form sends especialidades_data[ID][field]
+                $syncData[$idEsp] = [
+                    'tarifa' => $pivotData['tarifa'],
+                    'anos_experiencia' => $pivotData['anos_experiencia'] ?? 0,
+                    'atiende_domicilio' => isset($pivotData['atiende_domicilio']) ? 1 : 0,
+                    'tarifa_extra_domicilio' => $pivotData['tarifa_extra_domicilio'] ?? 0.00,
+                    'status' => true
+                ];
+            }
+            $medico->especialidades()->sync($syncData);
         }
 
         return redirect()->route('medicos.index')->with('success', 'Médico actualizado exitosamente');
@@ -219,36 +269,154 @@ class MedicoController extends Controller
     public function horarios($id)
     {
         $medico = Medico::findOrFail($id);
-        $consultorios = Consultorio::where('status', true)->get();
+        // Eager load especialidades to use in frontend filtering
+        $consultorios = Consultorio::with('especialidades')->where('status', true)->get();
         $horarios = \App\Models\MedicoConsultorio::where('medico_id', $id)->get();
+
+        if (auth()->user()->rol_id == 2) {
+            return view('medico.horarios', compact('medico', 'consultorios', 'horarios'));
+        }
 
         return view('shared.medicos.horarios', compact('medico', 'consultorios', 'horarios'));
     }
 
     public function guardarHorario(Request $request, $id)
     {
+        $medico = Medico::findOrFail($id);
+        
+        // Validar estructura básica
         $validator = Validator::make($request->all(), [
-            'consultorio_id' => 'required|exists:consultorios,id',
-            'dia_semana' => 'required|in:Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
-            'turno' => 'required|in:mañana,tarde,noche,completo',
-            'horario_inicio' => 'required|date_format:H:i',
-            'horario_fin' => 'required|date_format:H:i|after:horario_inicio'
+            'dias' => 'array', // Array de días (lunes, martes...)
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        \App\Models\MedicoConsultorio::updateOrCreate(
-            [
-                'medico_id' => $id,
-                'consultorio_id' => $request->consultorio_id,
-                'dia_semana' => $request->dia_semana
-            ],
-            $request->only(['turno', 'horario_inicio', 'horario_fin'])
-        );
+        \Log::info('V2 UI Payload:', $request->all());
 
-        return redirect()->back()->with('success', 'Horario guardado exitosamente');
+        $input = $request->input('horarios', []);
+        $daysOfWeek = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+        
+        $dbDays = [
+            'lunes' => 'Lunes',
+            'martes' => 'Martes',
+            'miercoles' => 'Miércoles',
+            'jueves' => 'Jueves',
+            'viernes' => 'Viernes',
+            'sabado' => 'Sábado',
+            'domingo' => 'Domingo'
+        ];
+
+        // 1. Validación de Especialidades vs Consultorio
+        // Recopilamos todos los IDs de consultorios involucrados para cargar sus especialidades permitidas
+        $consultorioIds = [];
+        foreach ($daysOfWeek as $dayKey) {
+            if (!isset($input[$dayKey])) continue;
+            $dayData = $input[$dayKey];
+
+            if (isset($dayData['manana_activa']) && $dayData['manana_activa'] == '1' && !empty($dayData['manana_consultorio_id'])) {
+                $consultorioIds[] = $dayData['manana_consultorio_id'];
+            }
+            if (isset($dayData['tarde_activa']) && $dayData['tarde_activa'] == '1' && !empty($dayData['tarde_consultorio_id'])) {
+                $consultorioIds[] = $dayData['tarde_consultorio_id'];
+            }
+        }
+
+        if (!empty($consultorioIds)) {
+            $consultorios = Consultorio::with('especialidades')->findMany(array_unique($consultorioIds))->keyBy('id');
+
+            foreach ($daysOfWeek as $dayKey) {
+                if (!isset($input[$dayKey])) continue;
+                $dayData = $input[$dayKey];
+                $diaNombre = $dbDays[$dayKey];
+
+                // Validar Turno Mañana
+                if (isset($dayData['manana_activa']) && $dayData['manana_activa'] == '1') {
+                    if (!empty($dayData['manana_consultorio_id']) && !empty($dayData['manana_especialidad_id'])) {
+                        $consId = $dayData['manana_consultorio_id'];
+                        $espId = $dayData['manana_especialidad_id'];
+                        
+                        if ($consultorios->has($consId)) {
+                            $consultorio = $consultorios->get($consId);
+                            if (!$consultorio->especialidades->contains('id', $espId)) {
+                                $especialidadNombre = \App\Models\Especialidad::find($espId)->nombre ?? 'seleccionada';
+                                return redirect()->back()->with('error', "Error en {$diaNombre} (Mañana): El consultorio '{$consultorio->nombre}' no admite la especialidad '{$especialidadNombre}'.");
+                            }
+                        }
+                    }
+                }
+
+                // Validar Turno Tarde
+                if (isset($dayData['tarde_activa']) && $dayData['tarde_activa'] == '1') {
+                    if (!empty($dayData['tarde_consultorio_id']) && !empty($dayData['tarde_especialidad_id'])) {
+                        $consId = $dayData['tarde_consultorio_id'];
+                        $espId = $dayData['tarde_especialidad_id'];
+                        
+                        if ($consultorios->has($consId)) {
+                            $consultorio = $consultorios->get($consId);
+                            if (!$consultorio->especialidades->contains('id', $espId)) {
+                                $especialidadNombre = \App\Models\Especialidad::find($espId)->nombre ?? 'seleccionada';
+                                return redirect()->back()->with('error', "Error en {$diaNombre} (Tarde): El consultorio '{$consultorio->nombre}' no admite la especialidad '{$especialidadNombre}'.");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id, $input, $daysOfWeek, $dbDays) {
+                // Limpiar horarios existentes
+                \App\Models\MedicoConsultorio::where('medico_id', $id)->delete();
+
+                foreach ($daysOfWeek as $dayKey) {
+                    if (!isset($input[$dayKey]) || !isset($input[$dayKey]['activo'])) {
+                        continue; // Día no activo
+                    }
+
+                    $dayData = $input[$dayKey];
+                    $diaSemanaDb = $dbDays[$dayKey];
+
+                    // Procesar Turno Mañana
+                    if (isset($dayData['manana_activa']) && $dayData['manana_activa'] == '1') {
+                        if (!empty($dayData['manana_inicio']) && !empty($dayData['manana_fin']) && !empty($dayData['manana_consultorio_id'])) {
+                            \App\Models\MedicoConsultorio::create([
+                                'medico_id' => $id,
+                                'consultorio_id' => $dayData['manana_consultorio_id'],
+                                'especialidad_id' => $dayData['manana_especialidad_id'] ?? null,
+                                'dia_semana' => $diaSemanaDb,
+                                'turno' => 'mañana',
+                                'horario_inicio' => $dayData['manana_inicio'],
+                                'horario_fin' => $dayData['manana_fin'],
+                                'status' => true
+                            ]);
+                        }
+                    }
+
+                    // Procesar Turno Tarde
+                    if (isset($dayData['tarde_activa']) && $dayData['tarde_activa'] == '1') {
+                        if (!empty($dayData['tarde_inicio']) && !empty($dayData['tarde_fin']) && !empty($dayData['tarde_consultorio_id'])) {
+                             \App\Models\MedicoConsultorio::create([
+                                'medico_id' => $id,
+                                'consultorio_id' => $dayData['tarde_consultorio_id'],
+                                'especialidad_id' => $dayData['tarde_especialidad_id'] ?? null,
+                                'dia_semana' => $diaSemanaDb,
+                                'turno' => 'tarde',
+                                'horario_inicio' => $dayData['tarde_inicio'],
+                                'horario_fin' => $dayData['tarde_fin'],
+                                'status' => true
+                            ]);
+                        }
+                    }
+                }
+            });
+
+            return redirect()->back()->with('success', 'Horarios actualizados correctamente');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al guardar horarios: ' . $e->getMessage());
+        }
     }
 
     public function buscar(Request $request)
@@ -270,5 +438,96 @@ class MedicoController extends Controller
         $medicos = $query->get();
 
         return response()->json($medicos);
+    }
+
+    public function editPerfil()
+    {
+        $medico = auth()->user()->medico;
+        $estados = Estado::where('status', true)->get();
+        // Cargar listas dependientes basadas en la ubicación actual del médico
+        $ciudades = $medico->estado_id ? Ciudad::where('status', true)->where('id_estado', $medico->estado_id)->get() : [];
+        $municipios = $medico->estado_id ? Municipio::where('status', true)->where('id_estado', $medico->estado_id)->get() : [];
+        $parroquias = $medico->municipio_id ? Parroquia::where('status', true)->where('id_municipio', $medico->municipio_id)->get() : [];
+
+        return view('medico.perfil.editar', compact('medico', 'estados', 'ciudades', 'municipios', 'parroquias'));
+    }
+
+    public function updatePerfil(Request $request)
+    {
+        $medico = auth()->user()->medico;
+
+        $validator = Validator::make($request->all(), [
+            'primer_nombre' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'primer_apellido' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'fecha_nac' => 'nullable|date',
+            'prefijo_tlf' => 'nullable|in:+58,+57,+1,+34',
+            'numero_tlf' => 'nullable|max:15',
+            'password' => 'nullable|min:8|confirmed',
+            'foto_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'banner_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:4096',
+            'banner_color' => 'nullable|string|max:50',
+            'tema_dinamico' => 'nullable|boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        // 1. Manejo de Foto de Perfil
+        if ($request->hasFile('foto_perfil')) {
+            if ($medico->foto_perfil && \Illuminate\Support\Facades\Storage::exists('public/' . $medico->foto_perfil)) {
+                \Illuminate\Support\Facades\Storage::delete('public/' . $medico->foto_perfil);
+            }
+            $file = $request->file('foto_perfil');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('perfiles_medicos', $filename, 'public');
+            $medico->foto_perfil = $path;
+        }
+
+        // 2. Manejo de Banner de Perfil
+         if ($request->has('remove_banner_image') && $request->remove_banner_image == '1') {
+             if ($medico->banner_perfil && \Illuminate\Support\Facades\Storage::exists('public/' . $medico->banner_perfil)) {
+                \Illuminate\Support\Facades\Storage::delete('public/' . $medico->banner_perfil);
+            }
+            $medico->banner_perfil = null;
+        } elseif ($request->hasFile('banner_perfil')) {
+            if ($medico->banner_perfil && \Illuminate\Support\Facades\Storage::exists('public/' . $medico->banner_perfil)) {
+                \Illuminate\Support\Facades\Storage::delete('public/' . $medico->banner_perfil);
+            }
+            $file = $request->file('banner_perfil');
+            $filename = 'banner_' . time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('banners_medicos', $filename, 'public');
+            $medico->banner_perfil = $path;
+        }
+
+        // 3. Actualizar Datos Personales
+        $medico->primer_nombre = $request->primer_nombre;
+        $medico->primer_apellido = $request->primer_apellido;
+        $medico->segundo_nombre = $request->segundo_nombre;
+        $medico->segundo_apellido = $request->segundo_apellido;
+        $medico->genero = $request->genero;
+        $medico->fecha_nac = $request->fecha_nac;
+        $medico->prefijo_tlf = $request->prefijo_tlf;
+        $medico->numero_tlf = $request->numero_tlf;
+        $medico->banner_color = $request->banner_color;
+        $medico->tema_dinamico = $request->has('tema_dinamico');
+
+        // Actualizar ubicación
+        if($request->filled('estado_id')) $medico->estado_id = $request->estado_id;
+        if($request->filled('ciudad_id')) $medico->ciudad_id = $request->ciudad_id;
+        if($request->filled('municipio_id')) $medico->municipio_id = $request->municipio_id;
+        if($request->filled('parroquia_id')) $medico->parroquia_id = $request->parroquia_id;
+        if($request->filled('direccion_detallada')) $medico->direccion_detallada = $request->direccion_detallada;
+
+        $medico->save();
+
+        // 4. Actualizar Password
+        if ($request->filled('password')) {
+            $medico->usuario->update([
+                'password' => $request->password
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Perfil médico actualizado correctamente');
     }
 }

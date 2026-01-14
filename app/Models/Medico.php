@@ -31,7 +31,12 @@ class Medico extends Model
         'nro_colegiatura',
         'formacion_academica',
         'experiencia_profesional',
-        'status'
+        'experiencia_profesional',
+        'status',
+        'foto_perfil',
+        'banner_perfil',
+        'banner_color',
+        'tema_dinamico'
     ];
 
     public function usuario()
@@ -69,6 +74,11 @@ class Medico extends Model
     {
         return $this->belongsToMany(Consultorio::class, 'medico_consultorio', 'medico_id', 'consultorio_id')
                     ->withPivot('dia_semana', 'turno', 'horario_inicio', 'horario_fin', 'status');
+    }
+
+    public function horarios()
+    {
+        return $this->hasMany(MedicoConsultorio::class, 'medico_id');
     }
 
     public function citas()

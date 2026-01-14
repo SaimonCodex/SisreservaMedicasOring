@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <a href="{{ url('index.php/historia-clinica/evoluciones') }}" class="btn btn-outline">
+            <a href="{{ url('historia-clinica/evoluciones') }}" class="btn btn-outline">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
@@ -18,7 +18,7 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ url('index.php/historia-clinica/evoluciones/' . ($evolucion->id ?? 1) . '/edit') }}" class="btn btn-primary">
+            <a href="{{ route('historia-clinica.evoluciones.edit', ['citaId' => $evolucion->cita_id ?? 0]) }}" class="btn btn-primary">
                 <i class="bi bi-pencil"></i>
                 <span>Editar</span>
             </a>
@@ -267,11 +267,11 @@
             <div class="card p-6">
                 <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
                 <div class="space-y-2">
-                    <a href="{{ url('index.php/ordenes-medicas/create?paciente=' . ($evolucion->historiaClinica->paciente->id ?? 1)) }}" class="btn btn-outline w-full justify-start">
+                    <a href="{{ route('ordenes-medicas.create', ['paciente' => $evolucion->historiaClinica->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
                         <i class="bi bi-clipboard-plus"></i>
                         Nueva Orden Médica
                     </a>
-                    <a href="{{ url('index.php/historia-clinica?paciente=' . ($evolucion->historiaClinica->paciente->id ?? 1)) }}" class="btn btn-outline w-full justify-start">
+                    <a href="{{ route('historia-clinica.base.index', ['paciente' => $evolucion->historiaClinica->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
                         <i class="bi bi-folder2-open"></i>
                         Ver Expediente Completo
                     </a>

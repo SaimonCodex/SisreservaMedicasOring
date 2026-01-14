@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <a href="{{ url('index.php/medico/ordenes-medicas') }}" class="btn btn-outline">
+            <a href="{{ route('ordenes-medicas.index') }}" class="btn btn-outline">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>

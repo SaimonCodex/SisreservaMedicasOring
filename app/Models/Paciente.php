@@ -30,6 +30,10 @@ class Paciente extends Model
         'genero',
         'ocupacion',
         'estado_civil',
+        'foto_perfil',
+        'banner_perfil',
+        'banner_color',
+        'tema_dinamico',
         'status'
     ];
 
@@ -61,6 +65,12 @@ class Paciente extends Model
     public function pacientesEspeciales()
     {
         return $this->hasMany(PacienteEspecial::class, 'paciente_id');
+    }
+
+    // Relación para cuando ESTE paciente es un paciente especial
+    public function pacienteEspecial()
+    {
+        return $this->hasOne(PacienteEspecial::class, 'paciente_id');
     }
 
     public function citas()

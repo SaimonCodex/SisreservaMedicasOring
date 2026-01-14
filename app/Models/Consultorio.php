@@ -55,7 +55,7 @@ class Consultorio extends Model
     public function medicos()
     {
         return $this->belongsToMany(Medico::class, 'medico_consultorio', 'consultorio_id', 'medico_id')
-                    ->withPivot('dia_semana', 'turno', 'horario_inicio', 'horario_fin', 'status');
+                    ->withPivot('dia_semana', 'turno', 'horario_inicio', 'horario_fin', 'status', 'especialidad_id');
     }
 
     public function citas()

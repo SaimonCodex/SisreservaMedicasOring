@@ -59,12 +59,21 @@ Route::get('buscar-medicos-publico', [MedicoController::class, 'buscar'])->name(
 // =========================================================================
 // RUTAS AJAX PARA SISTEMA DE CITAS (sin autenticación para AJAX del frontend)
 // =========================================================================
+Route::get('/ajax/verificar-correo', [AuthController::class, 'verificarCorreo'])->name('ajax.verificar-correo');
+
+// Rutas de validación AJAX
+Route::post('/validate/email', [App\Http\Controllers\ValidationController::class, 'checkEmail'])->name('validate.email');
+Route::post('/validate/document', [App\Http\Controllers\ValidationController::class, 'checkDocument'])->name('validate.document');
+
 Route::prefix('ajax/citas')->group(function () {
     Route::get('/consultorios-por-estado/{estadoId}', [CitaController::class, 'getConsultoriosPorEstado']);
     Route::get('/especialidades-por-consultorio/{consultorioId}', [CitaController::class, 'getEspecialidadesPorConsultorio']);
     Route::get('/consultorios-por-especialidad/{especialidadId}', [CitaController::class, 'getConsultoriosPorEspecialidad']);
     Route::get('/medicos', [CitaController::class, 'getMedicosPorEspecialidadConsultorio']);
     Route::get('/horarios-disponibles', [CitaController::class, 'getHorariosDisponibles']);
+    Route::get('/get-next-sequence/{numero_documento}', [CitaController::class, 'getNextSequence']);
+    Route::get('/pacientes-especiales-por-representante/{representanteId}', [CitaController::class, 'getPacientesEspecialesPorRepresentante']);
+    Route::get('/verificar-documento', [CitaController::class, 'verificarDocumento']);
 });
 
 /*
@@ -90,7 +99,21 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/citas/create', [CitaController::class, 'create'])->name('paciente.citas.create'); // Specific route for paciente create
         Route::post('/citas', [CitaController::class, 'store'])->name('paciente.citas.store');
         Route::get('/citas', [CitaController::class, 'index'])->name('paciente.citas.index');
+        Route::get('/citas/{id}', [CitaController::class, 'show'])->name('paciente.citas.show');
+        
+        // Rutas de pago del paciente
+        Route::get('/pagos/registrar/{cita}', [PagoController::class, 'mostrarRegistroPago'])->name('paciente.pagos.registrar');
+        Route::post('/pagos/registrar', [PagoController::class, 'registrarPagoPaciente'])->name('paciente.pagos.store');
+        
+        // Rutas de perfil del paciente
+        Route::get('/perfil/editar', [PacienteController::class, 'editPerfil'])->name('paciente.perfil.edit');
+        Route::put('/perfil', [PacienteController::class, 'updatePerfil'])->name('paciente.perfil.update');
     });
+
+    // Rutas Globales de Ubicación (AJAX)
+    Route::get('/ubicacion/get-ciudades/{estadoId}', [UbicacionController::class, 'getCiudadesByEstado']);
+    Route::get('/ubicacion/get-municipios/{estadoId}', [UbicacionController::class, 'getMunicipiosByEstado']);
+    Route::get('/ubicacion/get-parroquias/{municipioId}', [UbicacionController::class, 'getParroquiasByMunicipio']);
     
     // =========================================================================
     // ADMINISTRACIÓN DEL SISTEMA
@@ -109,6 +132,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('get-ciudades/{estadoId}', [AdministradorController::class, 'getCiudades'])->name('admin.get-ciudades');
         Route::get('get-municipios/{estadoId}', [AdministradorController::class, 'getMunicipios'])->name('admin.get-municipios');
         Route::get('get-parroquias/{municipioId}', [AdministradorController::class, 'getParroquias'])->name('admin.get-parroquias');
+        
+        // Perfil Admin
+        Route::get('perfil/editar', [AdministradorController::class, 'editPerfil'])->name('admin.perfil.edit');
+        Route::put('perfil', [AdministradorController::class, 'updatePerfil'])->name('admin.perfil.update');
     });
     
     // =========================================================================
@@ -119,6 +146,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('medicos/{id}/horarios', [MedicoController::class, 'horarios'])->name('medicos.horarios');
     Route::post('medicos/{id}/guardar-horario', [MedicoController::class, 'guardarHorario'])->name('medicos.guardar-horario');
     Route::get('buscar-medicos', [MedicoController::class, 'buscar'])->name('medicos.buscar');
+
+    Route::prefix('medico')->middleware(['auth'])->group(function () {
+        Route::get('/perfil/editar', [MedicoController::class, 'editPerfil'])->name('medico.perfil.edit');
+        Route::put('/perfil', [MedicoController::class, 'updatePerfil'])->name('medico.perfil.update');
+    });
     
     // =========================================================================
     // PACIENTES
@@ -134,7 +166,11 @@ Route::middleware(['auth'])->group(function () {
     
     Route::resource('citas', CitaController::class);
     Route::post('citas/{id}/cambiar-estado', [CitaController::class, 'cambiarEstado'])->name('citas.cambiar-estado');
+    Route::post('citas/{id}/solicitar-cancelacion', [CitaController::class, 'solicitarCancelacion'])->name('citas.solicitar-cancelacion');
     Route::get('buscar-disponibilidad', [CitaController::class, 'buscarDisponibilidad'])->name('citas.buscar-disponibilidad');
+    Route::get('events', [CitaController::class, 'events'])->name('citas.events');
+    Route::get('admin/buscar-paciente', [CitaController::class, 'buscarPaciente'])->name('admin.buscar-paciente');
+    Route::get('ajax/verificar-correo', [CitaController::class, 'verificarCorreo'])->name('ajax.verificar-correo');
     
     // =========================================================================
     // ESPECIALIDADES MÉDICAS
@@ -168,28 +204,28 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('estados/{id}', [UbicacionController::class, 'destroyEstado'])->name('ubicacion.estados.destroy');
 
         // Ciudades
-        Route::get('estados/{estadoId}/ciudades', [UbicacionController::class, 'indexCiudades'])->name('ubicacion.ciudades.index');
-        Route::get('estados/{estadoId}/ciudades/create', [UbicacionController::class, 'createCiudad'])->name('ubicacion.ciudades.create');
-        Route::post('estados/{estadoId}/ciudades', [UbicacionController::class, 'storeCiudad'])->name('ubicacion.ciudades.store');
-        Route::get('estados/{estadoId}/ciudades/{id}/edit', [UbicacionController::class, 'editCiudad'])->name('ubicacion.ciudades.edit');
-        Route::put('estados/{estadoId}/ciudades/{id}', [UbicacionController::class, 'updateCiudad'])->name('ubicacion.ciudades.update');
-        Route::delete('estados/{estadoId}/ciudades/{id}', [UbicacionController::class, 'destroyCiudad'])->name('ubicacion.ciudades.destroy');
+        Route::get('ciudades', [UbicacionController::class, 'indexCiudades'])->name('ubicacion.ciudades.index');
+        Route::get('ciudades/create', [UbicacionController::class, 'createCiudad'])->name('ubicacion.ciudades.create');
+        Route::post('ciudades', [UbicacionController::class, 'storeCiudad'])->name('ubicacion.ciudades.store');
+        Route::get('ciudades/{id}/edit', [UbicacionController::class, 'editCiudad'])->name('ubicacion.ciudades.edit');
+        Route::put('ciudades/{id}', [UbicacionController::class, 'updateCiudad'])->name('ubicacion.ciudades.update');
+        Route::delete('ciudades/{id}', [UbicacionController::class, 'destroyCiudad'])->name('ubicacion.ciudades.destroy');
 
         // Municipios
-        Route::get('estados/{estadoId}/municipios', [UbicacionController::class, 'indexMunicipios'])->name('ubicacion.municipios.index');
-        Route::get('estados/{estadoId}/municipios/create', [UbicacionController::class, 'createMunicipio'])->name('ubicacion.municipios.create');
-        Route::post('estados/{estadoId}/municipios', [UbicacionController::class, 'storeMunicipio'])->name('ubicacion.municipios.store');
-        Route::get('estados/{estadoId}/municipios/{id}/edit', [UbicacionController::class, 'editMunicipio'])->name('ubicacion.municipios.edit');
-        Route::put('estados/{estadoId}/municipios/{id}', [UbicacionController::class, 'updateMunicipio'])->name('ubicacion.municipios.update');
-        Route::delete('estados/{estadoId}/municipios/{id}', [UbicacionController::class, 'destroyMunicipio'])->name('ubicacion.municipios.destroy');
+        Route::get('municipios', [UbicacionController::class, 'indexMunicipios'])->name('ubicacion.municipios.index');
+        Route::get('municipios/create', [UbicacionController::class, 'createMunicipio'])->name('ubicacion.municipios.create');
+        Route::post('municipios', [UbicacionController::class, 'storeMunicipio'])->name('ubicacion.municipios.store');
+        Route::get('municipios/{id}/edit', [UbicacionController::class, 'editMunicipio'])->name('ubicacion.municipios.edit');
+        Route::put('municipios/{id}', [UbicacionController::class, 'updateMunicipio'])->name('ubicacion.municipios.update');
+        Route::delete('municipios/{id}', [UbicacionController::class, 'destroyMunicipio'])->name('ubicacion.municipios.destroy');
 
         // Parroquias
-        Route::get('estados/{estadoId}/municipios/{municipioId}/parroquias', [UbicacionController::class, 'indexParroquias'])->name('ubicacion.parroquias.index');
-        Route::get('estados/{estadoId}/municipios/{municipioId}/parroquias/create', [UbicacionController::class, 'createParroquia'])->name('ubicacion.parroquias.create');
-        Route::post('estados/{estadoId}/municipios/{municipioId}/parroquias', [UbicacionController::class, 'storeParroquia'])->name('ubicacion.parroquias.store');
-        Route::get('estados/{estadoId}/municipios/{municipioId}/parroquias/{id}/edit', [UbicacionController::class, 'editParroquia'])->name('ubicacion.parroquias.edit');
-        Route::put('estados/{estadoId}/municipios/{municipioId}/parroquias/{id}', [UbicacionController::class, 'updateParroquia'])->name('ubicacion.parroquias.update');
-        Route::delete('estados/{estadoId}/municipios/{municipioId}/parroquias/{id}', [UbicacionController::class, 'destroyParroquia'])->name('ubicacion.parroquias.destroy');
+        Route::get('parroquias', [UbicacionController::class, 'indexParroquias'])->name('ubicacion.parroquias.index');
+        Route::get('parroquias/create', [UbicacionController::class, 'createParroquia'])->name('ubicacion.parroquias.create');
+        Route::post('parroquias', [UbicacionController::class, 'storeParroquia'])->name('ubicacion.parroquias.store');
+        Route::get('parroquias/{id}/edit', [UbicacionController::class, 'editParroquia'])->name('ubicacion.parroquias.edit');
+        Route::put('parroquias/{id}', [UbicacionController::class, 'updateParroquia'])->name('ubicacion.parroquias.update');
+        Route::delete('parroquias/{id}', [UbicacionController::class, 'destroyParroquia'])->name('ubicacion.parroquias.destroy');
 
     });
     

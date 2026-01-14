@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-display font-bold text-gray-900">Evoluciones Clínicas</h1>
             <p class="text-gray-600 mt-1">Registro y seguimiento de consultas médicas</p>
         </div>
-        <a href="{{ url('index.php/historia-clinica/evoluciones/create') }}" class="btn btn-primary">
+        <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => 0]) }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i>
             <span>Nueva Evolución</span>
         </a>
@@ -39,7 +39,7 @@
                     <i class="bi bi-search"></i>
                     Buscar
                 </button>
-                <a href="{{ url('index.php/historia-clinica/evoluciones') }}" class="btn btn-outline">
+                <a href="{{ url('historia-clinica/evoluciones') }}" class="btn btn-outline">
                     <i class="bi bi-x-lg"></i>
                 </a>
             </div>
@@ -121,10 +121,10 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
-                                <a href="{{ url('index.php/historia-clinica/evoluciones/' . $evolucion->id) }}" class="btn btn-sm btn-outline" title="Ver">
+                                <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $evolucion->cita_id ?? 0]) }}" class="btn btn-sm btn-outline" title="Ver">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="{{ url('index.php/historia-clinica/evoluciones/' . $evolucion->id . '/edit') }}" class="btn btn-sm btn-primary" title="Editar">
+                                <a href="{{ route('historia-clinica.evoluciones.edit', ['citaId' => $evolucion->cita_id ?? 0]) }}" class="btn btn-sm btn-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                             </div>
@@ -139,7 +139,7 @@
                                 </div>
                                 <p class="text-gray-500 font-medium mb-2">No se encontraron evoluciones</p>
                                 <p class="text-sm text-gray-400 mb-4">Registra una nueva evolución clínica</p>
-                                <a href="{{ url('index.php/historia-clinica/evoluciones/create') }}" class="btn btn-sm btn-primary">
+                                <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => 0]) }}" class="btn btn-sm btn-primary">
                                     <i class="bi bi-plus-lg"></i>
                                     Nueva Evolución
                                 </a>

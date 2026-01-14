@@ -6,16 +6,16 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/configuracion/ubicacion/parroquias') }}" class="btn btn-outline">
+        <a href="{{ route('ubicacion.parroquias.index') }}" class="btn btn-outline">
             <i class="bi bi-arrow-left"></i>
         </a>
         <div>
             <h1 class="text-2xl font-display font-bold text-gray-900">Editar Parroquia</h1>
-            <p class="text-gray-600 mt-1">{{ $parroquia->nombre ?? 'Parroquia' }}</p>
+            <p class="text-gray-600 mt-1">{{ $parroquia->parroquia ?? 'Parroquia' }}</p>
         </div>
     </div>
 
-    <form action="{{ url('index.php/configuracion/ubicacion/parroquias/' . $parroquia->id) }}" method="POST">
+    <form action="{{ route('ubicacion.parroquias.update', $parroquia->id_parroquia) }}" method="POST">
         @csrf
         @method('PUT')
 
@@ -31,10 +31,10 @@
                     <div class="space-y-4">
                         <div>
                             <label class="form-label form-label-required">Estado</label>
-                            <select name="estado_id" class="form-select" id="estado_select" required>
+                            <select id="estado_select" class="form-select" required>
                                 @foreach($estados ?? [] as $estado)
-                                <option value="{{ $estado->id }}" {{ old('estado_id', $parroquia->municipio->estado_id ?? '') == $estado->id ? 'selected' : '' }}>
-                                    {{ $estado->nombre }}
+                                <option value="{{ $estado->id_estado }}" {{ old('estado_id', $parroquia->municipio->id_estado ?? '') == $estado->id_estado ? 'selected' : '' }}>
+                                    {{ $estado->estado }}
                                 </option>
                                 @endforeach
                             </select>
@@ -42,10 +42,10 @@
 
                         <div>
                             <label class="form-label form-label-required">Municipio</label>
-                            <select name="municipio_id" class="form-select" required>
+                            <select name="id_municipio" id="municipio_select" class="form-select" required>
                                 @foreach($municipios ?? [] as $municipio)
-                                <option value="{{ $municipio->id }}" {{ old('municipio_id', $parroquia->municipio_id) == $municipio->id ? 'selected' : '' }}>
-                                    {{ $municipio->nombre }}
+                                <option value="{{ $municipio->id_municipio }}" {{ old('id_municipio', $parroquia->id_municipio) == $municipio->id_municipio ? 'selected' : '' }}>
+                                    {{ $municipio->municipio }}
                                 </option>
                                 @endforeach
                             </select>
@@ -53,12 +53,7 @@
 
                         <div>
                             <label class="form-label form-label-required">Nombre de la Parroquia</label>
-                            <input type="text" name="nombre" class="input" value="{{ old('nombre', $parroquia->nombre) }}" required>
-                        </div>
-
-                        <div>
-                            <label class="form-label">Código</label>
-                            <input type="text" name="codigo" class="input" value="{{ old('codigo', $parroquia->codigo) }}" maxlength="10">
+                            <input type="text" name="parroquia" class="input" value="{{ old('parroquia', $parroquia->parroquia) }}" required maxlength="250">
                         </div>
                     </div>
                 </div>
@@ -66,9 +61,9 @@
 
             <!-- Sidebar -->
             <div class="space-y-6">
-                <!-- Estado -->
+                <!-- Status -->
                 <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Estado</h3>
+                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Estatus</h3>
                     <div class="space-y-3">
                         <label class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
                             <input type="radio" name="status" value="1" class="form-radio" {{ old('status', $parroquia->status) == '1' ? 'checked' : '' }}>
@@ -95,7 +90,7 @@
                             <i class="bi bi-check-lg"></i>
                             Actualizar
                         </button>
-                        <a href="{{ url('index.php/configuracion/ubicacion/parroquias') }}" class="btn btn-outline w-full">
+                        <a href="{{ route('ubicacion.parroquias.index') }}" class="btn btn-outline w-full">
                             <i class="bi bi-x-lg"></i>
                             Cancelar
                         </a>
@@ -105,4 +100,44 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const estadoSelect = document.getElementById('estado_select');
+        const municipioSelect = document.getElementById('municipio_select');
+
+        estadoSelect.addEventListener('change', function() {
+            const estadoId = this.value;
+            municipioSelect.innerHTML = '<option value="">Cargando...</option>';
+            municipioSelect.disabled = true;
+
+            if (estadoId) {
+                fetch(`{{ url('admin/get-municipios') }}/${estadoId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        municipioSelect.innerHTML = '<option value="">Seleccionar municipio...</option>';
+                        data.forEach(municipio => {
+                            const id = municipio.id_municipio || municipio.id;
+                            const name = municipio.municipio || municipio.nombre;
+                            
+                            const option = document.createElement('option');
+                            option.value = id;
+                            option.textContent = name;
+                            municipioSelect.appendChild(option);
+                        });
+                        municipioSelect.disabled = false;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        municipioSelect.innerHTML = '<option value="">Error al cargar</option>';
+                    });
+            } else {
+                municipioSelect.innerHTML = '<option value="">Primero seleccione un estado...</option>';
+                municipioSelect.disabled = true;
+            }
+        });
+    });
+</script>
+@endpush
 @endsection

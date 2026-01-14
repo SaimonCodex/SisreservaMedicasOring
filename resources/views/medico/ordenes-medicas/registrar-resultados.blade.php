@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/ordenes-medicas/laboratorios') }}" class="btn btn-outline">
+        <a href="{{ route('ordenes-medicas.laboratorios') }}" class="btn btn-outline">
             <i class="bi bi-arrow-left"></i>
         </a>
         <div>
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    <form action="{{ url('index.php/ordenes-medicas/registrar-resultados') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+    <form action="{{ route('ordenes-medicas.guardar-resultados', $laboratorio->orden->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -138,7 +138,7 @@
                             <i class="bi bi-check-lg"></i>
                             Guardar Resultados
                         </button>
-                        <a href="{{ url('index.php/ordenes-medicas/laboratorios') }}" class="btn btn-outline w-full">
+                        <a href="{{ route('ordenes-medicas.laboratorios') }}" class="btn btn-outline w-full">
                             <i class="bi bi-x-lg"></i>
                             Cancelar
                         </a>

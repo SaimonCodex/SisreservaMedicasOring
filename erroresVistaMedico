@@ -1,0 +1,92 @@
+nuevos errores de la logica y vistas del medico
+dashboard del medico: views/medico/dashboard.blade.php
+
+1)esta seccion: <!-- Enhanced Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Citas Hoy -->
+            <div class="card p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-semibold text-blue-700 mb-2">Citas Hoy</p>
+                        <h3 class="text-4xl font-display font-bold text-blue-900">{{ $stats['citas_hoy'] ?? 5 }}</h3>
+                        <p class="text-sm text-blue-600 mt-2">{{ $stats['completadas_hoy'] ?? 2 }} completadas</p>
+                    </div>
+                    <div class="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center">
+                        <i class="bi bi-calendar-check text-white text-2xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-blue-200">
+                    <a href="{{ route('citas.index') }}" 
+                        class="text-blue-700 hover:text-blue-900 font-semibold text-sm flex items-center gap-1">
+                        Ver agenda <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Pacientes Atendidos -->
+            <div class="card p-6 bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-semibold text-emerald-700 mb-2">Pacientes Este Mes</p>
+                        <h3 class="text-4xl font-display font-bold text-emerald-900">{{ $stats['pacientes_mes'] ?? 48 }}</h3>
+                        <p class="text-sm text-emerald-600 mt-2 flex items-center gap-1">
+                            <i class="bi bi-arrow-up"></i> +12% vs mes anterior
+                        </p>
+                    </div>
+                    <div class="w-14 h-14 bg-emerald-600 rounded-xl flex items-center justify-center">
+                        <i class="bi bi-people text-white text-2xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-emerald-200">
+                    <span class="text-emerald-700 font-semibold text-sm">{{ $stats['pacientes_nuevos'] ?? 8 }} nuevos pacientes</span>
+                </div>
+            </div>
+
+            <!-- Historias Clínicas -->
+            <div class="card p-6 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-semibold text-purple-700 mb-2">Historias Clínicas</p>
+                        <h3 class="text-4xl font-display font-bold text-purple-900">{{ $stats['historias_pendientes'] ?? 7 }}</h3>
+                        <p class="text-sm text-purple-600 mt-2">Pendientes de actualizar</p>
+                    </div>
+                    <div class="w-14 h-14 bg-purple-600 rounded-xl flex items-center justify-center">
+                        <i class="bi bi-file-medical text-white text-2xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-purple-200">
+                    <a href="{{ route('historia-clinica.base.index') }}" 
+                        class="text-purple-700 hover:text-purple-900 font-semibold text-sm flex items-center gap-1">
+                        Ver historias <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Órdenes Médicas -->
+            <div class="card p-6 bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-semibold text-amber-700 mb-2">Órdenes Pendientes</p>
+                        <h3 class="text-4xl font-display font-bold text-amber-900">{{ $stats['ordenes_pendientes'] ?? 12 }}</h3>
+                        <p class="text-sm text-amber-600 mt-2">{{ $stats['laboratorios_pendientes'] ?? 5 }} laboratorios</p>
+                    </div>
+                    <div class="w-14 h-14 bg-amber-600 rounded-xl flex items-center justify-center">
+                        <i class="bi bi-clipboard-pulse text-white text-2xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-amber-200">
+                    <a href="{{ route('ordenes-medicas.index') }}" 
+                        class="text-amber-700 hover:text-amber-900 font-semibold text-sm flex items-center gap-1">
+                        Ver órdenes <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div> 
+deberia actuaizaarce con cada nuevo registro que salga para que siga la logica de estadisticas.
+
+2)fijate bien en mi vista de ver citas para usuarios rol medicos, ya esta algo avanzado pero no se actualizan los datos. quiero que actualice los datos, ya hay muchas acciiones y botones que van a otras partes ejemplo presionas acciones muestra bastante, muestra informacion del paciente que no se ve la cedula ni tlf nada de esa seccion sale n/a. sale el boton ver perfil completo revisa bien esa vista esta buena y el boton historia clinica eso hay que hacerlo pero quiero que verifiquues poruqe tengo en views/medico/historia-clinica y deberia mostrar esas vistas. tambien sale ahi detalle de cita, quiero que muestre lo siguiente  .en mis citas: deberian actualizarses las citas que tiene ese medico, recordando que el medico puede tener varias especialidades y trabajar en varios consultorios. que muestre asi la fecha y hora lo primero e importante. datos primordiales nombres y apellidos, un boton para ver el historial medico base del paciente que es el que nunca cabia para saber si es alergico etc.
+tambien verse el consultorio que es osea el nombre, la especialidad que es, la tarifa, si es a domicilio o no, y si es a domicilio la direccion, lo cual hay que hacer un campo extra mejor en la tabla de citas direccion_domicilio, y en las vsitan donde se hacen las citas del admin y del paciente colocar un mensaje cuando seleccione domicilio salga un mensaje con opcion si o no que diga usar la direccion como direccion de domicilio? y ahi el admin/paciente si es si usar la que se debe guardar en pacientes direccion_detallada. si es no que ongrese otra que se guardara en citas tabla y esa es la que se mostrara.
+ aja tambien el estado de la cita, pendiente cancelada etc.
+ ya esta una en el archivo medicos/citas/index.blade.php configura ese, y en el de acciones en el ojito que sale si quiero que salgan los datos completos, del consultorio, lafecha y hra de la consultra, del paciente, si es paciente especial los datos de su representante tambien, la relacion que tienen etc. el consultorio la especialidad si es adomicilio  la direccion, el motivo si hay motivo y la tarifa
+que cuando este en el boton de acciones vea esos datos y haya un boton para ver el historial clinico base, y si ese paciente y medico ya tienen historias anteriosres mostrar una lista donde salgan las historias clinicas de ese paciente y sese medicos con los datos siguientes, nombres y apellidos del paciente, edad, sexo, la fecha de que se creo y demas informacion  relevante y obvio las cosas de anamnesis.
+para eso son las tablas historia_clinica_base y evolucion_clinica.

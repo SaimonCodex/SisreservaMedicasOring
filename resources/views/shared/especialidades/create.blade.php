@@ -28,18 +28,27 @@
                 <div class="grid grid-cols-1 gap-4">
                     <div class="form-group">
                         <label for="nombre" class="form-label form-label-required">Nombre de la Especialidad</label>
-                        <input type="text" id="nombre" name="nombre" class="input" placeholder="Ej: Cardiología" required>
+                        <input type="text" id="nombre" name="nombre" class="input @error('nombre') input-error @enderror" placeholder="Ej: Cardiología" value="{{ old('nombre') }}" required>
+                        @error('nombre')
+                            <p class="form-error">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div class="form-group">
                         <label for="codigo" class="form-label">Código</label>
-                        <input type="text" id="codigo" name="codigo" class="input" placeholder="Ej: CARD-01">
+                        <input type="text" id="codigo" name="codigo" class="input @error('codigo') input-error @enderror" placeholder="Ej: CARD-01" value="{{ old('codigo') }}">
                         <p class="form-help">Código interno para identificación rápida (opcional)</p>
+                        @error('codigo')
+                            <p class="form-error">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div class="form-group">
                         <label for="descripcion" class="form-label form-label-required">Descripción</label>
-                        <textarea id="descripcion" name="descripcion" rows="4" class="form-textarea" placeholder="Descripción detallada del área médica..." required></textarea>
+                        <textarea id="descripcion" name="descripcion" rows="4" class="form-textarea @error('descripcion') textarea-error @enderror" placeholder="Descripción detallada del área médica..." required>{{ old('descripcion') }}</textarea>
+                        @error('descripcion')
+                            <p class="form-error">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -54,51 +63,64 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-group">
                         <label for="duracion_cita_default" class="form-label">Duración por Defecto (min)</label>
-                        <select id="duracion_cita_default" name="duracion_cita_default" class="form-select">
-                            <option value="15">15 minutos</option>
-                            <option value="20">20 minutos</option>
-                            <option value="30" selected>30 minutos</option>
-                            <option value="45">45 minutos</option>
-                            <option value="60">1 hora</option>
+                        <select id="duracion_cita_default" name="duracion_cita_default" class="form-select @error('duracion_cita_default') select-error @enderror">
+                            @foreach([15, 20, 30, 45, 60] as $duration)
+                                <option value="{{ $duration }}" {{ old('duracion_cita_default', 30) == $duration ? 'selected' : '' }}>{{ $duration }} minutos</option>
+                            @endforeach
                         </select>
                         <p class="form-help">Duración predeterminada de las citas</p>
+                        @error('duracion_cita_default')
+                            <p class="form-error">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div class="form-group">
                         <label for="color" class="form-label">Color Identificador</label>
-                        <select id="color" name="color" class="form-select">
-                            <option value="medical" selected>Azul Médico</option>
-                            <option value="success">Verde</option>
-                            <option value="warning">Amarillo</option>
-                            <option value="danger">Rojo</option>
-                            <option value="info">Cian</option>
-                            <option value="purple">Púrpura</option>
+                        <select id="color" name="color" class="form-select @error('color') select-error @enderror">
+                             @foreach(['medical' => 'Azul Médico', 'success' => 'Verde', 'warning' => 'Amarillo', 'danger' => 'Rojo', 'info' => 'Cian', 'purple' => 'Púrpura'] as $value => $label)
+                                <option value="{{ $value }}" {{ old('color', 'medical') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
                         </select>
                         <p class="form-help">Color para visualización en calendario</p>
+                        @error('color')
+                            <p class="form-error">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div class="form-group">
                         <label for="icono" class="form-label">Ícono</label>
-                        <select id="icono" name="icono" class="form-select">
-                            <option value="heart-pulse" selected>Corazón (Cardiología)</option>
-                            <option value="emoji-smile">Sonrisa (Pediatría)</option>
-                            <option value="activity">Actividad (Traumatología)</option>
-                            <option value="clipboard-pulse">Tabla (Medicina General)</option>
-                            <option value="eye">Ojo (Oftalmología)</option>
-                            <option value="droplet">Gota (Dermatología)</option>
-                            <option value="lungs">Pulmones (Neumología)</option>
-                            <option value="bandaid">Curita (Emergencias)</option>
+                        <select id="icono" name="icono" class="form-select @error('icono') select-error @enderror">
+                             @foreach([
+                                'heart-pulse' => 'Corazón (Cardiología)', 
+                                'emoji-smile' => 'Sonrisa (Pediatría)', 
+                                'activity' => 'Actividad (Traumatología)', 
+                                'clipboard-pulse' => 'Tabla (Medicina General)', 
+                                'eye' => 'Ojo (Oftalmología)', 
+                                'droplet' => 'Gota (Dermatología)',
+                                'lungs' => 'Pulmones (Neumología)',
+                                'bandaid' => 'Curita (Emergencias)',
+                                'brain' => 'Cerebro (Neurología)',
+                                'ear' => 'Oído (Otorrino)'
+                            ] as $value => $label)
+                                <option value="{{ $value }}" {{ old('icono', 'heart-pulse') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
                         </select>
+                        @error('icono')
+                            <p class="form-error">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div class="form-group">
                         <label for="prioridad" class="form-label">Prioridad</label>
-                        <select id="prioridad" name="prioridad" class="form-select">
-                            <option value="1">Alta</option>
-                            <option value="2" selected>Media</option>
-                            <option value="3">Baja</option>
+                        <select id="prioridad" name="prioridad" class="form-select @error('prioridad') select-error @enderror">
+                            @foreach([1 => 'Alta', 2 => 'Media', 3 => 'Baja'] as $value => $label)
+                                <option value="{{ $value }}" {{ old('prioridad', 2) == $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
                         </select>
                         <p class="form-help">Orden de visualización</p>
+                        @error('prioridad')
+                            <p class="form-error">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -113,12 +135,12 @@
                 <div class="grid grid-cols-1 gap-4">
                     <div class="form-group">
                         <label for="requisitos" class="form-label">Requisitos para Citas</label>
-                        <textarea id="requisitos" name="requisitos" rows="3" class="form-textarea" placeholder="Ej: Ayuno de 8 horas, resultados previos, etc."></textarea>
+                        <textarea id="requisitos" name="requisitos" rows="3" class="form-textarea" placeholder="Ej: Ayuno de 8 horas, resultados previos, etc.">{{ old('requisitos') }}</textarea>
                     </div>
 
                     <div class="form-group">
                         <label for="observaciones" class="form-label">Observaciones</label>
-                        <textarea id="observaciones" name="observaciones" rows="3" class="form-textarea" placeholder="Notas internas sobre la especialidad..."></textarea>
+                        <textarea id="observaciones" name="observaciones" rows="3" class="form-textarea" placeholder="Notas internas sobre la especialidad...">{{ old('observaciones') }}</textarea>
                     </div>
                 </div>
             </div>
@@ -134,8 +156,8 @@
                     <div class="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 mb-3">
                         <i class="bi bi-heart-pulse text-3xl"></i>
                     </div>
-                    <h4 class="text-xl font-bold mb-1">Nombre de la Especialidad</h4>
-                    <p class="text-white/80 text-sm">Descripción breve</p>
+                    <h4 class="text-xl font-bold mb-1">Nombre</h4>
+                    <p class="text-white/80 text-sm">Descripción</p>
                 </div>
 
                 <div class="space-y-3 text-sm">
@@ -187,3 +209,110 @@
     </div>
 </form>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const inputs = form.querySelectorAll('input[required], textarea[required], select[required]');
+    
+    // Live Preview Elements
+    const previewNombre = document.querySelector('.bg-gradient-to-br h4');
+    const previewCodigo = document.querySelector('.bg-gradient-to-br p');
+    const previewIcono = document.querySelector('.bg-gradient-to-br i');
+    const previewCard = document.querySelector('.bg-gradient-to-br');
+    const previewDuracion = document.querySelectorAll('.font-medium')[0];
+    const previewPrioridad = document.querySelectorAll('.font-medium')[1];
+
+    // Mapping for priorities
+    const priorityLabels = { '1': 'Alta', '2': 'Media', '3': 'Baja' };
+
+    const validateField = (field) => {
+        const errorMsg = field.parentElement.querySelector('.form-error');
+        let isValid = true;
+        let message = '';
+
+        if (field.hasAttribute('required') && !field.value.trim()) {
+            isValid = false;
+            message = 'Este campo es obligatorio';
+        } else if (field.name === 'nombre' && field.value.length > 100) {
+            isValid = false;
+            message = 'El nombre no puede exceder los 100 caracteres';
+        }
+
+        if (!isValid) {
+            field.classList.add('border-danger-500', 'bg-danger-50');
+            field.classList.remove('border-gray-300');
+            if (errorMsg) {
+                errorMsg.textContent = message;
+                errorMsg.style.display = 'block';
+            } else {
+                const p = document.createElement('p');
+                p.className = 'form-error';
+                p.style.color = '#ef4444';
+                p.style.fontSize = '0.75rem';
+                p.style.marginTop = '0.25rem';
+                p.textContent = message;
+                field.parentElement.appendChild(p);
+            }
+        } else {
+            field.classList.remove('border-danger-500', 'bg-danger-50');
+            field.classList.add('border-success-500');
+            if (errorMsg) errorMsg.style.display = 'none';
+        }
+        return isValid;
+    };
+
+    // Real-time Validation & Preview Update
+    form.addEventListener('input', (e) => {
+        const field = e.target;
+        
+        if (field.hasAttribute('required')) {
+            validateField(field);
+        }
+
+        // Live Preview Updates
+        if (field.id === 'nombre') {
+            previewNombre.textContent = field.value || 'Nombre';
+        }
+        if (field.id === 'codigo') {
+            previewCodigo.textContent = field.value || 'Descripción';
+        }
+        if (field.id === 'icono') {
+            previewIcono.className = `bi bi-${field.value} text-3xl`;
+        }
+        if (field.id === 'duracion_cita_default') {
+            previewDuracion.textContent = `${field.value} min`;
+        }
+        if (field.id === 'prioridad') {
+            previewPrioridad.textContent = priorityLabels[field.value];
+        }
+        if (field.id === 'color') {
+            const colors = {
+                'medical': 'from-medical-500 to-medical-600',
+                'success': 'from-success-500 to-success-600',
+                'warning': 'from-warning-500 to-warning-600',
+                'danger': 'from-danger-500 to-danger-600',
+                'info': 'from-info-500 to-info-600',
+                'purple': 'from-purple-500 to-purple-600'
+            };
+            previewCard.className = `bg-gradient-to-br ${colors[field.value]} p-6 rounded-xl text-white mb-4`;
+        }
+    });
+
+    // Form Submission check
+    form.addEventListener('submit', (e) => {
+        let isFormValid = true;
+        inputs.forEach(input => {
+            if (!validateField(input)) isFormValid = false;
+        });
+
+        if (!isFormValid) {
+            e.preventDefault();
+            const firstError = form.querySelector('.border-danger-500');
+            if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+});
+</script>
+@endpush

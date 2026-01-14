@@ -32,26 +32,26 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2">
                         <label class="form-label required">Factura</label>
-                        <select name="factura_id" class="form-select" required disabled>
+                        <select name="id_factura_paciente" class="form-select" required disabled>
                             <option value="">Seleccione una factura</option>
                             @foreach($facturas as $factura)
-                            <option value="{{ $factura->id }}" {{ old('factura_id', $pago->factura_id) == $factura->id ? 'selected' : '' }}>
-                                {{ $factura->numero_factura }} - {{ $factura->cita->paciente->primer_nombre }} {{ $factura->cita->paciente->primer_apellido }} - ${{ number_format($factura->monto_total, 2) }}
+                            <option value="{{ $factura->id }}" {{ old('id_factura_paciente', $pago->id_factura_paciente) == $factura->id ? 'selected' : '' }}>
+                                {{ $factura->numero_factura }} - {{ $factura->cita->paciente->primer_nombre }} {{ $factura->cita->paciente->primer_apellido }} - ${{ number_format($factura->monto_usd, 2) }}
                             </option>
                             @endforeach
                         </select>
-                        <input type="hidden" name="factura_id" value="{{ $pago->factura_id }}">
+                        <input type="hidden" name="id_factura_paciente" value="{{ $pago->id_factura_paciente }}">
                         <p class="text-xs text-gray-500 mt-1">La factura no puede ser modificada</p>
                     </div>
 
                     <div>
                         <label class="form-label">Monto Factura</label>
-                        <input type="text" class="input bg-gray-100" value="${{ number_format($pago->factura->monto_total, 2) }}" readonly>
+                        <input type="text" class="input bg-gray-100" value="${{ number_format($pago->facturaPaciente->monto_usd, 2) }}" readonly>
                     </div>
 
                     <div>
                         <label class="form-label">Saldo Pendiente</label>
-                        <input type="text" class="input bg-gray-100" value="${{ number_format($pago->factura->monto_total - $pago->factura->pagos->sum('monto_pagado'), 2) }}" readonly>
+                        <input type="text" class="input bg-gray-100" value="${{ number_format($pago->facturaPaciente->monto_usd - $pago->facturaPaciente->pagos->where('estado', 'Confirmado')->sum('monto_equivalente_usd'), 2) }}" readonly>
                     </div>
                 </div>
             </div>
@@ -66,24 +66,24 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="form-label required">Método de Pago</label>
-                        <select name="metodo_pago" class="form-select" required>
+                        <select name="id_metodo" class="form-select" required>
                             @foreach($metodosPago as $metodo)
-                            <option value="{{ $metodo }}" {{ old('metodo_pago', $pago->metodo_pago) == $metodo ? 'selected' : '' }}>
-                                {{ $metodo }}
+                            <option value="{{ $metodo->id_metodo }}" {{ old('id_metodo', $pago->id_metodo) == $metodo->id_metodo ? 'selected' : '' }}>
+                                {{ $metodo->nombre }}
                             </option>
                             @endforeach
                         </select>
-                        @error('metodo_pago')<span class="text-danger-600 text-sm">{{ $message }}</span>@enderror
+                        @error('id_metodo')<span class="text-danger-600 text-sm">{{ $message }}</span>@enderror
                     </div>
 
                     <div>
-                        <label class="form-label required">Monto Pagado</label>
+                        <label class="form-label required">Monto Pagado (Bs)</label>
                         <div class="relative">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                            <input type="number" name="monto_pagado" class="input pl-8" step="0.01" 
-                                   value="{{ old('monto_pagado', $pago->monto_pagado) }}" required>
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">Bs.</span>
+                            <input type="number" name="monto_pagado_bs" class="input pl-12" step="0.01" 
+                                   value="{{ old('monto_pagado_bs', $pago->monto_pagado_bs) }}" required>
                         </div>
-                        @error('monto_pagado')<span class="text-danger-600 text-sm">{{ $message }}</span>@enderror
+                        @error('monto_pagado_bs')<span class="text-danger-600 text-sm">{{ $message }}</span>@enderror
                     </div>
 
                     <div>
@@ -95,27 +95,27 @@
 
                     <div>
                         <label class="form-label">Número de Referencia</label>
-                        <input type="text" name="numero_referencia" class="input" 
+                        <input type="text" name="referencia" class="input" 
                                placeholder="Ej: 123456789" 
-                               value="{{ old('numero_referencia', $pago->numero_referencia) }}">
+                               value="{{ old('referencia', $pago->referencia) }}">
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="form-label">Tasa (Bs/$)</label>
-                        <select name="tasa_id" class="form-select">
-                            <option value="">Seleccione una tasa (opcional)</option>
+                        <label class="form-label">Tasa Aplicada (Bs/$)</label>
+                        <select name="tasa_aplicada_id" class="form-select">
+                            <option value="">Seleccione una tasa</option>
                             @foreach($tasas as $tasa)
-                            <option value="{{ $tasa->id }}" {{ old('tasa_id', $pago->tasa_id) == $tasa->id ? 'selected' : '' }}>
-                                {{ $tasa->fecha_vigencia->format('d/m/Y') }} - 1$ = {{ number_format($tasa->valor_bs, 2) }} Bs
+                            <option value="{{ $tasa->id }}" {{ old('tasa_aplicada_id', $pago->tasa_aplicada_id) == $tasa->id ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::parse($tasa->fecha_tasa)->format('d/m/Y') }} - 1$ = {{ number_format($tasa->valor, 2) }} Bs
                             </option>
                             @endforeach
                         </select>
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="form-label">Notas</label>
-                        <textarea name="notas" rows="3" class="input" 
-                                  placeholder="Observaciones adicionales sobre el pago">{{ old('notas', $pago->notas) }}</textarea>
+                        <label class="form-label">Comentarios</label>
+                        <textarea name="comentarios" rows="3" class="input" 
+                                  placeholder="Observaciones adicionales sobre el pago">{{ old('comentarios', $pago->comentarios) }}</textarea>
                     </div>
                 </div>
             </div>
@@ -138,9 +138,9 @@
 
                 <div>
                     <label class="form-label">Subir Nuevo Comprobante</label>
-                    <input type="file" name="comprobante_pago" class="input" accept="image/*,application/pdf">
+                    <input type="file" name="comprobante" class="input" accept="image/*,application/pdf">
                     <p class="text-xs text-gray-500 mt-1">Formatos: JPG, PNG, PDF. Máximo 5MB.</p>
-                    @error('comprobante_pago')<span class="text-danger-600 text-sm">{{ $message }}</span>@enderror
+                    @error('comprobante')<span class="text-danger-600 text-sm">{{ $message }}</span>@enderror
                 </div>
             </div>
         </div>
@@ -157,11 +157,11 @@
                 <div class="space-y-3">
                     <div>
                         <label class="form-label required">Estado</label>
-                        <select name="estado_pago" class="form-select" required>
-                            <option value="Pendiente" {{ old('estado_pago', $pago->estado_pago) == 'Pendiente' ? 'selected' : '' }}>Pendiente</option>
-                            <option value="Procesado" {{ old('estado_pago', $pago->estado_pago) == 'Procesado' ? 'selected' : '' }}>Procesado</option>
-                            <option value="Verificado" {{ old('estado_pago', $pago->estado_pago) == 'Verificado' ? 'selected' : '' }}>Verificado</option>
-                            <option value="Rechazado" {{ old('estado_pago', $pago->estado_pago) == 'Rechazado' ? 'selected' : '' }}>Rechazado</option>
+                        <select name="estado" class="form-select" required>
+                            <option value="Pendiente" {{ old('estado', $pago->estado) == 'Pendiente' ? 'selected' : '' }}>Pendiente</option>
+                            <option value="Confirmado" {{ old('estado', $pago->estado) == 'Confirmado' ? 'selected' : '' }}>Confirmado</option>
+                            <option value="Rechazado" {{ old('estado', $pago->estado) == 'Rechazado' ? 'selected' : '' }}>Rechazado</option>
+                            <option value="Reembolsado" {{ old('estado', $pago->estado) == 'Reembolsado' ? 'selected' : '' }}>Reembolsado</option>
                         </select>
                     </div>
 

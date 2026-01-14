@@ -6,16 +6,16 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/configuracion/ubicacion/estados') }}" class="btn btn-outline">
+        <a href="{{ route('ubicacion.estados.index') }}" class="btn btn-outline">
             <i class="bi bi-arrow-left"></i>
         </a>
         <div>
             <h1 class="text-2xl font-display font-bold text-gray-900">Editar Estado</h1>
-            <p class="text-gray-600 mt-1">{{ $estado->nombre ?? 'Estado' }}</p>
+            <p class="text-gray-600 mt-1">{{ $estado->estado ?? 'Estado' }}</p>
         </div>
     </div>
 
-    <form action="{{ url('index.php/configuracion/ubicacion/estados/' . $estado->id) }}" method="POST" class="space-y-6">
+    <form action="{{ route('ubicacion.estados.update', $estado->id_estado) }}" method="POST" class="space-y-6">
         @csrf
         @method('PUT')
 
@@ -32,51 +32,12 @@
                     <div class="space-y-4">
                         <div>
                             <label class="form-label form-label-required">Nombre del Estado</label>
-                            <input type="text" name="nombre" class="input" value="{{ old('nombre', $estado->nombre) }}" required>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label form-label-required">Código</label>
-                                <input type="text" name="codigo" class="input" value="{{ old('codigo', $estado->codigo) }}" maxlength="3" required>
-                            </div>
-
-                            <div>
-                                <label class="form-label">Código ISO</label>
-                                <input type="text" name="iso_code" class="input" value="{{ old('iso_code', $estado->iso_code) }}" maxlength="10">
-                            </div>
+                            <input type="text" name="estado" class="input" value="{{ old('estado', $estado->estado) }}" required maxlength="250">
                         </div>
 
                         <div>
-                            <label class="form-label">Capital</label>
-                            <input type="text" name="capital" class="input" value="{{ old('capital', $estado->capital) }}">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Información Adicional -->
-                <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <i class="bi bi-geo-alt text-purple-600"></i>
-                        Información Adicional
-                    </h3>
-
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label">Población</label>
-                                <input type="number" name="poblacion" class="input" value="{{ old('poblacion', $estado->poblacion) }}">
-                            </div>
-
-                            <div>
-                                <label class="form-label">Superficie (km²)</label>
-                                <input type="number" name="superficie" class="input" value="{{ old('superficie', $estado->superficie) }}" step="0.01">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="form-label">Descripción</label>
-                            <textarea name="descripcion" rows="4" class="form-textarea">{{ old('descripcion', $estado->descripcion) }}</textarea>
+                            <label class="form-label">Código ISO 3166-2</label>
+                            <input type="text" name="iso_3166_2" class="input" value="{{ old('iso_3166_2', $estado->iso_3166_2) }}" maxlength="4">
                         </div>
                     </div>
                 </div>
@@ -113,13 +74,12 @@
                             <i class="bi bi-check-lg"></i>
                             Actualizar
                         </button>
-                        <a href="{{ url('index.php/configuracion/ubicacion/estados') }}" class="btn btn-outline w-full">
+                        <a href="{{ route('ubicacion.estados.index') }}" class="btn btn-outline w-full">
                             <i class="bi bi-x-lg"></i>
                             Cancelar
                         </a>
                     </div>
                 </div>
-
                 <!-- Stats -->
                 <div class="card p-6">
                     <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Estadísticas</h3>

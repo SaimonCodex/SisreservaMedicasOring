@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <a href="{{ url('index.php/ordenes-medicas') }}" class="btn btn-outline">
+            <a href="{{ route('ordenes-medicas.index') }}" class="btn btn-outline">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
@@ -15,7 +15,7 @@
                 <p class="text-gray-600 mt-1">Gestión de prescripciones y medicamentos</p>
             </div>
         </div>
-        <a href="{{ url('index.php/ordenes-medicas/create?tipo=receta') }}" class="btn btn-primary">
+        <a href="{{ route('ordenes-medicas.create', ['tipo' => 'receta']) }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i>
             <span>Nueva Receta</span>
         </a>
@@ -93,7 +93,7 @@
                     <i class="bi bi-search"></i>
                     Buscar
                 </button>
-                <a href="{{ url('index.php/ordenes-medicas/recetas') }}" class="btn btn-outline">
+                <a href="{{ route('ordenes-medicas.recetas') }}" class="btn btn-outline">
                     <i class="bi bi-x-lg"></i>
                 </a>
             </div>
@@ -157,7 +157,7 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
-                                <a href="{{ url('index.php/ordenes-medicas/' . $receta->orden_id) }}" class="btn btn-sm btn-outline" title="Ver">
+                                <a href="{{ route('ordenes-medicas.show', $receta->orden_id) }}" class="btn btn-sm btn-outline" title="Ver">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 <button onclick="window.print()" class="btn btn-sm btn-primary" title="Imprimir">
@@ -175,7 +175,7 @@
                                 </div>
                                 <p class="text-gray-500 font-medium mb-2">No se encontraron recetas</p>
                                 <p class="text-sm text-gray-400 mb-4">Crea una nueva receta médica</p>
-                                <a href="{{ url('index.php/ordenes-medicas/create?tipo=receta') }}" class="btn btn-sm btn-primary">
+                                <a href="{{ route('ordenes-medicas.create', ['tipo' => 'receta']) }}" class="btn btn-sm btn-primary">
                                     <i class="bi bi-plus-lg"></i>
                                     Nueva Receta
                                 </a>

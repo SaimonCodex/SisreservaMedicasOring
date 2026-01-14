@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <a href="{{ url('index.php/ordenes-medicas') }}" class="btn btn-outline">
+            <a href="{{ route('ordenes-medicas.index') }}" class="btn btn-outline">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
@@ -15,7 +15,7 @@
                 <p class="text-gray-600 mt-1">Gestión de exámenes y análisis clínicos</p>
             </div>
         </div>
-        <a href="{{ url('index.php/ordenes-medicas/create?tipo=laboratorio') }}" class="btn btn-primary">
+        <a href="{{ route('ordenes-medicas.create', ['tipo' => 'laboratorio']) }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i>
             <span>Nueva Orden</span>
         </a>
@@ -98,7 +98,7 @@
                     <i class="bi bi-search"></i>
                     Buscar
                 </button>
-                <a href="{{ url('index.php/ordenes-medicas/laboratorios') }}" class="btn btn-outline">
+                <a href="{{ route('ordenes-medicas.laboratorios') }}" class="btn btn-outline">
                     <i class="bi bi-x-lg"></i>
                 </a>
             </div>
@@ -183,11 +183,11 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
-                                <a href="{{ url('index.php/ordenes-medicas/' . $lab->orden_id) }}" class="btn btn-sm btn-outline" title="Ver">
+                                <a href="{{ route('ordenes-medicas.show', $lab->orden_id) }}" class="btn btn-sm btn-outline" title="Ver">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 @if(!$lab->resultados)
-                                <a href="{{ url('index.php/ordenes-medicas/registrar-resultados?laboratorio=' . $lab->id) }}" class="btn btn-sm btn-success" title="Registrar Resultados">
+                                <a href="{{ route('ordenes-medicas.registrar-resultados', ['id' => $lab->orden_id, 'laboratorio' => $lab->id]) }}" class="btn btn-sm btn-success" title="Registrar Resultados">
                                     <i class="bi bi-clipboard-check"></i>
                                 </a>
                                 @endif
@@ -203,7 +203,7 @@
                                 </div>
                                 <p class="text-gray-500 font-medium mb-2">No se encontraron órdenes de laboratorio</p>
                                 <p class="text-sm text-gray-400 mb-4">Crea una nueva orden</p>
-                                <a href="{{ url('index.php/ordenes-medicas/create?tipo=laboratorio') }}" class="btn btn-sm btn-primary">
+                                <a href="{{ route('ordenes-medicas.create', ['tipo' => 'laboratorio']) }}" class="btn btn-sm btn-primary">
                                     <i class="bi bi-plus-lg"></i>
                                     Nueva Orden
                                 </a>

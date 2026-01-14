@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Agendar Cita')
+@section('title', 'Agendar Nueva Cita')
 
 @section('content')
 <div class="mb-6">
@@ -11,231 +11,247 @@
     <p class="text-gray-500 mt-1">Complete la información para programar la cita médica</p>
 </div>
 
-<form method="POST" action="{{ route('citas.store') }}">
-    @csrf
-    
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Formulario Principal -->
-        <div class="lg:col-span-2 space-y-6">
-            
-            <!-- Selección de Paciente -->
-            <div class="card p-6 border-l-4 border-l-success-500">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <i class="bi bi-person text-success-600"></i>
-                    Datos del Paciente
-                </h3>
-                
-                <div class="form-group mb-4">
-                    <label for="paciente_buscar" class="form-label form-label-required">Buscar Paciente</label>
-                    <div class="relative">
-                        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" id="paciente_buscar" class="input pl-10" placeholder="Buscar por nombre, cédula o historia...">
+<div class="space-y-6">
+    <!-- Paso 1: Tipo de Cita -->
+    <div id="step-tipo" class="card p-6">
+        <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <i class="bi bi-person-check text-blue-600"></i>
+            ¿Para quién es esta cita?
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button type="button" data-tipo-cita="propia" class="tipo-cita-btn p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
+                        <i class="bi bi-person-fill text-2xl text-blue-600"></i>
                     </div>
-                    <p class="form-help">Escriba para buscar en la base de datos</p>
+                    <div>
+                        <h4 class="font-bold text-gray-900 text-lg">Cita Propia</h4>
+                        <p class="text-sm text-gray-600">Para un paciente registrado o nuevo</p>
+                    </div>
                 </div>
+            </button>
+            
+            <button type="button" data-tipo-cita="terceros" class="tipo-cita-btn p-6 border-2 border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <i class="bi bi-people-fill text-2xl text-emerald-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-900 text-lg">Cita para Terceros</h4>
+                        <p class="text-sm text-gray-600">Menores de edad, discapacitados, etc.</p>
+                    </div>
+                </div>
+            </button>
+        </div>
+    </div>
 
-                <div id="paciente_seleccionado" class="hidden">
-                    <div class="bg-success-50 border border-success-200 rounded-xl p-4">
-                        <div class="flex items-center gap-4">
-                            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-success-500 to-success-600 flex items-center justify-center text-white text-xl font-bold">
-                                AR
+    <!-- Formulario Principal -->
+    <form action="{{ route('citas.store') }}" method="POST" id="citaForm" class="space-y-6 hidden" onsubmit="return validarFormulario()">
+        @csrf
+        <input type="hidden" name="tipo_cita" id="tipo_cita" value="">
+        <input type="hidden" name="paciente_existente" id="paciente_existente" value="0">
+        <input type="hidden" name="paciente_id" id="paciente_id" value="">
+        <input type="hidden" name="representante_existente" id="representante_existente" value="0">
+        <input type="hidden" name="representante_id" id="representante_id_hidden" value="">
+        <input type="hidden" name="paciente_especial_id" id="paciente_especial_id" value="">
+        <input type="hidden" name="registrar_usuario" id="registrar_usuario" value="0">
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- BUSCADOR DE PACIENTE (Citas Propias) -->
+                <div id="seccion-buscar-paciente" class="card p-6 border-l-4 border-l-success-500 hidden">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="bi bi-search text-success-600"></i>
+                        Buscar Paciente
+                    </h3>
+                    
+                    <div id="pac-buscador-container" class="form-group mb-4">
+                        <label class="form-label">Buscar por nombre, apellido o cédula</label>
+                        <div class="relative">
+                            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" id="buscar_paciente" class="input pl-10" placeholder="Escriba para buscar..." autocomplete="off">
+                        </div>
+                        <div id="resultados-busqueda" class="absolute z-50 w-full bg-white border rounded-lg shadow-lg mt-1 hidden max-h-60 overflow-y-auto"></div>
+                    </div>
+                    
+                    <!-- Alerta tipo incorrecto -->
+                    <div id="alerta-tipo-incorrecto" class="hidden p-4 bg-amber-50 border border-amber-300 rounded-lg mb-4">
+                        <p class="text-amber-700 text-sm"><i class="bi bi-exclamation-triangle"></i> <span id="alerta-tipo-mensaje"></span></p>
+                    </div>
+                    
+                    <!-- Checkbox paciente no registrado -->
+                    <label class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 mt-4">
+                        <input type="checkbox" id="paciente_no_registrado" class="w-5 h-5 text-blue-600 rounded" onchange="togglePacienteNoRegistrado()">
+                        <div>
+                            <span class="font-medium text-gray-900">El paciente NO está registrado en el sistema</span>
+                            <p class="text-sm text-gray-500">Marque para ingresar los datos manualmente</p>
+                        </div>
+                    </label>
+                    
+                    <!-- Paciente seleccionado -->
+                    <div id="paciente_seleccionado" class="hidden mt-4">
+                        <div class="bg-success-50 border border-success-200 rounded-xl p-4">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-success-500 to-success-600 flex items-center justify-center text-white text-xl font-bold" id="pac_iniciales">
+                                    --
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-gray-900" id="pac_nombre_display">-</h4>
+                                    <p class="text-sm text-gray-600" id="pac_documento_display">-</p>
+                                </div>
+                                <button type="button" onclick="limpiarPacienteSeleccionado()" class="text-danger-600 hover:text-danger-700">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                             </div>
-                            <div class="flex-1">
-                                <h4 class="font-bold text-gray-900">Ana Rodríguez</h4>
-                                <p class="text-sm text-gray-600">V-18765432 • HC-2024-001</p>
-                                <p class="text-xs text-gray-500 mt-1">35 años • Femenino • O+</p>
-                            </div>
-                            <button type="button" class="text-danger-600 hover:text-danger-700">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
                         </div>
                     </div>
                 </div>
 
-                <input type="hidden" name="paciente_id" id="paciente_id" value="1">
-            </div>
-
-            <!-- Selección de Médico y Especialidad -->
-            <div class="card p-6 border-l-4 border-l-medical-500">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <i class="bi bi-person-badge text-medical-600"></i>
-                    Médico y Especialidad
-                </h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="form-group">
-                        <label for="especialidad_id" class="form-label form-label-required">Especialidad</label>
-                        <select id="especialidad_id" name="especialidad_id" class="form-select" required>
-                            <option value="">Seleccione...</option>
-                            <option value="1">Cardiología</option>
-                            <option value="2">Pediatría</option>
-                            <option value="3">Traumatología</option>
-                            <option value="4">Medicina General</option>
-                        </select>
+                <!-- DATOS PACIENTE NUEVO (Citas Propias) -->
+                <div id="datos-paciente-nuevo" class="card p-6 border-l-4 border-l-blue-500 hidden">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="bi bi-person-plus text-blue-600"></i>
+                        Datos del Nuevo Paciente
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label form-label-required">Primer Nombre</label>
+                            <input type="text" name="pac_primer_nombre" id="pac_primer_nombre" class="input" placeholder="Nombre" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')">
+                            <span class="error-message text-red-500 text-xs mt-1 hidden"></span>
+                        </div>
+                        <div>
+                            <label class="form-label">Segundo Nombre</label>
+                            <input type="text" name="pac_segundo_nombre" id="pac_segundo_nombre" class="input" placeholder="Segundo nombre" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')">
+                        </div>
+                        <div>
+                            <label class="form-label form-label-required">Primer Apellido</label>
+                            <input type="text" name="pac_primer_apellido" id="pac_primer_apellido" class="input" placeholder="Apellido" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')">
+                            <span class="error-message text-red-500 text-xs mt-1 hidden"></span>
+                        </div>
+                        <div>
+                            <label class="form-label">Segundo Apellido</label>
+                            <input type="text" name="pac_segundo_apellido" id="pac_segundo_apellido" class="input" placeholder="Segundo apellido" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')">
+                        </div>
+                        
+                        <div>
+                            <label class="form-label form-label-required">Identificación</label>
+                            <div class="flex gap-2">
+                                <select name="pac_tipo_documento" id="pac_tipo_documento" class="form-select w-20">
+                                    <option value="V">V</option>
+                                    <option value="E">E</option>
+                                    <option value="P">P</option>
+                                </select>
+                                <input type="text" name="pac_numero_documento" id="pac_numero_documento" class="input flex-1" placeholder="12345678" maxlength="12" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            </div>
+                            <span class="error-message text-red-500 text-xs mt-1 hidden" id="pac_numero_documento_error"></span>
+                        </div>
+                        
+                        <div>
+                            <label class="form-label form-label-required">Fecha Nacimiento</label>
+                            <input type="date" name="pac_fecha_nac" id="pac_fecha_nac" class="input" max="{{ date('Y-m-d') }}">
+                            <span class="error-message text-red-500 text-xs mt-1 hidden"></span>
+                        </div>
+                        
+                        <div>
+                            <label class="form-label form-label-required">Género</label>
+                            <select name="pac_genero" id="pac_genero" class="form-select">
+                                <option value="">Seleccionar...</option>
+                                <option value="Masculino">Masculino</option>
+                                <option value="Femenino">Femenino</option>
+                            </select>
+                            <span class="error-message text-red-500 text-xs mt-1 hidden"></span>
+                        </div>
+                        
+                        <div>
+                            <label class="form-label">Teléfono</label>
+                            <div class="flex gap-2">
+                                <select name="pac_prefijo_tlf" class="form-select w-24">
+                                    <option value="+58">+58</option>
+                                    <option value="+57">+57</option>
+                                    <option value="+1">+1</option>
+                                </select>
+                                <input type="tel" name="pac_numero_tlf" id="pac_numero_tlf" class="input flex-1" placeholder="4121234567" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="10">
+                            </div>
+                        </div>
+                        
+                        <!-- Ubicación -->
+                        <div>
+                            <label class="form-label form-label-required">Estado</label>
+                            <select name="pac_estado_id" id="pac_estado_id" class="form-select" onchange="cargarCiudadesPac(); cargarMunicipiosPac()">
+                                <option value="">Seleccione...</option>
+                                @foreach($estados as $estado)
+                                    <option value="{{ $estado->id_estado }}">{{ $estado->estado }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Ciudad</label>
+                            <select name="pac_ciudad_id" id="pac_ciudad_id" class="form-select" disabled>
+                                <option value="">Seleccione estado primero</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Municipio</label>
+                            <select name="pac_municipio_id" id="pac_municipio_id" class="form-select" disabled onchange="cargarParroquiasPac()">
+                                <option value="">Seleccione estado primero</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Parroquia</label>
+                            <select name="pac_parroquia_id" id="pac_parroquia_id" class="form-select" disabled>
+                                <option value="">Seleccione municipio primero</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="form-label">Dirección Detallada</label>
+                            <textarea name="pac_direccion_detallada" id="pac_direccion_detallada" class="form-textarea" rows="2" placeholder="Calle, avenida, edificio..."></textarea>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="medico_id" class="form-label form-label-required">Médico</label>
-                        <select id="medico_id" name="medico_id" class="form-select" required>
-                            <option value="">Seleccione especialidad primero...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group md:col-span-2">
-                        <label for="consultorio_id" class="form-label">Consultorio</label>
-                        <select id="consultorio_id" name="consultorio_id" class="form-select">
-                            <option value="">Se asignará automáticamente</option>
-                            <option value="1">Consultorio 101 - Piso 1</option>
-                            <option value="2">Consultorio 205 - Piso 2</option>
-                            <option value="3">Consultorio 310 - Piso 3</option>
-                        </select>
+                    <!-- Checkbox registrar en sistema -->
+                    <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="chk_registrar_usuario" class="w-5 h-5 text-blue-600 rounded" onchange="toggleRegistrarUsuario()">
+                            <div>
+                                <span class="font-medium text-gray-900">Registrar paciente en el sistema</span>
+                                <p class="text-sm text-gray-500">El paciente podrá iniciar sesión con correo y contraseña</p>
+                            </div>
+                        </label>
+                        
+                        <div id="campos_registro_usuario" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label form-label-required">Correo Electrónico</label>
+                                <input type="email" name="pac_correo" id="pac_correo" class="input" placeholder="ejemplo@email.com">
+                                <span class="error-message text-red-500 text-xs mt-1 hidden"></span>
+                            </div>
+                            <div>
+                                <label class="form-label">Contraseña (Auto-generada)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="pac_password_display" class="input flex-1 bg-gray-100" readonly>
+                                    <button type="button" onclick="copiarContrasena('pac_password_display')" class="btn btn-outline">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                                <input type="hidden" name="pac_password" id="pac_password">
+                                <p class="text-xs text-gray-500 mt-1">Formato: #Documento+Nombre+Año</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                @include('shared.citas.partials.seccion-terceros')
+                @include('shared.citas.partials.seccion-consulta')
+
             </div>
 
-            <!-- Fecha y Hora -->
-            <div class="card p-6 border-l-4 border-l-warning-500">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <i class="bi bi-calendar-event text-warning-600"></i>
-                    Fecha y Hora
-                </h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="form-group">
-                        <label for="fecha" class="form-label form-label-required">Fecha de la Cita</label>
-                        <input type="date" id="fecha" name="fecha" class="input" required min="{{ date('Y-m-d') }}">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="hora" class="form-label form-label-required">Hora</label>
-                        <select id="hora" name="hora" class="form-select" required>
-                            <option value="">Seleccione médico y fecha...</option>
-                        </select>
-                        <p class="form-help">Horarios disponibles según el médico seleccionado</p>
-                    </div>
-
-                    <div class="form-group md:col-span-2">
-                        <label for="duracion" class="form-label">Duración Estimada</label>
-                        <select id="duracion" name="duracion" class="form-select">
-                            <option value="30" selected>30 minutos</option>
-                            <option value="45">45 minutos</option>
-                            <option value="60">1 hora</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Motivo y Observaciones -->
-            <div class="card p-6 border-l-4 border-l-info-500">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <i class="bi bi-chat-left-text text-info-600"></i>
-                    Detalles de la Cita
-                </h3>
-                
-                <div class="grid grid-cols-1 gap-4">
-                    <div class="form-group">
-                        <label for="motivo" class="form-label form-label-required">Motivo de la Consulta</label>
-                        <select id="motivo" name="motivo" class="form-select" required>
-                            <option value="">Seleccione...</option>
-                            <option value="primera_vez">Primera Vez</option>
-                            <option value="control">Control</option>
-                            <option value="seguimiento">Seguimiento</option>
-                            <option value="emergencia">Emergencia</option>
-                            <option value="resultados">Revisión de Resultados</option>
-                            <option value="otro">Otro</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="observaciones" class="form-label">Observaciones</label>
-                        <textarea id="observaciones" name="observaciones" rows="4" class="form-textarea" placeholder="Información adicional relevante para la cita..."></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Opciones de Notificación -->
-            <div class="card p-6 bg-medical-50 border border-medical-200">
-                <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <i class="bi bi-bell text-medical-600"></i>
-                    Notificaciones
-                </h4>
-                
-                <div class="space-y-3">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" name="enviar_sms" value="1" class="form-checkbox" checked>
-                        <span class="text-sm text-gray-700">Enviar SMS al paciente</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" name="enviar_email" value="1" class="form-checkbox" checked>
-                        <span class="text-sm text-gray-700">Enviar email de confirmación</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" name="recordatorio" value="1" class="form-checkbox" checked>
-                        <span class="text-sm text-gray-700">Enviar recordatorio 24h antes</span>
-                    </label>
-                </div>
-            </div>
+            <!-- SIDEBAR RESUMEN -->
+            @include('shared.citas.partials.sidebar-resumen')
         </div>
+    </form>
+</div>
 
-        <!-- Sidebar -->
-        <div class="lg:col-span-1 space-y-6">
-            <!-- Resumen de la Cita -->
-            <div class="card p-6 sticky top-6">
-                <h4 class="font-bold text-gray-900 mb-4">Resumen de la Cita</h4>
-                
-                <div class="space-y-3 text-sm">
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <p class="text-xs text-gray-500 mb-1">Paciente</p>
-                        <p class="font-semibold text-gray-900">Ana Rodríguez</p>
-                        <p class="text-xs text-gray-600">HC-2024-001</p>
-                    </div>
-
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <p class="text-xs text-gray-500 mb-1">Médico</p>
-                        <p class="font-semibold text-gray-900">-</p>
-                        <p class="text-xs text-gray-600">Seleccione un médico</p>
-                    </div>
-
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <p class="text-xs text-gray-500 mb-1">Fecha y Hora</p>
-                        <p class="font-semibold text-gray-900">-</p>
-                        <p class="text-xs text-gray-600">Seleccione fecha y hora</p>
-                    </div>
-
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <p class="text-xs text-gray-500 mb-1">Estado Inicial</p>
-                        <span class="badge badge-warning">Pendiente</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Acciones -->
-            <div class="card p-6">
-                <button type="submit" class="btn btn-primary w-full shadow-lg mb-3">
-                    <i class="bi bi-calendar-check mr-2"></i>
-                    Agendar Cita
-                </button>
-                <a href="{{ route('citas.index') }}" class="btn btn-outline w-full">
-                    <i class="bi bi-x-lg mr-2"></i>
-                    Cancelar
-                </a>
-            </div>
-
-            <!-- Disponibilidad -->
-            <div class="card p-6 bg-gradient-to-br from-info-50 to-medical-50">
-                <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <i class="bi bi-clock-history text-info-600"></i>
-                    Disponibilidad
-                </h4>
-                <p class="text-sm text-gray-600 mb-3">
-                    Seleccione un médico y fecha para ver los horarios disponibles
-                </p>
-                <div class="text-center p-4 bg-white rounded-lg">
-                    <i class="bi bi-calendar3 text-4xl text-gray-300 mb-2"></i>
-                    <p class="text-xs text-gray-500">Sin médico seleccionado</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</form>
+@include('shared.citas.partials.scripts')
 @endsection
