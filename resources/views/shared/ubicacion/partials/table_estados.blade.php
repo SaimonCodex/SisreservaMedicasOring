@@ -46,6 +46,7 @@
             </td>
             <td>
                 <div class="flex gap-2">
+                    @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
                     <a href="{{ route('ubicacion.estados.edit', $estado->id_estado) }}" class="btn btn-sm btn-outline" title="Editar">
                         <i class="bi bi-pencil"></i>
                     </a>
@@ -56,6 +57,7 @@
                             <i class="bi bi-trash"></i>
                         </button>
                     </form>
+                    @endif
                 </div>
             </td>
         </tr>
