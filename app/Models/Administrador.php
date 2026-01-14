@@ -28,6 +28,10 @@ class Administrador extends Model
         'prefijo_tlf',
         'numero_tlf',
         'genero',
+        'foto_perfil',
+        'banner_perfil',
+        'banner_color',
+        'tema_dinamico',
         'tipo_admin',
         'status'
     ];

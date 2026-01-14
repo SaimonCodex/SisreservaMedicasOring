@@ -439,4 +439,95 @@ class MedicoController extends Controller
 
         return response()->json($medicos);
     }
+
+    public function editPerfil()
+    {
+        $medico = auth()->user()->medico;
+        $estados = Estado::where('status', true)->get();
+        // Cargar listas dependientes basadas en la ubicación actual del médico
+        $ciudades = $medico->estado_id ? Ciudad::where('status', true)->where('id_estado', $medico->estado_id)->get() : [];
+        $municipios = $medico->estado_id ? Municipio::where('status', true)->where('id_estado', $medico->estado_id)->get() : [];
+        $parroquias = $medico->municipio_id ? Parroquia::where('status', true)->where('id_municipio', $medico->municipio_id)->get() : [];
+
+        return view('medico.perfil.editar', compact('medico', 'estados', 'ciudades', 'municipios', 'parroquias'));
+    }
+
+    public function updatePerfil(Request $request)
+    {
+        $medico = auth()->user()->medico;
+
+        $validator = Validator::make($request->all(), [
+            'primer_nombre' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'primer_apellido' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'fecha_nac' => 'nullable|date',
+            'prefijo_tlf' => 'nullable|in:+58,+57,+1,+34',
+            'numero_tlf' => 'nullable|max:15',
+            'password' => 'nullable|min:8|confirmed',
+            'foto_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'banner_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:4096',
+            'banner_color' => 'nullable|string|max:50',
+            'tema_dinamico' => 'nullable|boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        // 1. Manejo de Foto de Perfil
+        if ($request->hasFile('foto_perfil')) {
+            if ($medico->foto_perfil && \Illuminate\Support\Facades\Storage::exists('public/' . $medico->foto_perfil)) {
+                \Illuminate\Support\Facades\Storage::delete('public/' . $medico->foto_perfil);
+            }
+            $file = $request->file('foto_perfil');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('perfiles_medicos', $filename, 'public');
+            $medico->foto_perfil = $path;
+        }
+
+        // 2. Manejo de Banner de Perfil
+         if ($request->has('remove_banner_image') && $request->remove_banner_image == '1') {
+             if ($medico->banner_perfil && \Illuminate\Support\Facades\Storage::exists('public/' . $medico->banner_perfil)) {
+                \Illuminate\Support\Facades\Storage::delete('public/' . $medico->banner_perfil);
+            }
+            $medico->banner_perfil = null;
+        } elseif ($request->hasFile('banner_perfil')) {
+            if ($medico->banner_perfil && \Illuminate\Support\Facades\Storage::exists('public/' . $medico->banner_perfil)) {
+                \Illuminate\Support\Facades\Storage::delete('public/' . $medico->banner_perfil);
+            }
+            $file = $request->file('banner_perfil');
+            $filename = 'banner_' . time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('banners_medicos', $filename, 'public');
+            $medico->banner_perfil = $path;
+        }
+
+        // 3. Actualizar Datos Personales
+        $medico->primer_nombre = $request->primer_nombre;
+        $medico->primer_apellido = $request->primer_apellido;
+        $medico->segundo_nombre = $request->segundo_nombre;
+        $medico->segundo_apellido = $request->segundo_apellido;
+        $medico->genero = $request->genero;
+        $medico->fecha_nac = $request->fecha_nac;
+        $medico->prefijo_tlf = $request->prefijo_tlf;
+        $medico->numero_tlf = $request->numero_tlf;
+        $medico->banner_color = $request->banner_color;
+        $medico->tema_dinamico = $request->has('tema_dinamico');
+
+        // Actualizar ubicación
+        if($request->filled('estado_id')) $medico->estado_id = $request->estado_id;
+        if($request->filled('ciudad_id')) $medico->ciudad_id = $request->ciudad_id;
+        if($request->filled('municipio_id')) $medico->municipio_id = $request->municipio_id;
+        if($request->filled('parroquia_id')) $medico->parroquia_id = $request->parroquia_id;
+        if($request->filled('direccion_detallada')) $medico->direccion_detallada = $request->direccion_detallada;
+
+        $medico->save();
+
+        // 4. Actualizar Password
+        if ($request->filled('password')) {
+            $medico->usuario->update([
+                'password' => $request->password
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Perfil médico actualizado correctamente');
+    }
 }

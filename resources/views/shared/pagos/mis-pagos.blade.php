@@ -30,9 +30,9 @@
             <select name="estado" class="form-select">
                 <option value="">Todos</option>
                 <option value="Pendiente" {{ request('estado') == 'Pendiente' ? 'selected' : '' }}>Pendiente</option>
-                <option value="Procesado" {{ request('estado') == 'Procesado' ? 'selected' : '' }}>Procesado</option>
-                <option value="Verificado" {{ request('estado') == 'Verificado' ? 'selected' : '' }}>Verificado</option>
+                <option value="Confirmado" {{ request('estado') == 'Confirmado' ? 'selected' : '' }}>Confirmado</option>
                 <option value="Rechazado" {{ request('estado') == 'Rechazado' ? 'selected' : '' }}>Rechazado</option>
+                <option value="Reembolsado" {{ request('estado') == 'Reembolsado' ? 'selected' : '' }}>Reembolsado</option>
             </select>
         </div>
 
@@ -55,7 +55,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Total Pagado</p>
-                <p class="text-2xl font-bold text-gray-900">${{ number_format($pagos->sum('monto_pagado'), 2) }}</p>
+                <p class="text-2xl font-bold text-gray-900">${{ number_format($pagos->where('estado', 'Confirmado')->sum('monto_equivalente_usd'), 2) }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-info-50 flex items-center justify-center">
                 <i class="bi bi-cash-stack text-info-600 text-2xl"></i>
@@ -66,8 +66,8 @@
     <div class="card p-4 border-l-4 border-l-success-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Verificados</p>
-                <p class="text-2xl font-bold text-gray-900">{{ $pagos->where('estado_pago', 'Verificado')->count() }}</p>
+                <p class="text-sm text-gray-500 mb-1">Confirmados</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $pagos->where('estado', 'Confirmado')->count() }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-success-50 flex items-center justify-center">
                 <i class="bi bi-check-circle text-success-600 text-2xl"></i>
@@ -79,7 +79,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Pendientes</p>
-                <p class="text-2xl font-bold text-gray-900">{{ $pagos->where('estado_pago', 'Pendiente')->count() }}</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $pagos->where('estado', 'Pendiente')->count() }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-warning-50 flex items-center justify-center">
                 <i class="bi bi-clock text-warning-600 text-2xl"></i>
@@ -123,26 +123,26 @@
                         <p class="text-xs text-gray-500">{{ $pago->created_at->format('H:i') }}</p>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="font-mono font-semibold text-medical-600">{{ $pago->factura->numero_factura }}</span>
+                        <span class="font-mono font-semibold text-medical-600">{{ $pago->facturaPaciente->numero_factura }}</span>
                     </td>
                     <td class="px-6 py-4">
-                        <p class="font-semibold text-gray-900">{{ $pago->factura->cita->especialidad->nombre_especialidad ?? 'N/A' }}</p>
+                        <p class="font-semibold text-gray-900">{{ $pago->facturaPaciente->cita->especialidad->nombre ?? 'N/A' }}</p>
                         <p class="text-xs text-gray-500">
-                            Dr. {{ $pago->factura->cita->medico->primer_nombre }} {{ $pago->factura->cita->medico->primer_apellido }}
+                            Dr. {{ $pago->facturaPaciente->cita->medico->primer_nombre }} {{ $pago->facturaPaciente->cita->medico->primer_apellido }}
                         </p>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="badge badge-info">{{ $pago->metodo_pago }}</span>
+                        <span class="badge badge-info">{{ $pago->metodoPago->nombre ?? 'N/A' }}</span>
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <p class="font-bold text-success-600">${{ number_format($pago->monto_pagado, 2) }}</p>
-                        @if($pago->numero_referencia)
-                        <p class="text-xs text-gray-500">Ref: {{ $pago->numero_referencia }}</p>
+                        <p class="font-bold text-success-600">Bs. {{ number_format($pago->monto_pagado_bs, 2) }}</p>
+                        @if($pago->referencia)
+                        <p class="text-xs text-gray-500">Ref: {{ $pago->referencia }}</p>
                         @endif
                     </td>
                     <td class="px-6 py-4 text-center">
-                        <span class="badge badge-{{ $pago->estado_pago == 'Verificado' ? 'success' : ($pago->estado_pago == 'Rechazado' ? 'danger' : ($pago->estado_pago == 'Procesado' ? 'info' : 'warning')) }}">
-                            {{ $pago->estado_pago }}
+                        <span class="badge badge-{{ $pago->estado == 'Confirmado' ? 'success' : ($pago->estado == 'Rechazado' ? 'danger' : 'warning') }}">
+                            {{ $pago->estado }}
                         </span>
                     </td>
                     <td class="px-6 py-4">
@@ -150,8 +150,8 @@
                             <a href="{{ route('pagos.show', $pago->id) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver detalle">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            @if($pago->comprobante_pago)
-                            <a href="{{ asset('storage/' . $pago->comprobante_pago) }}" target="_blank" class="btn btn-sm btn-ghost text-info-600" title="Ver comprobante">
+                            @if($pago->comprobante)
+                            <a href="{{ asset('storage/' . $pago->comprobante) }}" target="_blank" class="btn btn-sm btn-ghost text-info-600" title="Ver comprobante">
                                 <i class="bi bi-file-earmark-check"></i>
                             </a>
                             @endif

@@ -110,6 +110,11 @@
                         </div>
 
                         <div>
+                            <span class="text-sm font-medium text-gray-500">Número de Referencia</span>
+                            <p class="font-mono font-bold text-gray-900 mt-1">{{ $pago->referencia ?? 'N/A' }}</p>
+                        </div>
+
+                        <div>
                             <span class="text-sm font-medium text-gray-500">Fecha de Pago</span>
                             <p class="font-semibold text-gray-900 mt-1">{{ \Carbon\Carbon::parse($pago->fecha_pago)->format('d/m/Y') }}</p>
                         </div>

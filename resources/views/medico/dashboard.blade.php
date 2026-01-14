@@ -4,13 +4,30 @@
 
 @section('content')
 <!-- Welcome Banner -->
-<div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-blue-700 to-purple-600 shadow-xl mb-8">
+<!-- Welcome Banner -->
+@php
+    $medico = auth()->user()->medico;
+    $bannerStyle = $medico->banner_color ?? 'bg-gradient-to-r from-blue-600 via-blue-700 to-purple-600';
+    $customStyle = '';
+    if(str_starts_with($bannerStyle, '#')) {
+        $customStyle = "background-color: $bannerStyle";
+        $bannerStyle = '';
+    }
+@endphp
+
+@if($medico->banner_perfil)
+<div class="relative overflow-hidden rounded-3xl shadow-xl mb-8 bg-cover bg-center group" 
+     style="background-image: url('{{ asset('storage/' . $medico->banner_perfil) }}');">
+    <div class="absolute inset-0 bg-gray-900/60 transition-opacity group-hover:bg-gray-900/50"></div>
+@else
+<div class="relative overflow-hidden rounded-3xl shadow-xl mb-8 {{ $bannerStyle }}" style="{{ $customStyle }}">
+@endif
     <div class="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/20 rounded-full mix-blend-overlay filter blur-3xl"></div>
     <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-64 h-64 bg-white/10 rounded-full mix-blend-overlay filter blur-3xl"></div>
     <div class="relative z-10 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div class="text-white">
             <h2 class="text-3xl md:text-4xl font-display font-bold mb-2">
-                ¡Bienvenido, Dr. {{ auth()->user()->nombre ?? 'Médico' }}!
+                ¡Bienvenido, Dr. {{ $medico->primer_nombre ?? 'Médico' }}!
             </h2>
             <p class="text-white/90 text-lg flex items-center gap-2">
                 <i class="bi bi-calendar3"></i>
@@ -18,7 +35,7 @@
             </p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ route('citas.index') }}" class="btn bg-white text-blue-600 hover:bg-gray-50 border-none shadow-md">
+            <a href="{{ route('citas.index') }}" class="btn bg-white/20 hover:bg-white/30 text-white border-none shadow-lg backdrop-blur-sm">
                 <i class="bi bi-plus-lg"></i> Nueva Evolución
             </a>
         </div>
@@ -28,20 +45,20 @@
 <!-- Enhanced Stats Grid -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Citas Hoy -->
-    <div class="card p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+    <div class="card p-6 bg-medical-50 border-medical-200">
         <div class="flex justify-between items-start">
             <div>
-                <p class="text-sm font-semibold text-blue-700 mb-2">Citas Hoy</p>
-                <h3 class="text-4xl font-display font-bold text-blue-900">{{ $stats['citas_hoy'] ?? 5 }}</h3>
-                <p class="text-sm text-blue-600 mt-2">{{ $stats['completadas_hoy'] ?? 2 }} completadas</p>
+                <p class="text-sm font-semibold text-medical-600 mb-2">Citas Hoy</p>
+                <h3 class="text-4xl font-display font-bold text-gray-900">{{ $stats['citas_hoy'] ?? 5 }}</h3>
+                <p class="text-sm text-gray-500 mt-2">{{ $stats['completadas_hoy'] ?? 2 }} completadas</p>
             </div>
-            <div class="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center">
+            <div class="w-14 h-14 bg-medical-500 rounded-xl flex items-center justify-center shadow-lg shadow-medical-200">
                 <i class="bi bi-calendar-check text-white text-2xl"></i>
             </div>
         </div>
-        <div class="mt-4 pt-4 border-t border-blue-200">
+        <div class="mt-4 pt-4 border-t border-medical-200">
             <a href="{{ route('citas.index') }}" 
-                class="text-blue-700 hover:text-blue-900 font-semibold text-sm flex items-center gap-1">
+                class="text-medical-600 hover:text-medical-700 font-semibold text-sm flex items-center gap-1">
                 Ver agenda <i class="bi bi-arrow-right"></i>
             </a>
         </div>
