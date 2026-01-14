@@ -12,6 +12,27 @@ use Illuminate\Support\Facades\Auth;
 
 class HistoriaClinicaController extends Controller
 {
+    public function __construct()
+    {
+        // Bloquear acceso de escritura a admins locales (Root puede ver por el trait)
+        $this->middleware(function ($request, $next) {
+            $user = Auth::user();
+            if ($user && $user->administrador) {
+                $admin = $user->administrador;
+                // Bloquear admins locales completamente
+                if ($admin->tipo_admin !== 'Root') {
+                    abort(403, 'Los administradores locales no tienen acceso a historias clínicas.');
+                }
+                // Root solo puede ver (index/show), no crear/editar/eliminar
+                $restrictedActions = ['create', 'store', 'edit', 'update', 'destroy'];
+                if (in_array($request->route()->getActionMethod(), $restrictedActions)) {
+                    abort(403, 'Los administradores no pueden crear ni editar historias clínicas.');
+                }
+            }
+            return $next($request);
+        });
+    }
+
     // =========================================================================
     // HISTORIA CLÍNICA BASE (Información médica permanente del paciente)
     // =========================================================================

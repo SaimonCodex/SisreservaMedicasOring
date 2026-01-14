@@ -15,6 +15,20 @@ use Illuminate\Support\Facades\Validator;
 
 class MedicoController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+                $restrictedActions = ['create', 'store', 'edit', 'update', 'destroy'];
+                if (in_array($request->route()->getActionMethod(), $restrictedActions)) {
+                    abort(403, 'Solo el Administrador Root puede realizar esta acción.');
+                }
+            }
+            return $next($request);
+        })->only(['create', 'store', 'edit', 'update', 'destroy']);
+    }
+
     public function dashboard()
     {
         $medico = auth()->user()->medico;
@@ -63,13 +77,22 @@ class MedicoController extends Controller
         }
 
         $medicos = $query->paginate(10)->withQueryString();
-        $especialidades = Especialidad::where('status', true)->get(); // Para el dropdown de filtro
+        // Filtro de especialidades según rol
+        if (auth()->check() && auth()->user()->administrador && auth()->user()->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = auth()->user()->administrador->consultorios->pluck('id');
+            $especialidades = Especialidad::where('status', true)
+                ->whereHas('consultorios', function($q) use ($consultorioIds) {
+                    $q->whereIn('consultorios.id', $consultorioIds);
+                })->get();
+        } else {
+            $especialidades = Especialidad::where('status', true)->get();
+        }
 
         // Estadísticas para las tarjetas
         $totalMedicos = Medico::count();
         $medicosActivos = Medico::where('status', true)->count();
         $citasHoyCount = \App\Models\Cita::whereDate('fecha_cita', now())->where('status', true)->count();
-        $totalEspecialidades = Especialidad::where('status', true)->count();
+        $totalEspecialidades = $especialidades->count();
 
         return view('shared.medicos.index', compact('medicos', 'especialidades', 'totalMedicos', 'medicosActivos', 'citasHoyCount', 'totalEspecialidades'));
     }
@@ -269,8 +292,16 @@ class MedicoController extends Controller
     public function horarios($id)
     {
         $medico = Medico::findOrFail($id);
-        // Eager load especialidades to use in frontend filtering
-        $consultorios = Consultorio::with('especialidades')->where('status', true)->get();
+        
+        // Cargar consultorios según el rol del administrador
+        $queryConsultorios = Consultorio::with('especialidades')->where('status', true);
+        
+        if (auth()->user()->administrador && auth()->user()->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = auth()->user()->administrador->consultorios->pluck('id');
+            $queryConsultorios->whereIn('id', $consultorioIds);
+        }
+
+        $consultorios = $queryConsultorios->get();
         $horarios = \App\Models\MedicoConsultorio::where('medico_id', $id)->get();
 
         if (auth()->user()->rol_id == 2) {
@@ -283,10 +314,13 @@ class MedicoController extends Controller
     public function guardarHorario(Request $request, $id)
     {
         $medico = Medico::findOrFail($id);
-        
+        $user = auth()->user();
+        $isAdminLocal = ($user->administrador && $user->administrador->tipo_admin !== 'Root');
+        $misConsultorios = $isAdminLocal ? $user->administrador->consultorios->pluck('id')->toArray() : [];
+
         // Validar estructura básica
         $validator = Validator::make($request->all(), [
-            'dias' => 'array', // Array de días (lunes, martes...)
+            'horarios' => 'array',
         ]);
 
         if ($validator->fails()) {
@@ -316,10 +350,18 @@ class MedicoController extends Controller
             $dayData = $input[$dayKey];
 
             if (isset($dayData['manana_activa']) && $dayData['manana_activa'] == '1' && !empty($dayData['manana_consultorio_id'])) {
-                $consultorioIds[] = $dayData['manana_consultorio_id'];
+                $cid = $dayData['manana_consultorio_id'];
+                if ($isAdminLocal && !in_array($cid, $misConsultorios)) {
+                    abort(403, 'No tiene permiso para asignar horarios en consultorios ajenos.');
+                }
+                $consultorioIds[] = $cid;
             }
             if (isset($dayData['tarde_activa']) && $dayData['tarde_activa'] == '1' && !empty($dayData['tarde_consultorio_id'])) {
-                $consultorioIds[] = $dayData['tarde_consultorio_id'];
+                $cid = $dayData['tarde_consultorio_id'];
+                if ($isAdminLocal && !in_array($cid, $misConsultorios)) {
+                    abort(403, 'No tiene permiso para asignar horarios en consultorios ajenos.');
+                }
+                $consultorioIds[] = $cid;
             }
         }
 

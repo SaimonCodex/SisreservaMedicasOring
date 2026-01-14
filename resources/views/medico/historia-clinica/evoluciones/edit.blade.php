@@ -54,44 +54,58 @@
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                            <label class="form-label">Presión Arterial</label>
-                            <input type="text" name="presion_arterial" class="input" placeholder="120/80" value="{{ old('presion_arterial', $evolucion->presion_arterial ?? '') }}">
-                            <p class="form-help">mmHg</p>
-                        </div>
-                        <div>
-                            <label class="form-label">Temperatura</label>
-                            <input type="number" step="0.1" name="temperatura" class="input" placeholder="36.5" value="{{ old('temperatura', $evolucion->temperatura ?? '') }}">
-                            <p class="form-help">°C</p>
-                        </div>
-                        <div>
-                            <label class="form-label">Frecuencia Cardíaca</label>
-                            <input type="number" name="frecuencia_cardiaca" class="input" placeholder="75" value="{{ old('frecuencia_cardiaca', $evolucion->frecuencia_cardiaca ?? '') }}">
-                            <p class="form-help">bpm</p>
-                        </div>
-                        <div>
-                            <label class="form-label">Frecuencia Respiratoria</label>
-                            <input type="number" name="frecuencia_respiratoria" class="input" placeholder="18" value="{{ old('frecuencia_respiratoria', $evolucion->frecuencia_respiratoria ?? '') }}">
-                            <p class="form-help">rpm</p>
-                        </div>
-                        <div>
-                            <label class="form-label">Saturación O₂</label>
-                            <input type="number" name="saturacion_oxigeno" class="input" placeholder="98" value="{{ old('saturacion_oxigeno', $evolucion->saturacion_oxigeno ?? '') }}">
-                            <p class="form-help">%</p>
-                        </div>
-                        <div>
                             <label class="form-label">Peso</label>
-                            <input type="number" step="0.1" name="peso" class="input" placeholder="70.5" value="{{ old('peso', $evolucion->peso ?? '') }}">
+                            <input type="number" step="0.1" name="peso_kg" class="input" placeholder="70.5" min="0" oninput="validarInput(this)"
+                                   value="{{ old('peso_kg', $evolucion->peso_kg ?? '') }}">
                             <p class="form-help">kg</p>
                         </div>
                         <div>
                             <label class="form-label">Talla</label>
-                            <input type="number" step="0.01" name="talla" class="input" placeholder="1.70" value="{{ old('talla', $evolucion->talla ?? '') }}">
-                            <p class="form-help">metros</p>
+                            <input type="number" step="0.1" name="talla_cm" class="input" placeholder="170" min="0" oninput="validarInput(this)"
+                                   value="{{ old('talla_cm', $evolucion->talla_cm ?? '') }}">
+                            <p class="form-help">cm</p>
                         </div>
                         <div>
                             <label class="form-label">IMC</label>
-                            <input type="number" step="0.1" name="imc" id="imc" class="input" placeholder="24.2" value="{{ old('imc', $evolucion->imc ?? '') }}" readonly>
-                            <p class="form-help">kg/m²</p>
+                            <input type="number" step="0.1" name="imc" id="imc" class="input bg-gray-100" placeholder="24.2" 
+                                   value="{{ old('imc', $evolucion->imc ?? '') }}" readonly>
+                            <p class="form-help">kg/m² (calculado)</p>
+                        </div>
+                        <div>
+                            <label class="form-label">Temperatura</label>
+                            <input type="number" step="0.1" name="temperatura_c" class="input" placeholder="36.5" min="0" oninput="validarInput(this)"
+                                   value="{{ old('temperatura_c', $evolucion->temperatura_c ?? '') }}">
+                            <p class="form-help">°C</p>
+                        </div>
+                        <div>
+                            <label class="form-label">T. Sistólica</label>
+                            <input type="number" name="tension_sistolica" class="input" placeholder="120" min="0" oninput="validarInput(this, true)"
+                                   value="{{ old('tension_sistolica', $evolucion->tension_sistolica ?? '') }}">
+                            <p class="form-help">mmHg</p>
+                        </div>
+                        <div>
+                            <label class="form-label">T. Diastólica</label>
+                            <input type="number" name="tension_diastolica" class="input" placeholder="80" min="0" oninput="validarInput(this, true)"
+                                   value="{{ old('tension_diastolica', $evolucion->tension_diastolica ?? '') }}">
+                            <p class="form-help">mmHg</p>
+                        </div>
+                        <div>
+                            <label class="form-label">Frec. Cardíaca</label>
+                            <input type="number" name="frecuencia_cardiaca" class="input" placeholder="75" min="0" oninput="validarInput(this, true)"
+                                   value="{{ old('frecuencia_cardiaca', $evolucion->frecuencia_cardiaca ?? '') }}">
+                            <p class="form-help">bpm</p>
+                        </div>
+                        <div>
+                            <label class="form-label">Frec. Respiratoria</label>
+                            <input type="number" name="frecuencia_respiratoria" class="input" placeholder="18" min="0" oninput="validarInput(this, true)"
+                                   value="{{ old('frecuencia_respiratoria', $evolucion->frecuencia_respiratoria ?? '') }}">
+                            <p class="form-help">rpm</p>
+                        </div>
+                        <div>
+                            <label class="form-label">Saturación O₂</label>
+                            <input type="number" step="0.1" name="saturacion_oxigeno" class="input" placeholder="98" min="0" oninput="validarInput(this)"
+                                   value="{{ old('saturacion_oxigeno', $evolucion->saturacion_oxigeno ?? '') }}">
+                            <p class="form-help">%</p>
                         </div>
                     </div>
                 </div>
@@ -110,8 +124,8 @@
                         </div>
 
                         <div>
-                            <label class="form-label">Enfermedad Actual</label>
-                            <textarea name="enfermedad_actual" rows="3" class="form-textarea">{{ old('enfermedad_actual', $evolucion->enfermedad_actual ?? '') }}</textarea>
+                            <label class="form-label form-label-required">Enfermedad Actual</label>
+                            <textarea name="enfermedad_actual" rows="3" class="form-textarea" required>{{ old('enfermedad_actual', $evolucion->enfermedad_actual ?? '') }}</textarea>
                         </div>
 
                         <div>
@@ -132,8 +146,13 @@
                         </div>
 
                         <div>
-                            <label class="form-label">Observaciones</label>
-                            <textarea name="observaciones" rows="2" class="form-textarea">{{ old('observaciones', $evolucion->observaciones ?? '') }}</textarea>
+                            <label class="form-label">Recomendaciones</label>
+                            <textarea name="recomendaciones" rows="2" class="form-textarea">{{ old('recomendaciones', $evolucion->recomendaciones ?? '') }}</textarea>
+                        </div>
+
+                        <div>
+                            <label class="form-label">Notas Adicionales</label>
+                            <textarea name="notas_adicionales" rows="2" class="form-textarea">{{ old('notas_adicionales', $evolucion->notas_adicionales ?? '') }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -192,9 +211,27 @@
 
 @push('scripts')
 <script>
+    // Validar input para permitir solo números positivos
+    function validarInput(input, soloEnteros = false) {
+        if (soloEnteros) {
+            // Eliminar todo lo que no sea número
+            input.value = input.value.replace(/[^0-9]/g, '');
+        } else {
+            // Eliminar todo lo que no sea número o punto
+            input.value = input.value.replace(/[^0-9.]/g, '');
+            
+            // Asegurar que solo haya un punto decimal
+            if ((input.value.match(/\./g) || []).length > 1) {
+                // Si hay más de un punto, eliminar el último ingresado
+                const parts = input.value.split('.');
+                input.value = parts.shift() + '.' + parts.join('');
+            }
+        }
+    }
+
     // Calculate IMC automatically
-    const pesoInput = document.querySelector('input[name="peso"]');
-    const tallaInput = document.querySelector('input[name="talla"]');
+    const pesoInput = document.querySelector('input[name="peso_kg"]');
+    const tallaInput = document.querySelector('input[name="talla_cm"]');
     const imcInput = document.getElementById('imc');
 
     function calculateIMC() {
@@ -202,13 +239,19 @@
         const talla = parseFloat(tallaInput.value);
         
         if (peso && talla && talla > 0) {
-            const imc = peso / (talla * talla);
+            const tallaMetros = talla / 100;
+            const imc = peso / (tallaMetros * tallaMetros);
             imcInput.value = imc.toFixed(1);
         }
     }
 
     pesoInput?.addEventListener('input', calculateIMC);
     tallaInput?.addEventListener('input', calculateIMC);
+    
+    // Calculate on load if values exist
+    if (pesoInput?.value && tallaInput?.value) {
+        calculateIMC();
+    }
 </script>
 @endpush
 @endsection

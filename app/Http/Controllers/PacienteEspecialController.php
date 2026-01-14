@@ -16,17 +16,60 @@ class PacienteEspecialController extends Controller
 
     public function index()
     {
-        $pacientesEspeciales = PacienteEspecial::with(['paciente.usuario', 'representantes'])
-                                             ->where('status', true)
-                                             ->paginate(10);
+        $user = auth()->user();
+        $query = PacienteEspecial::with(['paciente.usuario', 'representantes', 'paciente.citas.consultorio'])
+                                 ->where('status', true);
+
+        // Si es Admin Local, filtrar por sus consultorios
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            
+            $query->whereHas('paciente.citas', function($q) use ($consultorioIds) {
+                $q->whereIn('consultorio_id', $consultorioIds);
+            })->orWhereDoesntHave('paciente.citas'); // Permitir ver pacientes nuevos
+        }
+
+        $pacientesEspeciales = $query->paginate(10);
+
+        // Estadísticas para la vista
+        $stats = [
+            'total' => $query->count(),
+            'activos' => $query->where('status', true)->count(),
+            'con_citas' => $query->whereHas('paciente.citas', function($q) {
+                $q->where('estado_cita', 'Pendiente');
+            })->count(),
+            'nuevos_mes' => $query->whereMonth('created_at', now()->month)->count()
+        ];
         
-        return view('shared.pacientes-especiales.index', compact('pacientesEspeciales'));
+        return view('shared.pacientes-especiales.index', compact('pacientesEspeciales', 'stats'));
     }
 
     public function create()
     {
-        $pacientes = Paciente::where('status', true)->get();
-        $representantes = Representante::where('status', true)->get();
+        $user = auth()->user();
+        $queryPacientes = Paciente::where('status', true);
+        $queryRepresentantes = Representante::where('status', true);
+
+        // Si es Admin Local, filtrar pacientes y representantes
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            
+            $queryPacientes->where(function($q) use ($consultorioIds) {
+                $q->whereHas('citas', function($sq) use ($consultorioIds) {
+                    $sq->whereIn('consultorio_id', $consultorioIds);
+                })->orWhereDoesntHave('citas');
+            });
+
+            // Filtramos representantes cuyos pacientes especiales estén en la sede del admin (o sean nuevos)
+            $queryRepresentantes->where(function($q) use ($consultorioIds) {
+                $q->whereHas('pacientesEspeciales.paciente.citas', function($sq) use ($consultorioIds) {
+                    $sq->whereIn('consultorio_id', $consultorioIds);
+                })->orWhereDoesntHave('pacientesEspeciales.paciente.citas');
+            });
+        }
+
+        $pacientes = $queryPacientes->get();
+        $representantes = $queryRepresentantes->get();
         return view('shared.pacientes-especiales.create', compact('pacientes', 'representantes'));
     }
 
@@ -72,6 +115,21 @@ class PacienteEspecialController extends Controller
             'representantes'
         ])->findOrFail($id);
 
+        $user = auth()->user();
+
+        // Si es Admin Local, verificar acceso
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            
+            $queryCitas = \App\Models\Cita::where('paciente_id', $pacienteEspecial->paciente_id);
+
+            if ($queryCitas->exists()) {
+                if (!$queryCitas->clone()->whereIn('consultorio_id', $consultorioIds)->exists()) {
+                    abort(403, 'No tiene permiso para ver este paciente especial.');
+                }
+            }
+        }
+
         $historialCitas = \App\Models\Cita::where('paciente_id', $pacienteEspecial->paciente_id)
                                          ->with(['medico', 'especialidad'])
                                          ->where('status', true)
@@ -90,8 +148,40 @@ class PacienteEspecialController extends Controller
     public function edit($id)
     {
         $pacienteEspecial = PacienteEspecial::findOrFail($id);
-        $pacientes = Paciente::where('status', true)->get();
-        $representantes = Representante::where('status', true)->get();
+        $user = auth()->user();
+
+        // Si es Admin Local, verificar acceso
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            
+            $queryCitas = \App\Models\Cita::where('paciente_id', $pacienteEspecial->paciente_id);
+
+            if ($queryCitas->exists()) {
+                if (!$queryCitas->clone()->whereIn('consultorio_id', $consultorioIds)->exists()) {
+                    abort(403, 'No tiene permiso para editar este paciente especial.');
+                }
+            }
+        }
+
+        $queryPacientes = Paciente::where('status', true);
+        $queryRepresentantes = Representante::where('status', true);
+
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            $queryPacientes->where(function($q) use ($consultorioIds) {
+                $q->whereHas('citas', function($sq) use ($consultorioIds) {
+                    $sq->whereIn('consultorio_id', $consultorioIds);
+                })->orWhereDoesntHave('citas');
+            });
+            $queryRepresentantes->where(function($q) use ($consultorioIds) {
+                $q->whereHas('pacientesEspeciales.paciente.citas', function($sq) use ($consultorioIds) {
+                    $sq->whereIn('consultorio_id', $consultorioIds);
+                })->orWhereDoesntHave('pacientesEspeciales.paciente.citas');
+            });
+        }
+
+        $pacientes = $queryPacientes->get();
+        $representantes = $queryRepresentantes->get();
 
         return view('shared.pacientes-especiales.edit', compact('pacienteEspecial', 'pacientes', 'representantes'));
     }
@@ -111,6 +201,21 @@ class PacienteEspecialController extends Controller
         }
 
         $pacienteEspecial = PacienteEspecial::findOrFail($id);
+        $user = auth()->user();
+
+        // Si es Admin Local, verificar acceso
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            
+            $queryCitas = \App\Models\Cita::where('paciente_id', $pacienteEspecial->paciente_id);
+
+            if ($queryCitas->exists()) {
+                if (!$queryCitas->clone()->whereIn('consultorio_id', $consultorioIds)->exists()) {
+                    abort(403, 'No tiene permiso para actualizar este paciente especial.');
+                }
+            }
+        }
+
         $pacienteEspecial->update($request->except('representantes'));
 
         // Sincronizar representantes

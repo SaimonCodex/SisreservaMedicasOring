@@ -9,10 +9,12 @@
             <h2 class="text-3xl font-display font-bold text-gray-900">Médicos</h2>
             <p class="text-gray-500 mt-1">Gestión del personal médico de la clínica</p>
         </div>
+        @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
         <a href="{{ route('medicos.create') }}" class="btn btn-primary shadow-lg">
             <i class="bi bi-plus-lg mr-2"></i>
             Registrar Médico
         </a>
+        @endif
     </div>
 </div>
 
@@ -178,9 +180,11 @@
                             <a href="{{ route('medicos.horarios', $medico->id) }}" class="btn btn-sm btn-ghost text-info-600" title="Horarios">
                                 <i class="bi bi-clock"></i>
                             </a>
+                            @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
                             <a href="{{ route('medicos.edit', $medico->id) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
+                            @endif
                         </div>
                     </td>
                 </tr>

@@ -11,6 +11,25 @@ use Illuminate\Support\Facades\Validator;
 
 class UbicacionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+                // Métodos restringidos por patrón de nombre
+                $restrictedPrefixes = ['create', 'store', 'edit', 'update', 'destroy'];
+                $method = $request->route()->getActionMethod();
+                
+                foreach ($restrictedPrefixes as $prefix) {
+                    if (str_starts_with($method, $prefix)) {
+                        abort(403, 'Los administradores locales solo tienen permiso de lectura en esta sección.');
+                    }
+                }
+            }
+            return $next($request);
+        });
+    }
+
     // Estados
     public function indexEstados(Request $request)
     {

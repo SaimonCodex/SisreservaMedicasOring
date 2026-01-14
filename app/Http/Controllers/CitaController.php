@@ -109,6 +109,15 @@ class CitaController extends Controller
             }
         }
 
+        // =========================================================================
+        // SEGURIDAD: ADMIN LOCAL (Filtrar por Sedes)
+        // =========================================================================
+        $consultorioIds = null;
+        if ($user->rol_id == 1 && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            $query->whereIn('consultorio_id', $consultorioIds);
+        }
+
         // Filtro por Búsqueda (Paciente, Médico, Cédula)
         if ($request->filled('buscar')) {
             $busqueda = $request->buscar;
@@ -135,6 +144,11 @@ class CitaController extends Controller
         // Filtro por Médico (Select en Admin)
         if ($request->filled('medico_id') && $user->rol_id == 1) { // Solo admin puede filtrar médicos arbitrarios
             $query->where('medico_id', $request->medico_id);
+        }
+
+        // Filtro por Consultorio (Sede)
+        if ($request->filled('consultorio_id')) {
+            $query->where('consultorio_id', $request->consultorio_id);
         }
 
         // Filtro por Estado de Cita
@@ -176,6 +190,11 @@ class CitaController extends Controller
         if ($user->rol_id == 2 && $user->medico) {
             $statsQuery->where('medico_id', $user->medico->id);
         }
+
+        // Aplicar restricción de sede a las estadísticas si es Admin Local
+        if ($consultorioIds) {
+            $statsQuery->whereIn('consultorio_id', $consultorioIds);
+        }
         
         $hoy = Carbon::today();
         
@@ -193,8 +212,21 @@ class CitaController extends Controller
         
         // Datos para combos de filtros
         $medicos = [];
+        $consultorios = [];
         if ($user->rol_id == 1) {
-            $medicos = Medico::where('status', true)->orderBy('primer_nombre')->get();
+            $medicosQuery = Medico::where('status', true);
+            if ($consultorioIds) {
+                $medicosQuery->whereHas('consultorios', function($q) use ($consultorioIds) {
+                    $q->whereIn('consultorios.id', $consultorioIds);
+                });
+            }
+            $medicos = $medicosQuery->orderBy('primer_nombre')->get();
+
+            $consultoriosQuery = Consultorio::where('status', true);
+            if ($consultorioIds) {
+                $consultoriosQuery->whereIn('id', $consultorioIds);
+            }
+            $consultorios = $consultoriosQuery->orderBy('nombre')->get();
         }
 
         // Retornar vista según el rol
@@ -204,7 +236,7 @@ class CitaController extends Controller
         }
         
         // Admin: vista compartida
-        return view('shared.citas.index', compact('citas', 'stats', 'medicos'));
+        return view('shared.citas.index', compact('citas', 'stats', 'medicos', 'consultorios'));
     }
 
     public function create()
@@ -240,10 +272,24 @@ class CitaController extends Controller
         }
         
         // Para admin: vista compartida
-        $medicos = Medico::with('especialidades')->where('status', true)->get();
+        $consultorioIds = null;
+        if ($user->rol_id == 1 && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+        }
+
+        if ($consultorioIds) {
+            $medicos = Medico::where('status', true)
+                            ->whereHas('consultorios', function($q) use ($consultorioIds) {
+                                $q->whereIn('consultorios.id', $consultorioIds);
+                            })->get();
+            $consultorios = Consultorio::whereIn('id', $consultorioIds)->where('status', true)->get();
+        } else {
+            $medicos = Medico::with('especialidades')->where('status', true)->get();
+            $consultorios = Consultorio::where('status', true)->get();
+        }
+
         $pacientes = Paciente::where('status', true)->get();
         $especialidades = Especialidad::where('status', true)->get();
-        $consultorios = Consultorio::where('status', true)->get();
         $estados = Estado::where('status', true)->orderBy('estado')->get();
 
         return view('shared.citas.create', compact('medicos', 'pacientes', 'especialidades', 'consultorios', 'estados'));
@@ -252,6 +298,14 @@ class CitaController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
+
+        // SEGURIDAD: Admin Local solo puede agendar en sus propias sedes
+        if ($user->rol_id == 1 && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            if ($request->filled('consultorio_id') && !$consultorioIds->contains($request->consultorio_id)) {
+                return redirect()->back()->with('error', 'No tiene permiso para agendar citas en la sede seleccionada.')->withInput();
+            }
+        }
         
         Log::info('Creando cita', ['user_id' => $user->id, 'rol' => $user->rol_id, 'data' => $request->all()]);
         
@@ -782,6 +836,7 @@ class CitaController extends Controller
 
     public function show($id)
     {
+        $user = auth()->user();
         $cita = Cita::with([
             'paciente.historiaClinicaBase', 
             'paciente.usuario',
@@ -795,9 +850,9 @@ class CitaController extends Controller
         ])->findOrFail($id);
 
         // Si es paciente, mostrar vista personalizada
-        if (auth()->user()->rol_id == 3) {
+        if ($user->rol_id == 3) {
             // Verificar que la cita pertenezca al paciente o a uno de sus representados
-            $pacienteUsuario = auth()->user()->paciente;
+            $pacienteUsuario = $user->paciente;
             $esPropia = $cita->paciente_id == $pacienteUsuario->id;
             
             // Si no es propia, verificar si es de un paciente especial representado por este usuario
@@ -819,10 +874,10 @@ class CitaController extends Controller
         }
 
         // Retornar vista según el rol
-        if (auth()->user()->rol_id == 2) {
+        if ($user->rol_id == 2) {
             // Médico: cargar evoluciones previas del paciente con este médico
             $evolucionesPrevias = \App\Models\EvolucionClinica::where('paciente_id', $cita->paciente_id)
-                ->where('medico_id', auth()->user()->medico->id)
+                ->where('medico_id', $user->medico->id)
                 ->where('cita_id', '!=', $cita->id) // Excluir la evolución de esta misma cita
                 ->with(['cita.especialidad'])
                 ->orderBy('created_at', 'desc')
@@ -833,6 +888,13 @@ class CitaController extends Controller
         }
 
         // Admin: vista compartida
+        if ($user->rol_id == 1 && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            if (!$consultorioIds->contains($cita->consultorio_id)) {
+                abort(403, 'No tiene permiso para ver esta cita.');
+            }
+        }
+
         return view('shared.citas.show', compact('cita'));
     }
 
@@ -906,10 +968,30 @@ class CitaController extends Controller
         }
         
         $cita = Cita::findOrFail($id);
-        $medicos = Medico::with('especialidades')->where('status', true)->get();
+
+        // Seguridad: Admin Local solo puede editar citas de su sede
+        $consultorioIds = null;
+        if ($user->rol_id == 1 && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            if (!$consultorioIds->contains($cita->consultorio_id)) {
+                abort(403, 'No tiene permiso para editar esta cita.');
+            }
+        }
+
+        // Cargar listas filtradas si es Admin Local
+        if ($consultorioIds) {
+            $medicos = Medico::where('status', true)
+                            ->whereHas('consultorios', function($q) use ($consultorioIds) {
+                                $q->whereIn('consultorios.id', $consultorioIds);
+                            })->get();
+            $consultorios = Consultorio::whereIn('id', $consultorioIds)->where('status', true)->get();
+        } else {
+            $medicos = Medico::with('especialidades')->where('status', true)->get();
+            $consultorios = Consultorio::where('status', true)->get();
+        }
+
         $pacientes = Paciente::where('status', true)->get();
         $especialidades = Especialidad::where('status', true)->get();
-        $consultorios = Consultorio::where('status', true)->get();
 
         return view('shared.citas.edit', compact('cita', 'medicos', 'pacientes', 'especialidades', 'consultorios'));
     }
@@ -934,6 +1016,20 @@ class CitaController extends Controller
         }
 
         $cita = Cita::findOrFail($id);
+        $user = auth()->user();
+
+        // Seguridad para Admin Local: No puede actualizar citas ajenas a su sede
+        if ($user->rol_id == 1 && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            if (!$consultorioIds->contains($cita->consultorio_id)) {
+                abort(403, 'No tiene permiso para actualizar esta cita.');
+            }
+
+            // Validar que el nuevo consultorio seleccionado también pertenezca a su sede
+            if ($request->filled('consultorio_id') && !$consultorioIds->contains($request->consultorio_id)) {
+                return redirect()->back()->with('error', 'El consultorio seleccionado no pertenece a sus sedes asignadas.')->withInput();
+            }
+        }
         
         // Verificar disponibilidad (excluyendo la cita actual)
         $citaExistente = Cita::where('medico_id', $request->medico_id)
@@ -1083,7 +1179,9 @@ class CitaController extends Controller
             $pivot = $medico->especialidades->where('id', $especialidadId)->first();
             return [
                 'id' => $medico->id,
-                'nombre' => 'Dr. ' . $medico->primer_nombre . ' ' . $medico->primer_apellido,
+                'nombre' => 'Dr. ' . $medico->primer_nombre . ' ' . $medico->primer_apellido, // Legacy support
+                'primer_nombre' => $medico->primer_nombre,
+                'primer_apellido' => $medico->primer_apellido,
                 'tarifa' => $pivot ? $pivot->pivot->tarifa : 0,
                 'atiende_domicilio' => $pivot ? (bool)($pivot->pivot->atiende_domicilio ?? false) : false,
                 'tarifa_extra_domicilio' => $pivot ? ($pivot->pivot->tarifa_extra_domicilio ?? 0) : 0,
@@ -1128,6 +1226,9 @@ class CitaController extends Controller
             ->where('fecha_cita', $fecha)
             ->where('status', true)
             ->whereIn('estado_cita', ['Programada', 'Confirmada', 'En Progreso', 'Completada'])
+            ->when($request->exclude_cita_id, function($q) use ($request) {
+                return $q->where('id', '!=', $request->exclude_cita_id);
+            })
             ->pluck('hora_inicio')
             ->map(function($hora) {
                 return substr($hora, 0, 5);
@@ -1497,10 +1598,23 @@ class CitaController extends Controller
                 $query->where('medico_id', $user->medico->id);
             }
         }
-        
-        // Filtros adicionales (si vienen del frontend)
-        if ($request->filled('medico_id') && $user->rol_id == 1) {
-            $query->where('medico_id', $request->medico_id);
+
+        // SEGURIDAD / FILTRADO ADMIN
+        if ($user->rol_id == 1) {
+            // Restricción Admin Local
+            if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+                $consultorioIds = $user->administrador->consultorios->pluck('id');
+                $query->whereIn('consultorio_id', $consultorioIds);
+            }
+
+            // Filtros adicionales (si vienen del frontend)
+            if ($request->filled('medico_id')) {
+                $query->where('medico_id', $request->medico_id);
+            }
+
+            if ($request->filled('consultorio_id')) {
+                $query->where('consultorio_id', $request->consultorio_id);
+            }
         }
 
         $citas = $query->get();

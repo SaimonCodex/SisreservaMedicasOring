@@ -8,23 +8,63 @@ use Illuminate\Support\Facades\Validator;
 
 class EspecialidadController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+                $restrictedActions = ['create', 'store', 'edit', 'update', 'destroy'];
+                if (in_array($request->route()->getActionMethod(), $restrictedActions)) {
+                    abort(403, 'Los administradores locales solo tienen permiso de lectura en esta sección.');
+                }
+            }
+            return $next($request);
+        });
+    }
+
     public function index(Request $request)
     {
-        // Estadísticas Generales
-        $totalEspecialidades = Especialidad::count();
-        $especialidadesActivas = Especialidad::where('status', true)->count();
-        
-        // Contar el total de médicos a través de la relación o modelo directo
-        // Si no tienes el modelo Medico importado, impórtalo o usa DB.
-        // Asumiendo que existe el modelo Medico y queremos el total de médicos en el sistema:
-        $totalMedicos = \App\Models\Medico::count();
+        $user = auth()->user();
+        $isLocalAdmin = $user && $user->administrador && $user->administrador->tipo_admin !== 'Root';
+        $consultorioIds = [];
 
-        // Citas del mes (Asumiendo modelo Cita)
-        $citasMes = \App\Models\Cita::whereMonth('fecha_cita', now()->month)
-                                    ->whereYear('fecha_cita', now()->year)
-                                    ->count();
+        if ($isLocalAdmin) {
+            $consultorioIds = $user->administrador->consultorios()->pluck('consultorios.id');
+        }
+
+        // Estadísticas Generales (Filtradas si es admin local)
+        $especialidadesQuery = Especialidad::query();
+        $medicosQuery = \App\Models\Medico::query();
+        $citasQuery = \App\Models\Cita::whereMonth('fecha_cita', now()->month)
+                                    ->whereYear('fecha_cita', now()->year);
+
+        if ($isLocalAdmin) {
+            $especialidadesQuery->whereHas('consultorios', function($q) use ($consultorioIds) {
+                $q->whereIn('consultorios.id', $consultorioIds);
+            });
+            
+            // Filtrar médicos que trabajan en esos consultorios
+            $medicosQuery->whereHas('consultorios', function($q) use ($consultorioIds) {
+                $q->whereIn('consultorios.id', $consultorioIds);
+            });
+
+            // Filtrar citas en esos consultorios
+            $citasQuery->whereIn('consultorio_id', $consultorioIds);
+        }
+
+        $totalEspecialidades = $especialidadesQuery->count();
+        $especialidadesActivas = $especialidadesQuery->where('status', true)->count();
+        $totalMedicos = $medicosQuery->count();
+        $citasMes = $citasQuery->count();
 
         $query = Especialidad::withCount('medicos');
+
+        // Aplicar filtro principal
+        if ($isLocalAdmin) {
+            $query->whereHas('consultorios', function($q) use ($consultorioIds) {
+                $q->whereIn('consultorios.id', $consultorioIds);
+            });
+        }
 
         if ($request->filled('buscar')) {
             $query->where('nombre', 'like', '%' . $request->buscar . '%')

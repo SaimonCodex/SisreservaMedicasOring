@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\Validator;
 
 class UsuarioController extends Controller
 {
+    public function __construct()
+    {
+        // Bloquear acceso completo a administradores locales (no son Root)
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+                abort(403, 'No tiene permiso para acceder a la gestión global de usuarios.');
+            }
+            return $next($request);
+        });
+    }
+
     public function index(Request $request)
     {
         // Estadísticas

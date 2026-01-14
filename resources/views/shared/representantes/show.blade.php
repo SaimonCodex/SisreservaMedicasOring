@@ -146,7 +146,7 @@
                 <p class="text-center text-sm text-gray-500">
                     Y {{ $historialCitas->count() - 5 }} cita(s) más...
                 </p>
-                @endendif
+                @endif
             </div>
             @else
             <div class="text-center py-8">

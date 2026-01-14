@@ -1070,7 +1070,8 @@
             select.innerHTML = '<option value="">Seleccione médico...</option>';
             medicos.forEach(m => {
                 const tarifa = parseFloat(m.tarifa || 0).toFixed(2);
-                select.innerHTML += `<option value="${m.id}" data-tarifa="${m.tarifa}" data-domicilio="${m.atiende_domicilio ? '1' : '0'}" data-extra="${m.tarifa_extra_domicilio || 0}">${m.nombre} - $${tarifa}</option>`;
+                const nombreCompleto = `Dr. ${m.primer_nombre} ${m.primer_apellido}`;
+                select.innerHTML += `<option value="${m.id}" data-nombre="${nombreCompleto}" data-tarifa="${m.tarifa}" data-domicilio="${m.atiende_domicilio ? '1' : '0'}" data-extra="${m.tarifa_extra_domicilio || 0}">${nombreCompleto} - $${tarifa}</option>`;
             });
             select.disabled = false;
             
@@ -1093,7 +1094,7 @@
             return;
         }
         
-        const nombre = option.text;
+        const nombre = option.dataset.nombre || option.text.split(' - $')[0]; 
         tarifaBase = parseFloat(option.dataset.tarifa) || 0;
         tarifaExtra = parseFloat(option.dataset.extra) || 0;
         const atiendeDomicilio = option.dataset.domicilio === '1';

@@ -131,6 +131,49 @@
             </div>
         </div>
 
+        <!-- Rol y Permisos -->
+        <div class="card p-6 border-l-4 border-l-medical-500">
+            <h3 class="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
+                <i class="bi bi-shield-lock text-medical-600"></i>
+                Rol y Permisos del Sistema
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="text-xs text-gray-500 font-medium uppercase tracking-wider">Tipo de Administrador</label>
+                    <div class="mt-1">
+                        @if($administrador->tipo_admin == 'Root')
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-indigo-100 text-indigo-800">
+                                <i class="bi bi-star-fill mr-2 text-xs"></i> ROOT (Acceso Total)
+                            </span>
+                        @else
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-medical-100 text-medical-800">
+                                <i class="bi bi-person-badge-fill mr-2 text-xs"></i> ADMINISTRADOR LOCAL
+                            </span>
+                        @endif
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-gray-500 font-medium uppercase tracking-wider">Consultorios Gestionados</label>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @if($administrador->tipo_admin == 'Root')
+                            <span class="text-sm text-indigo-600 font-semibold italic">Todos los consultorios del sistema</span>
+                        @else
+                            @forelse($administrador->consultorios as $c)
+                                <span class="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs border border-gray-200">
+                                    <i class="bi bi-building mr-1.5 text-gray-400"></i>
+                                    {{ $c->nombre }}
+                                </span>
+                            @empty
+                                <span class="text-sm text-amber-500 font-medium italic">Sin consultorios asignados</span>
+                            @endforelse
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Información del Sistema -->
         <div class="card p-6">
             <h3 class="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
