@@ -235,7 +235,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::resource('facturacion', FacturacionController::class);
     Route::post('facturacion/{id}/enviar-recordatorio', [FacturacionController::class, 'enviarRecordatorio'])->name('facturacion.enviar-recordatorio');
-    Route::get('facturacion/liquidaciones', [FacturacionController::class, 'liquidaciones'])->name('facturacion.liquidaciones');
+    Route::get('facturacion/liquidaciones', [FacturacionController::class, 'resumenLiquidaciones'])->name('facturacion.liquidaciones');
     Route::post('facturacion/crear-liquidacion', [FacturacionController::class, 'crearLiquidacion'])->name('facturacion.crear-liquidacion');
     
     // =========================================================================
