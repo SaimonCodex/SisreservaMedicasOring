@@ -71,7 +71,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Total Pacientes</p>
-                <p class="text-2xl font-bold text-gray-900">1,247</p>
+                <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['total'] ?? 0) }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-success-50 flex items-center justify-center">
                 <i class="bi bi-people text-success-600 text-2xl"></i>
@@ -83,7 +83,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Activos</p>
-                <p class="text-2xl font-bold text-gray-900">1,189</p>
+                <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['activos'] ?? 0) }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-medical-50 flex items-center justify-center">
                 <i class="bi bi-check-circle text-medical-600 text-2xl"></i>
@@ -95,7 +95,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Citas Hoy</p>
-                <p class="text-2xl font-bold text-gray-900">58</p>
+                <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['citas_hoy'] ?? 0) }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-warning-50 flex items-center justify-center">
                 <i class="bi bi-calendar-event text-warning-600 text-2xl"></i>
@@ -107,7 +107,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Nuevos (mes)</p>
-                <p class="text-2xl font-bold text-gray-900">142</p>
+                <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['nuevos_mes'] ?? 0) }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-info-50 flex items-center justify-center">
                 <i class="bi bi-person-plus text-info-600 text-2xl"></i>
@@ -126,164 +126,92 @@
                     <th class="px-6 py-4 text-left font-semibold">Historia</th>
                     <th class="px-6 py-4 text-left font-semibold">Edad/Género</th>
                     <th class="px-6 py-4 text-left font-semibold">Contacto</th>
-                    <th class="px-6 py-4 text-left font-semibold">Última Cita</th>
+                    <th class="px-6 py-4 text-left font-semibold">Ubicación</th>
+                    <th class="px-6 py-4 text-left font-semibold">Sede/Consultorio</th>
                     <th class="px-6 py-4 text-center font-semibold">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-                <!-- Fila 1 -->
-                <tr class="hover:bg-medical-50 transition-colors">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-success-500 to-success-600 flex items-center justify-center text-white font-bold">
-                                AR
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-900">Ana Rodríguez</p>
-                                <p class="text-xs text-gray-500">V-18765432</p>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="font-mono text-medical-600 font-semibold">HC-2024-001</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="text-gray-900">35 años</p>
-                        <p class="text-xs text-gray-500">Femenino</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="text-gray-900">0414-5678901</p>
-                        <p class="text-xs text-gray-500">ana.r@example.com</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="text-gray-900">05/01/2026</p>
-                        <p class="text-xs text-gray-500">Cardiología</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center justify-center gap-2">
-                            <a href="{{ route('pacientes.show', 1) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver perfil">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ route('pacientes.historia-clinica', 1) }}" class="btn btn-sm btn-ghost text-info-600" title="Historia">
-                                <i class="bi bi-file-medical"></i>
-                            </a>
-                            <a href="{{ route('pacientes.edit', 1) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-
-                <!-- Fila 2 -->
+                @forelse($pacientes as $paciente)
                 <tr class="hover:bg-medical-50 transition-colors">
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center text-white font-bold">
-                                CM
+                                {{ strtoupper(substr($paciente->primer_nombre, 0, 1) . substr($paciente->primer_apellido, 0, 1)) }}
                             </div>
                             <div>
-                                <p class="font-semibold text-gray-900">Carlos Martínez</p>
-                                <p class="text-xs text-gray-500">V-21234567</p>
+                                <p class="font-semibold text-gray-900">{{ $paciente->primer_nombre }} {{ $paciente->primer_apellido }}</p>
+                                <p class="text-xs text-gray-500">{{ $paciente->tipo_documento }}-{{ $paciente->numero_documento }}</p>
                             </div>
                         </div>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="font-mono text-medical-600 font-semibold">HC-2023-845</span>
+                        <span class="font-mono text-medical-600 font-semibold">HC-{{ \Carbon\Carbon::parse($paciente->created_at)->format('Y') }}-{{ str_pad($paciente->id, 3, '0', STR_PAD_LEFT) }}</span>
                     </td>
                     <td class="px-6 py-4">
-                        <p class="text-gray-900">42 años</p>
-                        <p class="text-xs text-gray-500">Masculino</p>
+                        <p class="text-gray-900">
+                            @if($paciente->fecha_nac)
+                                {{ \Carbon\Carbon::parse($paciente->fecha_nac)->age }} años
+                            @else
+                                N/A
+                            @endif
+                        </p>
+                        <p class="text-xs text-gray-500">{{ $paciente->genero ?? 'No registrado' }}</p>
                     </td>
                     <td class="px-6 py-4">
-                        <p class="text-gray-900">0424-3456789</p>
-                        <p class="text-xs text-gray-500">carlos.m@example.com</p>
+                        <p class="text-gray-900">{{ $paciente->prefijo_tlf }} {{ $paciente->numero_tlf }}</p>
+                        <p class="text-xs text-gray-500">{{ optional($paciente->usuario)->correo }}</p>
                     </td>
                     <td class="px-6 py-4">
-                        <p class="text-gray-900">08/01/2026</p>
-                        <p class="text-xs text-gray-500">Pediatría</p>
+                        <p class="text-gray-900 truncate max-w-[150px]" title="{{ optional($paciente->ciudad)->ciudad }}">
+                             {{ optional($paciente->ciudad)->ciudad ?? 'N/A' }}
+                        </p>
+                        <p class="text-xs text-gray-500">{{ optional($paciente->estado)->estado ?? '' }}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        @php
+                            $consultoriosPaciente = $paciente->citas->pluck('consultorio.nombre')->unique();
+                        @endphp
+                        @forelse($consultoriosPaciente as $nombreCons)
+                            <span class="badge badge-medical text-xs mb-1 block w-fit">{{ $nombreCons }}</span>
+                        @empty
+                            <span class="text-gray-400 text-xs italic">Sin sede asignada</span>
+                        @endforelse
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex items-center justify-center gap-2">
-                            <a href="{{ route('pacientes.show', 2) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver perfil">
+                             <a href="{{ route('pacientes.show', $paciente->id) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver perfil">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{{ route('pacientes.historia-clinica', 2) }}" class="btn btn-sm btn-ghost text-info-600" title="Historia">
+                            <a href="{{ route('pacientes.historia-clinica', $paciente->id) }}" class="btn btn-sm btn-ghost text-info-600" title="Historia">
                                 <i class="bi bi-file-medical"></i>
                             </a>
-                            <a href="{{ route('pacientes.edit', 2) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
+                            <a href="{{ route('pacientes.edit', $paciente->id) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
                         </div>
                     </td>
                 </tr>
-
-                <!-- Fila 3 (Especial) -->
-                <tr class="hover:bg-medical-50 transition-colors">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-warning-500 to-warning-600 flex items-center justify-center text-white font-bold">
-                                LS
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-900">Lucía Sánchez</p>
-                                <p class="text-xs text-gray-500">V-15987654</p>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-2">
-                            <span class="font-mono text-medical-600 font-semibold">HC-2024-112</span>
-                            <span class="badge badge-warning text-xs">Especial</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="text-gray-900">8 años</p>
-                        <p class="text-xs text-gray-500">Femenino</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="text-gray-900">0412-7654321</p>
-                        <p class="text-xs text-gray-500">Rep: María S.</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <p class="text-gray-900">07/01/2026</p>
-                        <p class="text-xs text-gray-500">Pediatría</p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center justify-center gap-2">
-                            <a href="{{ route('pacientes.show', 3) }}" class="btn btn-sm btn-ghost text-medical-600" title="Ver perfil">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ route('pacientes.historia-clinica', 3) }}" class="btn btn-sm btn-ghost text-info-600" title="Historia">
-                                <i class="bi bi-file-medical"></i>
-                            </a>
-                            <a href="{{ route('pacientes.edit', 3) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
+                @empty
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                        <div class="flex flex-col items-center justify-center">
+                            <i class="bi bi-people text-4xl mb-3 text-gray-300"></i>
+                            <p class="text-lg font-medium">No se encontraron pacientes</p>
+                            <p class="text-sm">Intente ajustar los filtros de búsqueda</p>
                         </div>
                     </td>
                 </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
 
     <!-- Paginación -->
+    @if($pacientes->hasPages())
     <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
-        <div class="flex items-center justify-between">
-            <p class="text-sm text-gray-600">
-                Mostrando <span class="font-semibold">1</span> a <span class="font-semibold">3</span> de <span class="font-semibold">1,247</span> pacientes
-            </p>
-            <div class="flex gap-2">
-                <button class="btn btn-sm btn-outline" disabled>
-                    <i class="bi bi-chevron-left"></i>
-                </button>
-                <button class="btn btn-sm bg-medical-600 text-white">1</button>
-                <button class="btn btn-sm btn-outline">2</button>
-                <button class="btn btn-sm btn-outline">3</button>
-                <button class="btn btn-sm btn-outline">
-                    <i class="bi bi-chevron-right"></i>
-                </button>
-            </div>
-        </div>
+        {{ $pacientes->links() }}
     </div>
+    @endif
 </div>
 @endsection

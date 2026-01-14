@@ -15,6 +15,11 @@
     </div>
 </div>
 
+@php 
+    $p = $pacienteEspecial->paciente; 
+    $hc = "HC-" . \Carbon\Carbon::parse($p->created_at)->format('Y') . "-" . str_pad($p->id, 3, '0', STR_PAD_LEFT);
+@endphp
+
 <form action="{{ route('pacientes-especiales.update', $pacienteEspecial->id) }}" method="POST" enctype="multipart/form-data">
     @csrf
     @method('PUT')
@@ -23,81 +28,60 @@
         <!-- Formulario Principal -->
         <div class="lg:col-span-2 space-y-6">
             
-            <!-- Datos del Paciente -->
+            <!-- Vinculación de Paciente -->
             <div class="card p-6">
                 <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <i class="bi bi-person-check text-info-600"></i>
+                    Paciente Vinculado
+                </h3>
+                <div>
+                    <label class="form-label required">Seleccionar Paciente</label>
+                    <select name="paciente_id" class="form-select" id="pacienteSelect" required>
+                        @foreach($pacientes ?? [] as $pac)
+                            <option value="{{ $pac->id }}" 
+                                    data-nombre="{{ $pac->primer_nombre }}" 
+                                    data-apellido="{{ $pac->primer_apellido }}"
+                                    data-doc="{{ $pac->numero_documento }}"
+                                    data-tipo-doc="{{ $pac->tipo_documento }}"
+                                    data-fnac="{{ $pac->fecha_nac }}"
+                                    {{ old('paciente_id', $p->id) == $pac->id ? 'selected' : '' }}>
+                                {{ $pac->primer_nombre }} {{ $pac->primer_apellido }} - {{ $pac->numero_documento }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="bi bi-info-circle mr-1"></i>
+                        Solo pacientes de su sede o nuevos están disponibles.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Verificación de Datos (Solo Lectura) -->
+            <div class="card p-6 opacity-75 bg-gray-50" id="datosPacienteSection">
+                <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <i class="bi bi-person-fill text-warning-600"></i>
-                    Datos del Paciente
+                    Información del Paciente
                 </h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Primer Nombre -->
                     <div>
-                        <label class="form-label required">Primer Nombre</label>
-                        <input type="text" name="primer_nombre" class="input" value="{{ old('primer_nombre', $pacienteEspecial->primer_nombre) }}" required>
-                        @error('primer_nombre')
-                            <p class="text-danger-600 text-sm mt-1">{{ $message }}</p>
-                        @enderror
+                        <label class="form-label">Nombre Completo</label>
+                        <input type="text" id="disp_nombre" class="input bg-white" readonly value="{{ $p->primer_nombre }} {{ $p->primer_apellido }}">
                     </div>
 
-                    <!-- Segundo Nombre -->
                     <div>
-                        <label class="form-label">Segundo Nombre</label>
-                        <input type="text" name="segundo_nombre" class="input" value="{{ old('segundo_nombre', $pacienteEspecial->segundo_nombre) }}">
+                        <label class="form-label">Documento</label>
+                        <input type="text" id="disp_doc" class="input bg-white" readonly value="{{ $p->tipo_documento }}-{{ $p->numero_documento }}">
                     </div>
 
-                    <!-- Primer Apellido -->
                     <div>
-                        <label class="form-label required">Primer Apellido</label>
-                        <input type="text" name="primer_apellido" class="input" value="{{ old('primer_apellido', $pacienteEspecial->primer_apellido) }}" required>
-                        @error('primer_apellido')
-                            <p class="text-danger-600 text-sm mt-1">{{ $message }}</p>
-                        @enderror
+                        <label class="form-label">Fecha de Nacimiento</label>
+                        <input type="text" id="disp_fnac" class="input bg-white" readonly value="{{ $p->fecha_nac ? \Carbon\Carbon::parse($p->fecha_nac)->format('d/m/Y') : 'N/A' }}">
                     </div>
 
-                    <!-- Segundo Apellido -->
                     <div>
-                        <label class="form-label">Segundo Apellido</label>
-                        <input type="text" name="segundo_apellido" class="input" value="{{ old('segundo_apellido', $pacienteEspecial->segundo_apellido) }}">
-                    </div>
-
-                    <!-- Tipo Documento -->
-                    <div>
-                        <label class="form-label required">Tipo de Documento</label>
-                        <select name="tipo_documento" class="form-select" required>
-                            <option value="">Seleccione...</option>
-                            <option value="V" {{ old('tipo_documento', $pacienteEspecial->tipo_documento) == 'V' ? 'selected' : '' }}>V - Venezolano</option>
-                            <option value="E" {{ old('tipo_documento', $pacienteEspecial->tipo_documento) == 'E' ? 'selected' : '' }}>E - Extranjero</option>
-                            <option value="P" {{ old('tipo_documento', $pacienteEspecial->tipo_documento) == 'P' ? 'selected' : '' }}>P - Pasaporte</option>
-                        </select>
-                    </div>
-
-                    <!-- Número Documento -->
-                    <div>
-                        <label class="form-label required">Número de Documento</label>
-                        <input type="text" name="numero_documento" class="input" value="{{ old('numero_documento', $pacienteEspecial->numero_documento) }}" required>
-                    </div>
-
-                    <!-- Fecha Nacimiento -->
-                    <div>
-                        <label class="form-label required">Fecha de Nacimiento</label>
-                        <input type="date" name="fecha_nacimiento" class="input" value="{{ old('fecha_nacimiento', $pacienteEspecial->fecha_nacimiento) }}" required>
-                    </div>
-
-                    <!-- Género -->
-                    <div>
-                        <label class="form-label required">Género</label>
-                        <select name="genero" class="form-select" required>
-                            <option value="">Seleccione...</option>
-                            <option value="Masculino" {{ old('genero', $pacienteEspecial->genero) == 'Masculino' ? 'selected' : '' }}>Masculino</option>
-                            <option value="Femenino" {{ old('genero', $pacienteEspecial->genero) == 'Femenino' ? 'selected' : '' }}>Femenino</option>
-                        </select>
-                    </div>
-
-                    <!-- Estado -->
-                    <div class="md:col-span-2">
-                        <label class="form-label">Estado</label>
-                        <div class="flex items-center gap-3">
+                        <label class="form-label">Estado actual</label>
+                        <div class="flex items-center gap-3 py-2 px-1">
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="status" value="1" class="form-radio" {{ old('status', $pacienteEspecial->status) == 1 ? 'checked' : '' }}>
                                 <span class="text-sm">Activo</span>
@@ -122,20 +106,20 @@
                     <!-- Tipo de Condición -->
                     <div class="md:col-span-2">
                         <label class="form-label required">Tipo de Condición</label>
-                        <select name="tipo_condicion" class="form-select" required>
+                        <select name="tipo" class="form-select" required>
                             <option value="">Seleccione...</option>
-                            <option value="menor_edad" {{ old('tipo_condicion', $pacienteEspecial->tipo_condicion) == 'menor_edad' ? 'selected' : '' }}>Menor de Edad</option>
-                            <option value="discapacidad" {{ old('tipo_condicion', $pacienteEspecial->tipo_condicion) == 'discapacidad' ? 'selected' : '' }}>Discapacidad</option>
-                            <option value="adulto_mayor" {{ old('tipo_condicion', $pacienteEspecial->tipo_condicion) == 'adulto_mayor' ? 'selected' : '' }}>Adulto Mayor con Tutor</option>
-                            <option value="incapacidad_legal" {{ old('tipo_condicion', $pacienteEspecial->tipo_condicion) == 'incapacidad_legal' ? 'selected' : '' }}>Incapacidad Legal</option>
+                            <option value="menor_edad" {{ old('tipo', $pacienteEspecial->tipo) == 'menor_edad' ? 'selected' : '' }}>Menor de Edad</option>
+                            <option value="discapacidad" {{ old('tipo', $pacienteEspecial->tipo) == 'discapacidad' ? 'selected' : '' }}>Discapacidad</option>
+                            <option value="adulto_mayor" {{ old('tipo', $pacienteEspecial->tipo) == 'adulto_mayor' ? 'selected' : '' }}>Adulto Mayor con Tutor</option>
+                            <option value="incapacidad_legal" {{ old('tipo', $pacienteEspecial->tipo) == 'incapacidad_legal' ? 'selected' : '' }}>Incapacidad Legal</option>
                         </select>
                     </div>
 
                     <!-- Observaciones -->
                     <div class="md:col-span-2">
                         <label class="form-label">Observaciones Médicas</label>
-                        <textarea name="observaciones_medicas" rows="4" class="input">{{ old('observaciones_medicas', $pacienteEspecial->observaciones_medicas) }}</textarea>
-                        <p class="text-xs text-gray-500 mt-1">Información médica relevante, alergias, condiciones especiales, etc.</p>
+                        <textarea name="observaciones" rows="4" class="input">{{ old('observaciones', $pacienteEspecial->observaciones) }}</textarea>
+                        <p class="text-xs text-gray-500 mt-1">Información médica relevante, condiciones especiales, etc.</p>
                     </div>
                 </div>
             </div>
@@ -258,5 +242,24 @@
         </div>
     </div>
 </form>
+
+@push('scripts')
+<script>
+    document.getElementById('pacienteSelect').addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        
+        if (this.value) {
+            document.getElementById('disp_nombre').value = (option.dataset.nombre || '') + ' ' + (option.dataset.apellido || '');
+            document.getElementById('disp_doc').value = (option.dataset.tipoDoc || '') + '-' + (option.dataset.doc || '');
+            document.getElementById('disp_fnac').value = option.dataset.fnac || 'N/A';
+        }
+    });
+
+    // Cargar inicialmente
+    window.addEventListener('load', function() {
+        document.getElementById('pacienteSelect').dispatchEvent(new Event('change'));
+    });
+</script>
+@endpush
 
 @endsection

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class FacturaPaciente extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\ScopedByConsultorio;
 
     protected $table = 'facturas_pacientes';
     protected $primaryKey = 'id';

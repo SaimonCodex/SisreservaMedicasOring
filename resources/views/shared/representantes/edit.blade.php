@@ -226,4 +226,49 @@
         </div>
     </div>
 </form>
+@push('scripts')
+<script>
+// Cargar ciudades al seleccionar estado
+document.getElementById('estado').addEventListener('change', function() {
+    const estadoId = this.value;
+    if (!estadoId) return;
+
+    fetch(`{{ url('admin/get-ciudades') }}/${estadoId}`)
+        .then(res => res.json())
+        .then(ciudades => {
+            const select = document.getElementById('ciudad');
+            select.innerHTML = '<option value="">Seleccione...</option>';
+            ciudades.forEach(ciudad => {
+                select.innerHTML += `<option value="${ciudad.id_ciudad}">${ciudad.ciudad}</option>`;
+            });
+        });
+
+    fetch(`{{ url('admin/get-municipios') }}/${estadoId}`)
+        .then(res => res.json())
+        .then(municipios => {
+            const select = document.getElementById('municipio');
+            select.innerHTML = '<option value="">Seleccione...</option>';
+            municipios.forEach(municipio => {
+                select.innerHTML += `<option value="${municipio.id_municipio}">${municipio.municipio}</option>`;
+            });
+        });
+});
+
+// Cargar parroquias al seleccionar municipio
+document.getElementById('municipio').addEventListener('change', function() {
+    const municipioId = this.value;
+    if (!municipioId) return;
+
+    fetch(`{{ url('admin/get-parroquias') }}/${municipioId}`)
+        .then(res => res.json())
+        .then(parroquias => {
+            const select = document.getElementById('parroquia');
+            select.innerHTML = '<option value="">Seleccione...</option>';
+            parroquias.forEach(parroquia => {
+                select.innerHTML += `<option value="${parroquia.id_parroquia}">${parroquia.parroquia}</option>`;
+            });
+        });
+});
+</script>
+@endpush
 @endsection

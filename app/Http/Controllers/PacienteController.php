@@ -223,30 +223,83 @@ class PacienteController extends Controller
     {
         $user = auth()->user();
         
-        // Si es médico, filtrar solo sus pacientes (pacientes con citas atendidas por él)
+        // =========================================================================
+        // ESTADÍSTICAS
+        // =========================================================================
+        $stats = [
+            'total' => 0,
+            'activos' => 0,
+            'citas_hoy' => 0,
+            'nuevos_mes' => 0
+        ];
+
+        // =========================================================================
+        // MÉDICO (Rol 2)
+        // =========================================================================
         if ($user->rol_id == 2) {
             $medico = $user->medico;
             if (!$medico) {
                 return redirect()->route('medico.dashboard')->with('error', 'No se encontró el perfil de médico');
             }
             
-            // Obtener IDs de pacientes únicos que han tenido citas con este médico
-            $pacienteIds = \App\Models\Cita::where('medico_id', $medico->id)
+            // Query Base ID para Médico
+            $pacienteIdsQuery = \App\Models\Cita::where('medico_id', $medico->id)
                                           ->where('status', true)
                                           ->distinct()
-                                          ->pluck('paciente_id');
+                                          ->select('paciente_id');
             
-            $pacientes = Paciente::with(['usuario', 'estado'])
+            // Recolectar IDs para usar en stats
+            $pacienteIds = $pacienteIdsQuery->pluck('paciente_id');
+            
+            $query = Paciente::with(['usuario', 'estado', 'citas.consultorio'])
                                 ->whereIn('id', $pacienteIds)
-                                ->where('status', true)
-                                ->get();
-            
-            return view('medico.pacientes.index', compact('pacientes'));
+                                ->where('status', true);
+
+            // Calcular Stats para Médico
+            $stats['total'] = $query->count();
+            $stats['activos'] = $query->where('status', true)->count();
+            $stats['nuevos_mes'] = $query->clone()->whereMonth('created_at', now()->month)->count();
+            $stats['citas_hoy'] = \App\Models\Cita::where('medico_id', $medico->id)
+                                                  ->whereDate('fecha_cita', now())
+                                                  ->where('status', true)
+                                                  ->distinct('paciente_id')
+                                                  ->count('paciente_id');
+
+            $pacientes = $query->orderBy('created_at', 'desc')->paginate(10);
+            return view('medico.pacientes.index', compact('pacientes', 'stats'));
         }
         
-        // Admin: todos los pacientes
-        $pacientes = Paciente::with(['usuario', 'estado'])->where('status', true)->get();
-        return view('shared.pacientes.index', compact('pacientes'));
+        // =========================================================================
+        // ADMIN (Rol 1)
+        // =========================================================================
+        
+        // Base Query
+        $query = Paciente::with(['usuario', 'estado', 'citas.consultorio'])->where('status', true);
+        $citasQuery = \App\Models\Cita::where('status', true)->whereDate('fecha_cita', now());
+
+        // Scope Admin Local
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            
+            // Filtrar pacientes que tengan historial en estos consultorios
+            $query->whereHas('citas', function($q) use ($consultorioIds) {
+                $q->whereIn('consultorio_id', $consultorioIds);
+            });
+
+            // Filtrar citas hoy para el stat
+            $citasQuery->whereIn('consultorio_id', $consultorioIds);
+        }
+        
+        // Calcular Stats Admin
+        $stats['total'] = $query->count(); // Count total query (respetando scope)
+        $stats['activos'] = $query->clone()->where('status', true)->count();
+        $stats['nuevos_mes'] = $query->clone()->whereMonth('created_at', now()->month)->count();
+        $stats['citas_hoy'] = $citasQuery->distinct('paciente_id')->count('paciente_id');
+
+        // Obtener paginados
+        $pacientes = $query->orderBy('created_at', 'desc')->paginate(10);
+        
+        return view('shared.pacientes.index', compact('pacientes', 'stats'));
     }
 
     public function create()
@@ -314,12 +367,25 @@ class PacienteController extends Controller
     public function show($id)
     {
         $paciente = Paciente::with(['usuario', 'estado', 'ciudad', 'municipio', 'parroquia', 'historiaClinicaBase'])->findOrFail($id);
+        $user = auth()->user();
 
-        // Retornar vista según el rol
-        if (auth()->user()->rol_id == 2) {
-            // Validar que el médico tenga relación con el paciente (opcional, pero recomendado por seguridad)
-            // Por ahora solo retornamos la vista correcta
+        // Si es médico
+        if ($user->rol_id == 2) {
              return view('medico.pacientes.show', compact('paciente'));
+        }
+
+        // Si es Admin Local, verificar acceso
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            
+            // Si tiene citas, debe pertenecer a sus sedes. Si no tiene citas, es un paciente nuevo y permitimos acceso.
+            $hasCitas = $paciente->citas()->exists();
+            if ($hasCitas) {
+                $hasAccess = $paciente->citas()->whereIn('consultorio_id', $consultorioIds)->exists();
+                if (!$hasAccess) {
+                    abort(403, 'No tiene permiso para ver este paciente.');
+                }
+            }
         }
 
         return view('shared.pacientes.show', compact('paciente'));
@@ -327,18 +393,49 @@ class PacienteController extends Controller
 
     public function edit($id)
     {
-        $paciente = Paciente::findOrFail($id);
-        $usuarios = Usuario::where('status', true)->where('rol_id', 3)->get();
-        $estados = Estado::where('status', true)->get();
-        $ciudades = Ciudad::where('status', true)->get();
-        $municipios = Municipio::where('status', true)->get();
-        $parroquias = Parroquia::where('status', true)->get();
+        $paciente = Paciente::with(['usuario', 'estado', 'ciudad', 'municipio', 'parroquia'])->findOrFail($id);
+        $user = auth()->user();
 
-        return view('shared.pacientes.edit', compact('paciente', 'usuarios', 'estados', 'ciudades', 'municipios', 'parroquias'));
+        // Si es Admin Local, verificar acceso
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            
+            $hasCitas = $paciente->citas()->exists();
+            if ($hasCitas) {
+                $hasAccess = $paciente->citas()->whereIn('consultorio_id', $consultorioIds)->exists();
+                if (!$hasAccess) {
+                    abort(403, 'No tiene permiso para editar este paciente.');
+                }
+            }
+        }
+
+        $estados = Estado::where('status', true)->get();
+        // Cargar ciudades del estado actual para el select dinámico si aplica
+        $ciudades = Ciudad::where('id_estado', $paciente->estado_id)->where('status', true)->get();
+        $municipios = Municipio::where('id_estado', $paciente->estado_id)->where('status', true)->get();
+        $parroquias = Parroquia::where('id_municipio', $paciente->municipio_id)->where('status', true)->get();
+
+        return view('shared.pacientes.edit', compact('paciente', 'estados', 'ciudades', 'municipios', 'parroquias'));
     }
 
     public function update(Request $request, $id)
     {
+        $paciente = Paciente::findOrFail($id);
+        $user = auth()->user();
+
+        // Si es Admin Local, verificar acceso antes de validar
+        if ($user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id');
+            
+            $hasCitas = $paciente->citas()->exists();
+            if ($hasCitas) {
+                $hasAccess = $paciente->citas()->whereIn('consultorio_id', $consultorioIds)->exists();
+                if (!$hasAccess) {
+                    abort(403, 'No tiene permiso para actualizar este paciente.');
+                }
+            }
+        }
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'nullable|exists:usuarios,id|unique:pacientes,user_id,' . $id,
             'primer_nombre' => ['required', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
@@ -362,7 +459,6 @@ class PacienteController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $paciente = Paciente::findOrFail($id);
         $paciente->update($request->all());
 
         if ($request->filled('password')) {

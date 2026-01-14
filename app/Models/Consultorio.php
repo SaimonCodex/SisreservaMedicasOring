@@ -72,4 +72,10 @@ class Consultorio extends Model
     {
         return $this->hasMany(ConfiguracionReparto::class, 'consultorio_id');
     }
+
+    public function administradores()
+    {
+        return $this->belongsToMany(Administrador::class, 'administrador_consultorio', 'consultorio_id', 'administrador_id')
+                    ->withTimestamps();
+    }
 }

@@ -162,6 +162,7 @@
                 Médico Asignado
             </h3>
             
+            @if($cita->medico)
             <div class="flex items-start gap-4 mb-4">
                 <div class="w-16 h-16 rounded-full bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
                     {{ substr($cita->medico->primer_nombre ?? 'M', 0, 1) }}{{ substr($cita->medico->primer_apellido ?? 'D', 0, 1) }}
@@ -170,10 +171,21 @@
                     <h4 class="text-xl font-bold text-gray-900">Dr. {{ $cita->medico->primer_nombre }} {{ $cita->medico->primer_apellido }}</h4>
                     <p class="text-gray-600">MPPS: {{ $cita->medico->mpps ?? 'N/A' }} • CMG: {{ $cita->medico->cmg ?? 'N/A' }}</p>
                     <div class="flex gap-2 mt-2">
-                        <span class="badge badge-primary">{{ $cita->especialidad->nombre }}</span>
+                        <span class="badge badge-primary">{{ $cita->especialidad->nombre ?? 'Sin Especialidad' }}</span>
                     </div>
                 </div>
             </div>
+            @else
+            <div class="flex items-center gap-4 mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-2xl">
+                    <i class="bi bi-person-x"></i>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold text-gray-900">Médico no asignado</h4>
+                    <p class="text-sm text-gray-500">Esta cita no tiene un profesional vinculado actualmente.</p>
+                </div>
+            </div>
+            @endif
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                 <div>
@@ -182,14 +194,16 @@
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Especialidad</p>
-                    <p class="font-semibold text-gray-900">{{ $cita->especialidad->nombre }}</p>
+                    <p class="font-semibold text-gray-900">{{ $cita->especialidad->nombre ?? 'N/A' }}</p>
                 </div>
             </div>
 
             <div class="mt-4 pt-4 border-t border-gray-100">
+                @if($cita->medico)
                 <a href="{{ route('medicos.show', $cita->medico->id) }}" class="btn btn-sm btn-outline">
                     <i class="bi bi-eye mr-1"></i> Ver Perfil del Médico
                 </a>
+                @endif
             </div>
         </div>
 
@@ -215,20 +229,7 @@
                 </div>
                 @endif
                 
-                @if($cita->evolucionClinica)
-                <div>
-                    <p class="text-sm text-gray-500 mb-2">Evolución Clínica</p>
-                     <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 flex justify-between items-center">
-                        <div>
-                            <p class="text-blue-900 font-medium">Diagnóstico registrado</p>
-                            <p class="text-blue-700 text-xs mt-1">Registrado el {{ \Carbon\Carbon::parse($cita->evolucionClinica->fecha_evolucion)->format('d/m/Y') }}</p>
-                        </div>
-                        <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-primary">
-                            Ver Evolución
-                        </a>
-                    </div>
-                </div>
-                @endif
+                {{-- Evolución Clínica oculta para admins --}}
             </div>
         </div>
     </div>
@@ -251,12 +252,7 @@
                     </form>
                 @endif
                 
-                @if(in_array($cita->estado_cita, ['Confirmada', 'En Progreso']))
-                    <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}" class="btn btn-primary w-full justify-start">
-                        <i class="bi bi-clipboard-pulse mr-2"></i>
-                        Iniciar Consulta
-                    </a>
-                @endif
+                {{-- Botón Iniciar Consulta oculto para admins --}}
                 
                 @if(in_array($cita->estado_cita, ['Programada', 'Confirmada']))
                     <button onclick="document.getElementById('modal-cancelar').showModal()" class="btn btn-outline w-full justify-start text-danger-600 border-danger-300 hover:bg-danger-50">

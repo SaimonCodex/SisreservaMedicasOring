@@ -86,7 +86,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Total Pacientes Especiales</p>
-                <p class="text-2xl font-bold text-gray-900">{{ $pacientesEspeciales->total() ?? 0 }}</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-warning-50 flex items-center justify-center">
                 <i class="bi bi-heart-pulse text-warning-600 text-2xl"></i>
@@ -98,7 +98,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Activos</p>
-                <p class="text-2xl font-bold text-gray-900">{{ $pacientesEspeciales->where('status', true)->count() }}</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $stats['activos'] ?? 0 }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-success-50 flex items-center justify-center">
                 <i class="bi bi-check-circle text-success-600 text-2xl"></i>
@@ -110,7 +110,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Con Citas Pendientes</p>
-                <p class="text-2xl font-bold text-gray-900">0</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $stats['con_citas'] ?? 0 }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-medical-50 flex items-center justify-center">
                 <i class="bi bi-calendar-check text-medical-600 text-2xl"></i>
@@ -122,7 +122,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Nuevos (mes)</p>
-                <p class="text-2xl font-bold text-gray-900">0</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $stats['nuevos_mes'] ?? 0 }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-info-50 flex items-center justify-center">
                 <i class="bi bi-person-plus text-info-600 text-2xl"></i>
@@ -140,51 +140,58 @@
                     <th class="px-6 py-4 text-left font-semibold">Paciente</th>
                     <th class="px-6 py-4 text-left font-semibold">Historia</th>
                     <th class="px-6 py-4 text-left font-semibold">Condición</th>
-                    <th class="px-6 py-4 text-left font-semibold">Representante</th>
+                    <th class="px-6 py-4 text-left font-semibold">Representante(s)</th>
                     <th class="px-6 py-4 text-left font-semibold">Edad/Género</th>
                     <th class="px-6 py-4 text-center font-semibold">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-                @forelse($pacientesEspeciales as $paciente)
+                @forelse($pacientesEspeciales as $pacienteEsp)
+                @php $p = $pacienteEsp->paciente; @endphp
                 <tr class="hover:bg-warning-50 transition-colors">
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-warning-500 to-warning-600 flex items-center justify-center text-white font-bold">
-                                {{ strtoupper(substr($paciente->primer_nombre, 0, 1) . substr($paciente->primer_apellido, 0, 1)) }}
+                                {{ strtoupper(substr($p->primer_nombre, 0, 1) . substr($p->primer_apellido, 0, 1)) }}
                             </div>
                             <div>
-                                <p class="font-semibold text-gray-900">{{ $paciente->primer_nombre }} {{ $paciente->segundo_nombre }} {{ $paciente->primer_apellido }} {{ $paciente->segundo_apellido }}</p>
-                                <p class="text-xs text-gray-500">{{ $paciente->tipo_documento ?? '' }}-{{ $paciente->numero_documento ?? 'N/A' }}</p>
+                                <p class="font-semibold text-gray-900">{{ $p->primer_nombre }} {{ $p->primer_apellido }}</p>
+                                <p class="text-xs text-gray-500">{{ $p->tipo_documento ?? '' }}-{{ $p->numero_documento ?? 'N/A' }}</p>
                             </div>
                         </div>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="font-mono text-warning-600 font-semibold">{{ $paciente->numero_historia ?? 'N/A' }}</span>
+                        <span class="font-mono text-warning-600 font-semibold">HC-{{ \Carbon\Carbon::parse($p->created_at)->format('Y') }}-{{ str_pad($p->id, 3, '0', STR_PAD_LEFT) }}</span>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="badge badge-warning">{{ ucfirst(str_replace('_', ' ', $paciente->tipo_condicion ?? 'N/A')) }}</span>
+                        <span class="badge badge-warning">{{ $pacienteEsp->tipo }}</span>
                     </td>
                     <td class="px-6 py-4">
-                        <p class="text-gray-900 font-semibold">{{ $paciente->representante->nombre_completo ?? 'N/A' }}</p>
-                        <p class="text-xs text-gray-500">{{ $paciente->representante->parentesco ?? '' }}</p>
+                        @forelse($pacienteEsp->representantes as $rep)
+                            <div class="mb-1">
+                                <p class="text-gray-900 font-semibold text-xs">{{ $rep->primer_nombre }} {{ $rep->primer_apellido }}</p>
+                                <p class="text-[10px] text-gray-500 uppercase">{{ $rep->pivot->tipo_responsabilidad }} - {{ $rep->parentesco }}</p>
+                            </div>
+                        @empty
+                            <span class="text-gray-400 text-xs italic">Sin representante</span>
+                        @endforelse
                     </td>
                     <td class="px-6 py-4">
-                        <p class="text-gray-900">{{ $paciente->edad ?? 'N/A' }} años</p>
-                        <p class="text-xs text-gray-500">{{ $paciente->genero ?? 'N/A' }}</p>
+                        <p class="text-gray-900">{{ $p->fecha_nac ? \Carbon\Carbon::parse($p->fecha_nac)->age : 'N/A' }} años</p>
+                        <p class="text-xs text-gray-500">{{ $p->genero ?? 'N/A' }}</p>
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex items-center justify-center gap-2">
-                            <a href="{{ route('pacientes-especiales.show', $paciente->id) }}" class="btn btn-sm btn-ghost text-warning-600" title="Ver perfil">
+                            <a href="{{ route('pacientes-especiales.show', $pacienteEsp->id) }}" class="btn btn-sm btn-ghost text-warning-600" title="Ver perfil">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{{ route('historia-clinica.base.index', $paciente->id) }}" class="btn btn-sm btn-ghost text-medical-600" title="Historia Clínica">
+                            <a href="{{ route('historia-clinica.base.index', $pacienteEsp->id) }}" class="btn btn-sm btn-ghost text-medical-600" title="Historia Clínica">
                                 <i class="bi bi-file-medical"></i>
                             </a>
-                            <a href="{{ route('pacientes-especiales.edit', $paciente->id) }}" class="btn btn-sm btn-ghost text-info-600" title="Editar">
+                            <a href="{{ route('pacientes-especiales.edit', $pacienteEsp->id) }}" class="btn btn-sm btn-ghost text-info-600" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <form action="{{ route('pacientes-especiales.destroy', $paciente->id) }}" method="POST" class="inline">
+                            <form action="{{ route('pacientes-especiales.destroy', $pacienteEsp->id) }}" method="POST" class="inline">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-sm btn-ghost text-danger-600" title="Eliminar" onclick="return confirm('¿Eliminar paciente especial?')">

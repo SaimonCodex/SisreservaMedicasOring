@@ -303,6 +303,31 @@
                 </div>
             </div>
 
+            <!-- Consultorios Asignados -->
+            <div class="card p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <i class="bi bi-building text-medical-600"></i>
+                    Consultorios Asignados
+                </h3>
+                <div class="form-group mb-0">
+                    <label class="form-label form-label-required">Seleccione los consultorios que administrará</label>
+                    <div class="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                        @foreach($consultorios as $consultorio)
+                            <label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                                <input type="checkbox" name="consultorios[]" value="{{ $consultorio->id }}" 
+                                       class="form-checkbox text-medical-600 focus:ring-medical-500"
+                                       {{ in_array($consultorio->id, old('consultorios', $consultoriosSeleccionados)) ? 'checked' : '' }}>
+                                <span class="ml-3 text-sm text-gray-700">{{ $consultorio->nombre }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <p class="form-help mt-2">El administrador solo podrá gestionar estos consultorios</p>
+                    @error('consultorios')
+                        <p class="form-error">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
             <!-- Acciones -->
             <div class="card p-6">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">Opciones</h3>

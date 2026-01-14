@@ -235,10 +235,10 @@
                 <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Médico Tratante</h3>
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-bold">
-                        {{ strtoupper(substr(auth()->user()->nombre ?? 'D', 0, 1)) }}
+                        {{ strtoupper(substr($evolucion->medico->primer_nombre ?? 'D', 0, 1)) }}
                     </div>
                     <div>
-                        <p class="font-semibold text-gray-900">{{ auth()->user()->nombre ?? 'Dr. Nombre' }}</p>
+                        <p class="font-semibold text-gray-900">Dr. {{ $evolucion->medico->primer_nombre ?? 'N/A' }} {{ $evolucion->medico->primer_apellido ?? '' }}</p>
                         <p class="text-sm text-gray-500">Médico Especialista</p>
                     </div>
                 </div>

@@ -32,15 +32,15 @@
                             {{ substr($cita->paciente->primer_nombre ?? 'N', 0, 1) }}{{ substr($cita->paciente->primer_apellido ?? 'A', 0, 1) }}
                         </div>
                         <div class="flex-1">
-                            <h4 class="font-bold text-gray-900">{{ $cita->paciente->primer_nombre }} {{ $cita->paciente->primer_apellido }}</h4>
+                            <h4 class="font-bold text-gray-900">{{ $cita->paciente->primer_nombre ?? 'N/A' }} {{ $cita->paciente->primer_apellido ?? '' }}</h4>
                             <p class="text-sm text-gray-600">
-                                {{ $cita->paciente->tipo_documento }}-{{ $cita->paciente->numero_documento }} 
-                                @if($cita->paciente->historiaClinica)
+                                {{ $cita->paciente->tipo_documento ?? '-' }}-{{ $cita->paciente->numero_documento ?? 'N/A' }} 
+                                @if($cita->paciente && $cita->paciente->historiaClinica)
                                 • HC: {{ $cita->paciente->historiaClinica->numero_historia }}
                                 @endif
                             </p>
                             <p class="text-xs text-gray-500 mt-1">
-                                {{ \Carbon\Carbon::parse($cita->paciente->fecha_nac)->age }} años • {{ $cita->paciente->genero }}
+                                {{ $cita->paciente ? \Carbon\Carbon::parse($cita->paciente->fecha_nac)->age : 'N/A' }} años • {{ $cita->paciente->genero ?? 'N/A' }}
                             </p>
                         </div>
                     </div>
@@ -220,7 +220,7 @@
         container.innerHTML = '<p class="col-span-full text-center text-gray-500 text-sm">Cargando...</p>';
         
         try {
-            const response = await fetch(`${BASE_URL}/ajax/citas/horarios-disponibles?medico_id=${medicoId}&fecha=${fecha}&consultorio_id=${consultorioId}`);
+            const response = await fetch(`${BASE_URL}/ajax/citas/horarios-disponibles?medico_id=${medicoId}&fecha=${fecha}&consultorio_id=${consultorioId}&exclude_cita_id={{ $cita->id }}`);
             const data = await response.json();
             
             container.innerHTML = '';
@@ -300,20 +300,53 @@
 
         select.innerHTML = '<option>Cargando...</option>';
         
-        const response = await fetch(`${BASE_URL}/ajax/citas/medicos?consultorio_id=${consultorioId}&especialidad_id=${especialidadId}`);
-        const medicos = await response.json();
-        
-        select.innerHTML = '';
-        medicos.forEach(m => {
-            select.innerHTML += `<option value="${m.id}">Dr. ${m.nombre}</option>`; 
-        });
-        cargarHorarios();
+        try {
+            const response = await fetch(`${BASE_URL}/ajax/citas/medicos?consultorio_id=${consultorioId}&especialidad_id=${especialidadId}`);
+            const medicos = await response.json();
+            
+            select.innerHTML = '<option value="">Seleccione Médico</option>';
+            medicos.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = `Dr. ${m.primer_nombre} ${m.primer_apellido}`;
+                select.appendChild(opt);
+            });
+            
+            // Limpiar horarios
+            document.getElementById('horarios-container').innerHTML = '<p class="col-span-full text-center text-gray-500 text-sm">Seleccione médico y fecha</p>';
+        } catch (error) {
+            console.error(error);
+            select.innerHTML = '<option value="">Error al cargar</option>';
+        }
     }
 
     async function cargarEspecialidades() {
-        // Implementar similar
         const consultorioId = document.getElementById('consultorio_id').value;
-        // ... (fetch especialidades)
+        const select = document.getElementById('especialidad_id');
+        
+        if (!consultorioId) return;
+
+        select.innerHTML = '<option>Cargando...</option>';
+        
+        try {
+            const response = await fetch(`${BASE_URL}/ajax/citas/especialidades-por-consultorio/${consultorioId}`);
+            const especialidades = await response.json();
+            
+            select.innerHTML = '<option value="">Seleccione Especialidad</option>';
+            especialidades.forEach(esp => {
+                const option = document.createElement('option');
+                option.value = esp.id;
+                option.textContent = esp.nombre;
+                select.appendChild(option);
+            });
+
+            // Limpiar médicos y horarios
+            document.getElementById('medico_id').innerHTML = '<option value="">Primero seleccione especialidad</option>';
+            document.getElementById('horarios-container').innerHTML = '<p class="col-span-full text-center text-gray-500 text-sm">Seleccione médico y fecha</p>';
+        } catch (error) {
+            console.error(error);
+            select.innerHTML = '<option value="">Error al cargar</option>';
+        }
     }
 
 </script>

@@ -17,6 +17,7 @@
                 <i class="bi bi-clock mr-2"></i>
                 Horarios
             </a>
+            @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
             <a href="{{ route('consultorios.edit', $consultorio->id) }}" class="btn btn-primary">
                 <i class="bi bi-pencil mr-2"></i>
                 Editar
@@ -28,6 +29,7 @@
                     <i class="bi bi-trash"></i>
                 </button>
             </form>
+            @endif
         </div>
     </div>
 </div>
@@ -168,10 +170,12 @@
                     <i class="bi bi-calendar-week mr-2"></i>
                     Gestionar Horario
                 </a>
+                @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
                 <a href="{{ route('consultorios.edit', $consultorio->id) }}" class="btn btn-outline w-full justify-start text-left">
                     <i class="bi bi-pencil-square mr-2"></i>
                     Editar Información
                 </a>
+                @endif
             </div>
         </div>
 

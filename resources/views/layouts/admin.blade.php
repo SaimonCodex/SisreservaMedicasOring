@@ -133,14 +133,18 @@
                 </button>
                 
                 <div id="submenu-usuarios" class="ml-4 mt-1 pl-3 border-l border-white/10 space-y-1 hidden">
+                    @if($admin->tipo_admin === 'Root')
                     <a href="{{ route('usuarios.index') }}" 
                        class="flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-200 {{ request()->is('*/usuarios*') ? 'text-medical-500 bg-medical-500/10' : 'text-slate-400 hover:text-slate-200' }}">
                         <span>Todos los Usuarios</span>
                     </a>
+                    @endif
+                    @if($admin->tipo_admin === 'Root')
                     <a href="{{ url('/admin/administradores') }}" 
                        class="flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-200 {{ request()->is('*/admin/administradores*') ? 'text-medical-500 bg-medical-500/10' : 'text-slate-400 hover:text-slate-200' }}">
                         <span>Administradores</span>
                     </a>
+                    @endif
                     <a href="{{ route('medicos.index') }}" 
                        class="flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-200 {{ request()->is('*/medicos*') ? 'text-medical-500 bg-medical-500/10' : 'text-slate-400 hover:text-slate-200' }}">
                         <span>Médicos</span>
@@ -229,11 +233,13 @@
                 <span class="font-medium text-sm">Notificaciones</span>
             </a>
  
+            @if($admin->tipo_admin === 'Root')
             <a href="{{ route('configuracion.index') }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/configuracion*') ? 'bg-medical-500/20 text-medical-500 ring-1 ring-medical-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-gear-fill text-lg mr-3 {{ request()->is('*/configuracion*') ? 'text-medical-500' : 'text-slate-500 group-hover:text-slate-200' }}"></i>
                 <span class="font-medium text-sm">Configuración</span>
             </a>
+            @endif
             
             <div class="pb-20"></div>
         </nav>
@@ -318,10 +324,12 @@
                                     <i class="bi bi-person-badge text-lg"></i>
                                     <span>Mi Perfil Personalizado</span>
                                 </a>
+                                @if($admin->tipo_admin === 'Root')
                                 <a href="{{ route('configuracion.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-all text-sm text-gray-600 font-medium">
                                     <i class="bi bi-gear-wide-connected text-lg"></i>
                                     <span>Configuración Sistema</span>
                                 </a>
+                                @endif
                             </div>
                             <div class="p-2 border-t border-gray-100">
                                 <form method="POST" action="{{ route('logout') }}">

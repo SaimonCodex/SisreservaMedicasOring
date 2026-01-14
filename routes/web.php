@@ -316,7 +316,7 @@ Route::middleware(['auth'])->group(function () {
     // CONFIGURACIÓN DEL SISTEMA
     // =========================================================================
     
-    Route::prefix('configuracion')->group(function () {
+    Route::prefix('configuracion')->middleware(['restrict.local.admin'])->group(function () {
         Route::get('/', [ConfiguracionController::class, 'index'])->name('configuracion.index');
         
         // General

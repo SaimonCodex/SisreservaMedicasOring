@@ -60,6 +60,7 @@
                 <tr>
                     <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Perfil</th>
                     <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Identificación</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Rol / Consultorios</th>
                     <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
                     <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Registro</th>
                     <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
@@ -99,6 +100,29 @@
                             </div>
                         </div>
                     </td>
+                    <td class="px-6 py-4">
+                        <div class="flex flex-col gap-1">
+                            @if($admin->tipo_admin == 'Root')
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-indigo-100 text-indigo-800 w-fit">
+                                    <i class="bi bi-star-fill mr-1 text-[10px]"></i> ROOT
+                                </span>
+                                <span class="text-xs text-gray-400 italic">Acceso Total</span>
+                            @else
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-medical-100 text-medical-800 w-fit">
+                                    <i class="bi bi-person-badge mr-1 text-[10px]"></i> ADMIN
+                                </span>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    @forelse($admin->consultorios as $c)
+                                        <span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] border border-gray-200" title="{{ $c->nombre }}">
+                                            {{ Str::limit($c->nombre, 15) }}
+                                        </span>
+                                    @empty
+                                        <span class="text-[10px] text-amber-500 font-medium italic">Sin consultorios</span>
+                                    @endforelse
+                                </div>
+                            @endif
+                        </div>
+                    </td>
                     <td class="px-6 py-4 text-center">
                         @if($admin->status)
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800 border border-success-200">
@@ -134,7 +158,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" class="px-6 py-16 text-center bg-gray-50/50">
+                    <td colspan="6" class="px-6 py-16 text-center bg-gray-50/50">
                         <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
                             <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                                 <i class="bi bi-search text-3xl text-gray-400"></i>

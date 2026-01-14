@@ -13,11 +13,11 @@
             <p class="text-gray-500 mt-1">Información completa y registro médico</p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ route('citas.create') }}?paciente=1" class="btn btn-outline">
+            <a href="{{ route('citas.create') }}?paciente={{ $paciente->id }}" class="btn btn-outline">
                 <i class="bi bi-calendar-plus mr-2"></i>
                 Nueva Cita
             </a>
-            <a href="{{ route('pacientes.edit', 1) }}" class="btn btn-primary">
+            <a href="{{ route('pacientes.edit', $paciente->id) }}" class="btn btn-primary">
                 <i class="bi bi-pencil mr-2"></i>
                 Editar
             </a>
@@ -31,22 +31,30 @@
         
         <!-- Encabezado del Paciente -->
         <div class="card p-0 overflow-hidden">
-            <div class="bg-gradient-to-r from-success-600 to-success-500 p-6">
+            <div class="bg-gradient-to-r from-medical-600 to-medical-500 p-6">
                 <div class="flex items-center gap-6">
-                    <div class="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-4xl font-bold border-4 border-white/30">
-                        AR
-                    </div>
+                    @if($paciente->foto_perfil)
+                        <img src="{{ asset('storage/' . $paciente->foto_perfil) }}" alt="Foto" class="w-24 h-24 rounded-full object-cover border-4 border-white/30">
+                    @else
+                        <div class="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-4xl font-bold border-4 border-white/30">
+                            {{ strtoupper(substr($paciente->primer_nombre, 0, 1) . substr($paciente->primer_apellido, 0, 1)) }}
+                        </div>
+                    @endif
                     <div class="text-white flex-1">
-                        <h3 class="text-2xl font-bold mb-1">Ana Rodríguez</h3>
-                        <p class="text-white/90 mb-2">35 años • Femenino • V-18765432</p>
+                        <h3 class="text-2xl font-bold mb-1">{{ $paciente->primer_nombre }} {{ $paciente->primer_apellido }}</h3>
+                        <p class="text-white/90 mb-2">
+                            @if($paciente->fecha_nac)
+                                {{ \Carbon\Carbon::parse($paciente->fecha_nac)->age }} años • 
+                            @endif
+                            {{ $paciente->genero == 'M' ? 'Masculino' : 'Femenino' }} • {{ $paciente->tipo_documento }}-{{ $paciente->numero_documento }}
+                        </p>
                         <div class="flex gap-2">
-                            <span class="badge bg-white/20 text-white border border-white/30">Activo</span>
-                            <span class="badge bg-white/20 text-white border border-white/30">O+</span>
+                            <span class="badge bg-white/20 text-white border border-white/30">{{ $paciente->status ? 'Activo' : 'Inactivo' }}</span>
                         </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right hidden md:block">
                         <p class="text-sm text-white/70">Historia Clínica</p>
-                        <p class="text-xl font-bold text-white">HC-2024-001</p>
+                        <p class="text-xl font-bold text-white">HC-{{ \Carbon\Carbon::parse($paciente->created_at)->format('Y') }}-{{ str_pad($paciente->id, 3, '0', STR_PAD_LEFT) }}</p>
                     </div>
                 </div>
             </div>
@@ -54,19 +62,19 @@
             <div class="p-6">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-medical-600 mb-1">12</p>
+                        <p class="text-3xl font-bold text-medical-600 mb-1">{{ $paciente->citas->count() }}</p>
                         <p class="text-sm text-gray-500">Consultas</p>
                     </div>
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-success-600 mb-1">8</p>
+                        <p class="text-3xl font-bold text-success-600 mb-1">{{ $paciente->citas->where('estado_cita', 'Completada')->count() }}</p>
                         <p class="text-sm text-gray-500">Completadas</p>
                     </div>
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-warning-600 mb-1">0</p>
+                        <p class="text-3xl font-bold text-warning-600 mb-1">{{ $paciente->citas->where('estado_cita', 'Pendiente')->count() }}</p>
                         <p class="text-sm text-gray-500">Pendientes</p>
                     </div>
                     <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <p class="text-3xl font-bold text-info-600 mb-1">4</p>
+                        <p class="text-3xl font-bold text-info-600 mb-1">{{ $paciente->citas->where('estado_cita', 'Cancelada')->count() }}</p>
                         <p class="text-sm text-gray-500">Canceladas</p>
                     </div>
                 </div>
@@ -82,27 +90,30 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Nombre Completo</p>
-                    <p class="font-semibold text-gray-900">Ana María Rodríguez González</p>
+                    <p class="font-semibold text-gray-900">{{ $paciente->primer_nombre }} {{ $paciente->segundo_nombre }} {{ $paciente->primer_apellido }} {{ $paciente->segundo_apellido }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Documento de Identidad</p>
-                    <p class="font-semibold text-gray-900">V-18765432</p>
+                    <p class="font-semibold text-gray-900">{{ $paciente->tipo_documento }}-{{ $paciente->numero_documento }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Fecha de Nacimiento</p>
-                    <p class="font-semibold text-gray-900">22/05/1988 (35 años)</p>
+                    <p class="font-semibold text-gray-900">
+                        {{ $paciente->fecha_nac ? \Carbon\Carbon::parse($paciente->fecha_nac)->format('d/m/Y') : 'N/A' }} 
+                        @if($paciente->fecha_nac) ({{ \Carbon\Carbon::parse($paciente->fecha_nac)->age }} años) @endif
+                    </p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Género</p>
-                    <p class="font-semibold text-gray-900">Femenino</p>
+                    <p class="font-semibold text-gray-900">{{ $paciente->genero == 'M' ? 'Masculino' : 'Femenino' }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Estado Civil</p>
-                    <p class="font-semibold text-gray-900">Casada</p>
+                    <p class="font-semibold text-gray-900">{{ ucfirst($paciente->estado_civil ?? 'No registrado') }}</p>
                 </div>
                 <div>
-                    <p class="text-sm text-gray-500 mb-1">Grupo Sanguíneo</p>
-                    <p class="font-semibold text-gray-900">O+</p>
+                    <p class="text-sm text-gray-500 mb-1">Ocupación</p>
+                    <p class="font-semibold text-gray-900">{{ $paciente->ocupacion ?? 'No registrada' }}</p>
                 </div>
             </div>
         </div>
@@ -115,42 +126,22 @@
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <p class="text-sm text-gray-500 mb-1">Teléfono Principal</p>
-                    <p class="font-semibold text-gray-900">0414-5678901</p>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500 mb-1">Teléfono Secundario</p>
-                    <p class="font-semibold text-gray-900">0212-3456789</p>
-                </div>
-                <div class="md:col-span-2">
-                    <p class="text-sm text-gray-500 mb-1">Correo Electrónico</p>
-                    <p class="font-semibold text-gray-900">ana.rodriguez@example.com</p>
-                </div>
-                <div class="md:col-span-2">
-                    <p class="text-sm text-gray-500 mb-1">Dirección</p>
-                    <p class="font-semibold text-gray-900">Av. Principal, Urb. Los Rosales, Caracas, Miranda</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Contacto de Emergencia -->
-        <div class="card p-6 border-l-4 border-l-danger-500">
-            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <i class="bi bi-shield-exclamation text-danger-600"></i>
-                Contacto de Emergencia
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <p class="text-sm text-gray-500 mb-1">Nombre</p>
-                    <p class="font-semibold text-gray-900">Pedro Rodríguez</p>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500 mb-1">Parentesco</p>
-                    <p class="font-semibold text-gray-900">Cónyuge</p>
-                </div>
-                <div class="md:col-span-2">
                     <p class="text-sm text-gray-500 mb-1">Teléfono</p>
-                    <p class="font-semibold text-gray-900">0424-9876543</p>
+                    <p class="font-semibold text-gray-900">{{ $paciente->prefijo_tlf }} {{ $paciente->numero_tlf }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Correo Electrónico</p>
+                    <p class="font-semibold text-gray-900">{{ optional($paciente->usuario)->correo ?? 'Sin correo' }}</p>
+                </div>
+                <div class="md:col-span-2">
+                    <p class="text-sm text-gray-500 mb-1">Ubicación</p>
+                    <p class="font-semibold text-gray-900">
+                        {{ optional($paciente->estado)->estado }}, {{ optional($paciente->municipio)->municipio }}, {{ optional($paciente->ciudad)->ciudad }}
+                    </p>
+                </div>
+                <div class="md:col-span-2">
+                    <p class="text-sm text-gray-500 mb-1">Dirección Detallada</p>
+                    <p class="font-semibold text-gray-900">{{ $paciente->direccion_detallada }}</p>
                 </div>
             </div>
         </div>
@@ -162,78 +153,32 @@
                     <i class="bi bi-calendar-check text-warning-600"></i>
                     Próximas Citas
                 </h3>
-                <a href="{{ route('citas.create') }}?paciente=1" class="text-sm text-medical-600 hover:underline">
+                <a href="{{ route('citas.create') }}?paciente={{ $paciente->id }}" class="text-sm text-medical-600 hover:underline">
                     <i class="bi bi-plus-lg mr-1"></i>Agendar
                 </a>
             </div>
             <div class="space-y-3">
-                <div class="flex items-center gap-4 p-4 bg-warning-50 border border-warning-200 rounded-xl">
+                @php
+                    $proximasCitas = $paciente->citas()->where('fecha_cita', '>=', now()->format('Y-m-d'))->orderBy('fecha_cita', 'asc')->take(3)->get();
+                @endphp
+                @forelse($proximasCitas as $cita)
+                <div class="flex items-center gap-4 p-4 bg-medical-50 border border-medical-100 rounded-xl">
                     <div class="w-16 text-center">
-                        <p class="text-2xl font-bold text-warning-700">15</p>
-                        <p class="text-xs text-warning-600">ENE</p>
+                        <p class="text-2xl font-bold text-medical-700">{{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d') }}</p>
+                        <p class="text-xs text-medical-600 upper">{{ \Carbon\Carbon::parse($cita->fecha_cita)->translatedFormat('M') }}</p>
                     </div>
                     <div class="flex-1">
-                        <p class="font-semibold text-gray-900">Control Cardiológico</p>
-                        <p class="text-sm text-gray-600">Dr. Juan Pérez • 10:00 AM</p>
+                        <p class="font-semibold text-gray-900">{{ $cita->motivo ?? 'Consulta Médica' }}</p>
+                        <p class="text-sm text-gray-600">{{ optional($cita->medico)->primer_nombre }} {{ optional($cita->medico)->primer_apellido }} • {{ \Carbon\Carbon::parse($cita->hora_inicio)->format('h:i A') }}</p>
                     </div>
-                    <span class="badge badge-warning">Pendiente</span>
+                    <span class="badge {{ $cita->estado_cita == 'Pendiente' ? 'badge-warning' : 'badge-success' }}">{{ $cita->estado_cita }}</span>
                 </div>
-
-                <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                    <div class="w-16 text-center">
-                        <p class="text-2xl font-bold text-gray-700">28</p>
-                        <p class="text-xs text-gray-600">ENE</p>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-semibold text-gray-900">Consulta General</p>
-                        <p class="text-sm text-gray-600">Dra. María González • 02:30 PM</p>
-                    </div>
-                    <span class="badge badge-gray">Agendada</span>
-                </div>
+                @empty
+                <p class="text-sm text-gray-500 text-center py-4 italic">No hay citas programadas próximamente.</p>
+                @endforelse
             </div>
         </div>
 
-        <!-- Historial Reciente -->
-        <div class="card p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <i class="bi bi-clock-history text-info-600"></i>
-                    Historial Reciente
-                </h3>
-                <a href="#" class="text-sm text-medical-600 hover:underline">Ver todo</a>
-            </div>
-            <div class="space-y-3">
-                <div class="flex gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                    <div class="w-10 h-10 rounded-full bg-success-100 flex items-center justify-center flex-shrink-0">
-                        <i class="bi bi-check-lg text-success-600"></i>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-medium text-gray-900 text-sm">Consulta Cardiológica</p>
-                        <p class="text-xs text-gray-500">05/01/2026 • Dr. Juan Pérez</p>
-                    </div>
-                </div>
-
-                <div class="flex gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                    <div class="w-10 h-10 rounded-full bg-info-100 flex items-center justify-center flex-shrink-0">
-                        <i class="bi bi-clipboard-pulse text-info-600"></i>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-medium text-gray-900 text-sm">Exámenes de Laboratorio</p>
-                        <p class="text-xs text-gray-500">28/12/2025 • Lab. Central</p>
-                    </div>
-                </div>
-
-                <div class="flex gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                    <div class="w-10 h-10 rounded-full bg-success-100 flex items-center justify-center flex-shrink-0">
-                        <i class="bi bi-check-lg text-success-600"></i>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-medium text-gray-900 text-sm">Control General</p>
-                        <p class="text-xs text-gray-500">15/12/2025 • Dra. María González</p>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Sidebar -->
@@ -242,58 +187,35 @@
         <div class="card p-6 sticky top-6">
             <h4 class="font-bold text-gray-900 mb-4">Acciones Rápidas</h4>
             <div class="space-y-2">
-                <a href="{{ route('historia-clinica.base.show', 1) }}" class="btn btn-outline w-full justify-start">
+                <a href="{{ route('pacientes.historia-clinica', $paciente->id) }}" class="btn btn-outline w-full justify-start">
                     <i class="bi bi-file-medical mr-2"></i>
                     Ver Historia Clínica
                 </a>
-                <button class="btn btn-outline w-full justify-start">
+                <a href="{{ route('citas.create') }}?paciente={{ $paciente->id }}" class="btn btn-outline w-full justify-start">
                     <i class="bi bi-calendar-plus mr-2"></i>
                     Agendar Cita
-                </button>
-                <button class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-prescription2 mr-2"></i>
-                    Ver Recetas
-                </button>
-                <button class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-cash-coin mr-2"></i>
-                    Historial Pagos
-                </button>
+                </a>
             </div>
         </div>
 
         <!-- Estado -->
         <div class="card p-6">
-            <h4 class="font-bold text-gray-900 mb-4">Estado</h4>
+            <h4 class="font-bold text-gray-900 mb-4">Estado del Registro</h4>
             <div class="space-y-3">
                 <div class="flex items-center justify-between">
                     <span class="text-sm text-gray-600">Cuenta</span>
-                    <span class="badge badge-success">Activa</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Tipo</span>
-                    <span class="badge badge-primary">Regular</span>
+                    <span class="badge {{ $paciente->status ? 'badge-success' : 'badge-danger' }}">{{ $paciente->status ? 'Activa' : 'Inactiva' }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span class="text-sm text-gray-600">Última visita</span>
-                    <span class="text-sm font-medium text-gray-900">05/01/2026</span>
+                    <span class="text-sm font-medium text-gray-900">
+                        @php $ultima = $paciente->citas()->where('estado_cita', 'Completada')->orderBy('fecha_cita', 'desc')->first(); @endphp
+                        {{ $ultima ? \Carbon\Carbon::parse($ultima->fecha_cita)->format('d/m/Y') : 'N/A' }}
+                    </span>
                 </div>
                 <div class="flex items-center justify-between pt-3 border-t border-gray-100">
                     <span class="text-sm text-gray-600">Registro</span>
-                    <span class="text-xs text-gray-500">03/02/2024</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Observaciones -->
-        <div class="card p-6 bg-gradient-to-br from-warning-50 to-amber-50 border-warning-200">
-            <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <i class="bi bi-exclamation-triangle text-warning-600"></i>
-                Alertas Médicas
-            </h4>
-            <div class="space-y-2">
-                <div class="bg-white rounded-lg p-3 text-sm">
-                    <p class="font-medium text-warning-700">Alergia: Penicilina</p>
-                    <p class="text-xs text-gray-600 mt-1">Reacción severa documentada</p>
+                    <span class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($paciente->created_at)->format('d/m/Y') }}</span>
                 </div>
             </div>
         </div>

@@ -219,7 +219,7 @@ document.getElementById('estado').addEventListener('change', function() {
     const estadoId = this.value;
     if (!estadoId) return;
 
-    fetch(`{{ url('index.php/api/ubicacion/ciudades') }}/${estadoId}`)
+    fetch(`{{ url('admin/get-ciudades') }}/${estadoId}`)
         .then(res => res.json())
         .then(ciudades => {
             const select = document.getElementById('ciudad');
@@ -229,7 +229,7 @@ document.getElementById('estado').addEventListener('change', function() {
             });
         });
 
-    fetch(`{{ url('index.php/api/ubicacion/municipios') }}/${estadoId}`)
+    fetch(`{{ url('admin/get-municipios') }}/${estadoId}`)
         .then(res => res.json())
         .then(municipios => {
             const select = document.getElementById('municipio');
@@ -245,7 +245,7 @@ document.getElementById('municipio').addEventListener('change', function() {
     const municipioId = this.value;
     if (!municipioId) return;
 
-    fetch(`{{ url('index.php/api/ubicacion/parroquias') }}/${municipioId}`)
+    fetch(`{{ url('admin/get-parroquias') }}/${municipioId}`)
         .then(res => res.json())
         .then(parroquias => {
             const select = document.getElementById('parroquia');

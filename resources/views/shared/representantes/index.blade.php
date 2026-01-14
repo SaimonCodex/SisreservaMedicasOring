@@ -69,7 +69,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Total Representantes</p>
-                <p class="text-2xl font-bold text-gray-900">{{ $representantes->total() ?? 0 }}</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-info-50 flex items-center justify-center">
                 <i class="bi bi-people text-info-600 text-2xl"></i>
@@ -81,7 +81,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Activos</p>
-                <p class="text-2xl font-bold text-gray-900">{{ $representantes->where('status', true)->count() }}</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $stats['activos'] ?? 0 }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-success-50 flex items-center justify-center">
                 <i class="bi bi-check-circle text-success-600 text-2xl"></i>
@@ -93,7 +93,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Con Múltiples Pacientes</p>
-                <p class="text-2xl font-bold text-gray-900">0</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $stats['multi_pacientes'] ?? 0 }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-warning-50 flex items-center justify-center">
                 <i class="bi bi-diagram-3 text-warning-600 text-2xl"></i>
@@ -105,7 +105,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Nuevos (mes)</p>
-                <p class="text-2xl font-bold text-gray-900">0</p>
+                <p class="text-2xl font-bold text-gray-900">{{ $stats['nuevos_mes'] ?? 0 }}</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-medical-50 flex items-center justify-center">
                 <i class="bi bi-person-plus text-medical-600 text-2xl"></i>
