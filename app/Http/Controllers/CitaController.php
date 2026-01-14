@@ -275,11 +275,12 @@ class CitaController extends Controller
                 'rep_primer_apellido' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
                 'rep_tipo_documento' => 'required|in:V,E,P,J',
                 'rep_numero_documento' => 'required|max:20',
-                'rep_fecha_nac' => 'required|date|before:today',
+                // 'rep_fecha_nac' => 'required|date|before:today', // No solicitado en formulario paciente
                 'rep_parentesco' => 'required|in:Padre,Madre,Hijo/a,Hermano/a,Tío/a,Sobrino/a,Abuelo/a,Nieto/a,Primo/a,Amigo/a,Tutor,Otro',
                 // Paciente Especial
                 'pac_primer_nombre' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
                 'pac_primer_apellido' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+                'pac_fecha_nac' => 'required|date|before:today',
                 'pac_tiene_documento' => 'required|in:si,no',
                 'pac_tipo' => 'required|in:Menor de Edad,Discapacitado,Anciano,Incapacitado',
             ]);
@@ -730,6 +731,16 @@ class CitaController extends Controller
                     throw new \Exception('El médico no está disponible en ese horario. Por favor seleccione otra hora.');
                 }
 
+                // Obtener dirección para la cita (especialmente relevante si es Domicilio)
+                $direccionDomicilio = null;
+                if ($pacienteEspecialId) {
+                    $pacEspecialDir = PacienteEspecial::find($pacienteEspecialId);
+                    $direccionDomicilio = $pacEspecialDir ? $pacEspecialDir->direccion_detallada : null;
+                } elseif ($pacienteId) {
+                    $pacDir = Paciente::find($pacienteId);
+                    $direccionDomicilio = $pacDir ? $pacDir->direccion_detallada : null;
+                }
+
                 $cita = Cita::create([
                     'paciente_id' => $pacienteId,
                     'paciente_especial_id' => $pacienteEspecialId,
@@ -741,6 +752,7 @@ class CitaController extends Controller
                     'hora_inicio' => $request->hora_inicio,
                     'hora_fin' => $horaFin,
                     'tipo_consulta' => $tipoConsulta,
+                    'direccion_domicilio' => $direccionDomicilio,
                     'tarifa' => $tarifa,
                     'tarifa_extra' => $tarifaExtra,
                     'motivo' => $request->motivo,
