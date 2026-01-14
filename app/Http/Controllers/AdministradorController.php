@@ -18,6 +18,16 @@ use Carbon\Carbon;
 
 class AdministradorController extends Controller
 {
+    public function __construct()
+    {
+        // Solo restringir las acciones de gestión de OTROS administradores
+        // El dashboard y el perfil propio deben ser accesibles
+        $this->middleware('restrict.local.admin')->only([
+            'index', 'create', 'store', 'show', 'edit', 'update', 'destroy', 'toggleStatus'
+        ]);
+        // Nota: updatePerfil es manejado aparte y debe ser permitido
+    }
+
     public function dashboard()
     {
         // 1. Estadísticas Generales
@@ -40,7 +50,13 @@ class AdministradorController extends Controller
             : 100;
 
         // 3. Usuarios Activos (Usuarios que han accedido recientemente o están activos)
-        $usuarios_activos = Usuario::where('status', true)->count();
+        // Ajuste: Para Admin Local, esto debería reflejar sus médicos y pacientes visibles, no el total global
+        if (auth()->user()->administrador && auth()->user()->administrador->tipo_admin !== 'Root') {
+            // Sumar médicos y pacientes visibles (aproximación)
+            $usuarios_activos = \App\Models\Medico::where('status', true)->count() + \App\Models\Paciente::where('status', true)->count();
+        } else {
+            $usuarios_activos = Usuario::where('status', true)->count();
+        }
 
         // 4. Estadísticas Detalladas
         $medicos_nuevos_mes = \App\Models\Medico::whereMonth('created_at', now()->month)->count();
@@ -192,7 +208,7 @@ class AdministradorController extends Controller
 
     public function index(Request $request)
     {
-        $query = Administrador::with(['usuario', 'estado', 'ciudad']);
+        $query = Administrador::with(['usuario', 'estado', 'ciudad', 'consultorios']);
 
         // Filtro por búsqueda (Nombre, Apellido, Documento, Correo)
         if ($request->filled('buscar')) {
@@ -227,8 +243,9 @@ class AdministradorController extends Controller
         $ciudades = Ciudad::where('status', true)->get();
         $municipios = Municipio::where('status', true)->get();
         $parroquias = Parroquia::where('status', true)->get();
+        $consultorios = \App\Models\Consultorio::where('status', true)->get();
         
-        return view('admin.administradores.create', compact('usuarios', 'estados', 'ciudades', 'municipios', 'parroquias'));
+        return view('admin.administradores.create', compact('usuarios', 'estados', 'ciudades', 'municipios', 'parroquias', 'consultorios'));
     }
 
     public function store(Request $request)
@@ -267,11 +284,16 @@ class AdministradorController extends Controller
                 ]);
 
                 // 2. Create Administrator Profile
-                $adminData = $request->except(['correo', 'password', 'password_confirmation', 'status']);
+                $adminData = $request->except(['correo', 'password', 'password_confirmation', 'status', 'consultorios']);
                 $adminData['user_id'] = $usuario->id;
                 $adminData['status'] = $request->has('status'); // Checkbox for status
 
-                Administrador::create($adminData);
+                $administrador = Administrador::create($adminData);
+
+                // 3. Attach consultorios (if not Root)
+                if ($request->tipo_admin !== 'Root' && $request->has('consultorios')) {
+                    $administrador->consultorios()->attach($request->consultorios);
+                }
             });
 
             return redirect()->route('administradores.index')->with('success', 'Administrador creado exitosamente');
@@ -283,20 +305,22 @@ class AdministradorController extends Controller
 
     public function show($id)
     {
-        $administrador = Administrador::with(['usuario', 'estado', 'ciudad', 'municipio', 'parroquia'])->findOrFail($id);
+        $administrador = Administrador::with(['usuario', 'estado', 'ciudad', 'municipio', 'parroquia', 'consultorios'])->findOrFail($id);
         return view('admin.administradores.show', compact('administrador'));
     }
 
     public function edit($id)
     {
-        $administrador = Administrador::findOrFail($id);
+        $administrador = Administrador::with('consultorios')->findOrFail($id);
         $usuarios = Usuario::where('status', true)->get();
         $estados = Estado::where('status', true)->get();
         $ciudades = Ciudad::where('status', true)->get();
         $municipios = Municipio::where('status', true)->get();
         $parroquias = Parroquia::where('status', true)->get();
+        $consultorios = \App\Models\Consultorio::where('status', true)->get();
+        $consultoriosSeleccionados = $administrador->consultorios->pluck('id')->toArray();
 
-        return view('admin.administradores.edit', compact('administrador', 'usuarios', 'estados', 'ciudades', 'municipios', 'parroquias'));
+        return view('admin.administradores.edit', compact('administrador', 'usuarios', 'estados', 'ciudades', 'municipios', 'parroquias', 'consultorios', 'consultoriosSeleccionados'));
     }
 
     public function update(Request $request, $id)
@@ -326,11 +350,19 @@ class AdministradorController extends Controller
         $administrador = Administrador::findOrFail($id);
         
         // Actualizar datos del perfil
-        $data = $request->except(['user_id', 'password', 'password_confirmation', 'correo']);
+        $data = $request->except(['user_id', 'password', 'password_confirmation', 'correo', 'consultorios']);
         // Manejar el checkbox de status: si no viene, es false
         $data['status'] = $request->has('status');
 
         $administrador->update($data);
+
+        // Sincronizar consultorios (if not Root)
+        if ($request->tipo_admin !== 'Root' && $request->has('consultorios')) {
+            $administrador->consultorios()->sync($request->consultorios);
+        } elseif ($request->tipo_admin !== 'Root' && !$request->has('consultorios')) {
+            // Si no es Root y no tiene consultorios, limpiamos
+            $administrador->consultorios()->detach();
+        }
 
         // Si se envió contraseña, actualizarla en el usuario
         if ($request->filled('password')) {

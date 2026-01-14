@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Pago extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\ScopedByConsultorio;
 
     protected $table = 'pago';
     protected $primaryKey = 'id_pago';

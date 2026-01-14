@@ -13,19 +13,57 @@ use Illuminate\Support\Facades\Validator;
 
 class ConsultorioController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+                $restrictedActions = ['create', 'store', 'edit', 'update', 'destroy'];
+                if (in_array($request->route()->getActionMethod(), $restrictedActions)) {
+                    abort(403, 'Los administradores locales solo tienen permiso de lectura en esta sección.');
+                }
+            }
+            return $next($request);
+        });
+    }
+
     public function index(Request $request)
     {
-        // Estadísticas
-        $totalConsultorios = Consultorio::count();
-        $consultoriosActivos = Consultorio::where('status', true)->count();
-        $totalCiudades = Consultorio::distinct('ciudad_id')->count('ciudad_id');
+        $user = auth()->user();
+        $isLocalAdmin = $user && $user->administrador && $user->administrador->tipo_admin !== 'Root';
+        $consultorioIds = [];
+
+        if ($isLocalAdmin) {
+            $consultorioIds = $user->administrador->consultorios()->pluck('consultorios.id');
+        }
+
+        // Estadísticas (Filtradas si es admin local)
+        $consultoriosQuery = Consultorio::query();
+        $medicosAsignadosQuery = \App\Models\MedicoConsultorio::distinct('medico_id');
+
+        if ($isLocalAdmin) {
+            $consultoriosQuery->whereIn('id', $consultorioIds);
+            
+            // Filtrar médicos asignados solo a esos consultorios
+            $medicosAsignadosQuery->whereIn('consultorio_id', $consultorioIds);
+        }
+
+        $totalConsultorios = $consultoriosQuery->count();
+        $consultoriosActivos = $consultoriosQuery->clone()->where('status', true)->count();
         
-        // Total médicos con horarios asignados
-        $totalMedicosAsignados = \App\Models\MedicoConsultorio::distinct('medico_id')->count('medico_id');
+        // Contar ciudades únicas de los consultorios filtrados
+        $totalCiudades = $consultoriosQuery->clone()->distinct('ciudad_id')->count('ciudad_id');
+        
+        $totalMedicosAsignados = $medicosAsignadosQuery->count('medico_id');
 
         // Cargar especialidades directas (pivot manual)
         $query = Consultorio::with(['estado', 'ciudad', 'especialidades'])
                             ->withCount('medicos');
+
+        // Filtro principal de la lista
+        if ($isLocalAdmin) {
+            $query->whereIn('id', $consultorioIds);
+        }
 
         if ($request->filled('buscar')) {
             $query->where(function($q) use ($request) {

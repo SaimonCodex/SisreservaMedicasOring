@@ -9,10 +9,12 @@
             <h2 class="text-3xl font-display font-bold text-gray-900">Consultorios</h2>
             <p class="text-gray-500 mt-1">Gestión de consultorios y espacios médicos</p>
         </div>
+        @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
         <a href="{{ route('consultorios.create') }}" class="btn btn-primary shadow-lg">
             <i class="bi bi-plus-lg mr-2"></i>
             Nuevo Consultorio
         </a>
+        @endif
     </div>
 </div>
 
@@ -163,9 +165,11 @@
                 <a href="{{ route('consultorios.horarios', $consultorio->id) }}" class="btn btn-sm btn-ghost text-info-600" title="Ver Horarios">
                     <i class="bi bi-clock"></i>
                 </a>
+                @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
                 <a href="{{ route('consultorios.edit', $consultorio->id) }}" class="btn btn-sm btn-ghost text-warning-600" title="Editar">
                     <i class="bi bi-pencil"></i>
                 </a>
+                @endif
             </div>
         </div>
     </div>
@@ -176,9 +180,11 @@
         </div>
         <h3 class="text-lg font-medium text-gray-900">No se encontraron consultorios</h3>
         <p class="text-gray-500 mt-1 mb-4">Intenta ajustar los filtros de búsqueda</p>
+        @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
         <a href="{{ route('consultorios.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg mr-2"></i> Crear Nuevo Consultorio
         </a>
+        @endif
     </div>
     @endforelse
 </div>

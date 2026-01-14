@@ -65,4 +65,10 @@ class Administrador extends Model
     {
         return $this->hasMany(Pago::class, 'confirmado_por');
     }
+
+    public function consultorios()
+    {
+        return $this->belongsToMany(Consultorio::class, 'administrador_consultorio', 'administrador_id', 'consultorio_id')
+                    ->withTimestamps();
+    }
 }

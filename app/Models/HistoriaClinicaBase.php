@@ -8,7 +8,7 @@ use App\Models\EvolucionClinica;
 
 class HistoriaClinicaBase extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\ScopedByConsultorio;
 
     protected $table = 'historia_clinica_base';
     protected $primaryKey = 'id';

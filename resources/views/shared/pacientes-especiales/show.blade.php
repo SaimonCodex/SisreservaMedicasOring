@@ -10,10 +10,22 @@
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
+@php 
+    $p = $pacienteEspecial->paciente; 
+    $hc = "HC-" . \Carbon\Carbon::parse($p->created_at)->format('Y') . "-" . str_pad($p->id, 3, '0', STR_PAD_LEFT);
+@endphp
+
+<div class="mb-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <a href="{{ route('pacientes-especiales.index') }}" class="btn btn-ghost">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
                 <h2 class="text-3xl font-display font-bold text-gray-900">
-                    {{ $pacienteEspecial->primer_nombre }} {{ $pacienteEspecial->primer_apellido }}
+                    {{ $p->primer_nombre }} {{ $p->primer_apellido }}
                 </h2>
-                <p class="text-gray-500 mt-1">Paciente Especial - Historia: {{ $pacienteEspecial->numero_historia ?? 'N/A' }}</p>
+                <p class="text-gray-500 mt-1">Paciente Especial - Historia: <span class="font-mono text-warning-600 font-semibold">{{ $hc }}</span></p>
             </div>
         </div>
         <div class="flex gap-3">
@@ -21,7 +33,7 @@
                 <i class="bi bi-pencil mr-2"></i>
                 Editar
             </a>
-            <a href="{{ route('historia-clinica.base.index', $pacienteEspecial->id) }}" class="btn btn-primary">
+            <a href="{{ route('historia-clinica.base.index', $p->id) }}" class="btn btn-primary">
                 <i class="bi bi-file-medical mr-2"></i>
                 Historia Clínica
             </a>
@@ -45,43 +57,43 @@
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Nombre Completo</p>
                     <p class="font-semibold text-gray-900">
-                        {{ $pacienteEspecial->primer_nombre }} {{ $pacienteEspecial->segundo_nombre }} 
-                        {{ $pacienteEspecial->primer_apellido }} {{ $pacienteEspecial->segundo_apellido }}
+                        {{ $p->primer_nombre }} {{ $p->segundo_nombre }} 
+                        {{ $p->primer_apellido }} {{ $p->segundo_apellido }}
                     </p>
                 </div>
                 
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Documento de Identidad</p>
                     <p class="font-semibold text-gray-900">
-                        {{ $pacienteEspecial->tipo_documento }}-{{ $pacienteEspecial->numero_documento }}
+                        {{ $p->tipo_documento }}-{{ $p->numero_documento }}
                     </p>
                 </div>
                 
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Fecha de Nacimiento</p>
                     <p class="font-semibold text-gray-900">
-                        {{ \Carbon\Carbon::parse($pacienteEspecial->fecha_nacimiento)->format('d/m/Y') }}
+                        {{ $p->fecha_nac ? \Carbon\Carbon::parse($p->fecha_nac)->format('d/m/Y') : 'N/A' }}
                     </p>
                 </div>
                 
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Edad</p>
                     <p class="font-semibold text-gray-900">
-                        {{ \Carbon\Carbon::parse($pacienteEspecial->fecha_nacimiento)->age }} años
+                        {{ $p->fecha_nac ? \Carbon\Carbon::parse($p->fecha_nac)->age : 'N/A' }} años
                     </p>
                 </div>
                 
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Género</p>
-                    <p class="font-semibold text-gray-900">{{ $pacienteEspecial->genero }}</p>
+                    <p class="font-semibold text-gray-900">{{ $p->genero }}</p>
                 </div>
                 
                 <div>
-                    <p class="text-sm text-gray-500 mb-1">Estado</p>
-                    @if($pacienteEspecial->status)
-                        <span class="badge badge-success">Activo</span>
+                    <p class="text-sm text-gray-500 mb-1">Sede de Origen</p>
+                    @if($p->citas->first())
+                        <span class="badge badge-info">{{ $p->citas->first()->consultorio->nombre }}</span>
                     @else
-                        <span class="badge badge-danger">Inactivo</span>
+                        <span class="text-gray-400 italic text-sm">Sin sede asignada</span>
                     @endif
                 </div>
             </div>
@@ -98,72 +110,66 @@
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Tipo de Condición</p>
                     <span class="badge badge-warning text-base">
-                        {{ ucfirst(str_replace('_', ' ', $pacienteEspecial->tipo_condicion)) }}
+                        {{ ucfirst(str_replace('_', ' ', $pacienteEspecial->tipo)) }}
                     </span>
                 </div>
                 
-                @if($pacienteEspecial->observaciones_medicas)
+                @if($pacienteEspecial->observaciones)
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Observaciones Médicas</p>
                     <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-gray-900">{{ $pacienteEspecial->observaciones_medicas }}</p>
+                        <p class="text-gray-900">{{ $pacienteEspecial->observaciones }}</p>
                     </div>
                 </div>
                 @endif
             </div>
         </div>
 
-        <!-- Representante Legal -->
+        <!-- Representantes Legales -->
         <div class="card p-6">
             <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <i class="bi bi-shield-check text-warning-600"></i>
-                Representante Legal
+                Representantes Legales
             </h3>
             
-            @if($pacienteEspecial->representante)
+            <div class="space-y-4">
+            @forelse($pacienteEspecial->representantes as $rep)
             <div class="bg-info-50 border border-info-200 rounded-lg p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="badge badge-info uppercase text-[10px]">{{ $rep->pivot->tipo_responsabilidad }}</span>
+                    <a href="{{ route('representantes.show', $rep->id) }}" class="text-info-600 hover:text-info-700 text-sm font-semibold">
+                        Ver Perfil <i class="bi bi-arrow-right ml-1"></i>
+                    </a>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <p class="text-sm text-gray-600 mb-1">Nombre Completo</p>
-                        <p class="font-semibold text-gray-900">{{ $pacienteEspecial->representante->nombre_completo }}</p>
+                        <p class="font-semibold text-gray-900">{{ $rep->primer_nombre }} {{ $rep->primer_apellido }}</p>
                     </div>
                     
                     <div>
                         <p class="text-sm text-gray-600 mb-1">Documento</p>
-                        <p class="font-semibold text-gray-900">{{ $pacienteEspecial->representante->numero_documento }}</p>
+                        <p class="font-semibold text-gray-900">{{ $rep->tipo_documento }}-{{ $rep->numero_documento }}</p>
                     </div>
                     
                     <div>
                         <p class="text-sm text-gray-600 mb-1">Parentesco</p>
-                        <p class="font-semibold text-gray-900">{{ $pacienteEspecial->representante->parentesco }}</p>
+                        <p class="font-semibold text-gray-900">{{ $rep->parentesco }}</p>
                     </div>
                     
                     <div>
                         <p class="text-sm text-gray-600 mb-1">Teléfono</p>
-                        <p class="font-semibold text-gray-900">{{ $pacienteEspecial->representante->telefono ?? 'N/A' }}</p>
+                        <p class="font-semibold text-gray-900">{{ $rep->prefijo_tlf }} {{ $rep->numero_tlf }}</p>
                     </div>
-                    
-                    @if($pacienteEspecial->representante->email)
-                    <div class="md:col-span-2">
-                        <p class="text-sm text-gray-600 mb-1">Email</p>
-                        <p class="font-semibold text-gray-900">{{ $pacienteEspecial->representante->email }}</p>
-                    </div>
-                    @endif
-                </div>
-                
-                <div class="mt-4 pt-4 border-t border-info-300">
-                    <a href="{{ route('representantes.show', $pacienteEspecial->representante->id) }}" class="btn btn-sm btn-outline">
-                        <i class="bi bi-eye mr-2"></i>
-                        Ver Perfil Completo
-                    </a>
                 </div>
             </div>
-            @else
+            @empty
             <div class="bg-gray-50 rounded-lg p-6 text-center">
                 <i class="bi bi-exclamation-circle text-4xl text-gray-400 mb-2"></i>
-                <p class="text-gray-600">No hay representante asignado</p>
+                <p class="text-gray-600">No hay representantes asignados</p>
             </div>
-            @endif
+            @endforelse
+            </div>
         </div>
 
         <!-- Historial de Citas -->
@@ -174,20 +180,20 @@
             </h3>
             
             <div class="space-y-3">
-                @forelse($pacienteEspecial->citas ?? [] as $cita)
+                @forelse($historialCitas as $cita)
                 <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-lg bg-medical-100 flex items-center justify-center">
                             <i class="bi bi-calendar-check text-medical-600 text-xl"></i>
                         </div>
                         <div>
-                            <p class="font-semibold text-gray-900">{{ $cita->especialidad ?? 'Consulta General' }}</p>
-                            <p class="text-sm text-gray-600">Dr. {{ $cita->medico->nombre ?? 'N/A' }}</p>
-                            <p class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y H:i') }}</p>
+                            <p class="font-semibold text-gray-900">{{ $cita->especialidad->nombre ?? 'Consulta General' }}</p>
+                            <p class="text-sm text-gray-600">Dr. {{ $cita->medico->primer_nombre }} {{ $cita->medico->primer_apellido }}</p>
+                            <p class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($cita->hora_inicio)->format('h:i A') }}</p>
                         </div>
                     </div>
-                    <span class="badge badge-{{ $cita->status == 'completada' ? 'success' : 'warning' }}">
-                        {{ ucfirst($cita->status) }}
+                    <span class="badge {{ $cita->estado_cita == 'Finalizada' ? 'badge-success' : 'badge-warning' }}">
+                        {{ $cita->estado_cita }}
                     </span>
                 </div>
                 @empty
@@ -197,15 +203,6 @@
                 </div>
                 @endforelse
             </div>
-            
-            @if(count($pacienteEspecial->citas ?? []) > 0)
-            <div class="mt-4 pt-4 border-t border-gray-200">
-                <a href="{{ route('citas.index', ['paciente_id' => $pacienteEspecial->id]) }}" class="btn btn-sm btn-outline">
-                    <i class="bi bi-list mr-2"></i>
-                    Ver Todas las Citas
-                </a>
-            </div>
-            @endif
         </div>
 
     </div>
@@ -217,20 +214,20 @@
         <div class="card p-6">
             <div class="flex flex-col items-center text-center mb-6">
                 <div class="w-24 h-24 rounded-full bg-gradient-to-br from-warning-500 to-warning-600 flex items-center justify-center text-white text-3xl font-bold mb-3">
-                    {{ strtoupper(substr($pacienteEspecial->primer_nombre, 0, 1) . substr($pacienteEspecial->primer_apellido, 0, 1)) }}
+                    {{ strtoupper(substr($p->primer_nombre, 0, 1) . substr($p->primer_apellido, 0, 1)) }}
                 </div>
                 <h3 class="font-bold text-gray-900 text-lg">
-                    {{ $pacienteEspecial->primer_nombre }} {{ $pacienteEspecial->primer_apellido }}
+                    {{ $p->primer_nombre }} {{ $p->primer_apellido }}
                 </h3>
                 <p class="text-sm text-gray-500">Paciente Especial</p>
             </div>
             
             <div class="space-y-2">
-                <a href="{{ route('citas.create', ['paciente_id' => $pacienteEspecial->id]) }}" class="btn btn-primary w-full">
+                <a href="{{ route('citas.index', ['paciente_id' => $p->id]) }}" class="btn btn-primary w-full">
                     <i class="bi bi-calendar-plus mr-2"></i>
-                    Nueva Cita
+                    Gestionar Citas
                 </a>
-                <a href="{{ route('historia-clinica.base.index', $pacienteEspecial->id) }}" class="btn btn-outline w-full">
+                <a href="{{ route('historia-clinica.base.index', $p->id) }}" class="btn btn-outline w-full">
                     <i class="bi bi-file-medical mr-2"></i>
                     Historia Clínica
                 </a>
@@ -251,19 +248,19 @@
             <div class="space-y-3">
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-600">Total de Citas</span>
-                    <span class="font-bold text-gray-900">{{ count($pacienteEspecial->citas ?? []) }}</span>
+                    <span class="font-bold text-gray-900">{{ count($historialCitas) }}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Citas Completadas</span>
-                    <span class="font-bold text-success-600">0</span>
+                    <span class="text-sm text-gray-600">Citas Finalizadas</span>
+                    <span class="font-bold text-success-600">{{ $historialCitas->where('estado_cita', 'Finalizada')->count() }}</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-600">Citas Pendientes</span>
-                    <span class="font-bold text-warning-600">0</span>
+                    <span class="font-bold text-warning-600">{{ $historialCitas->where('estado_cita', 'Pendiente')->count() }}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Última Visita</span>
-                    <span class="font-bold text-gray-900">N/A</span>
+                    <span class="text-sm text-gray-600">Evoluciones</span>
+                    <span class="font-bold text-medical-600">{{ count($historialMedico) }}</span>
                 </div>
             </div>
         </div>

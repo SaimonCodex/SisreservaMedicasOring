@@ -17,10 +17,12 @@
                 <i class="bi bi-clock mr-2"></i>
                 Horarios
             </a>
+            @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
             <a href="{{ route('medicos.edit', $medico->id) }}" class="btn btn-primary">
                 <i class="bi bi-pencil mr-2"></i>
                 Editar
             </a>
+            @endif
         </div>
     </div>
 </div>
@@ -201,9 +203,6 @@
                         {{ $medico->experiencia_profesional ?? 'Sin biografía registrada.' }}
                     </p>
                 </div>
-            </div>
-        </div>
-
             </div>
         </div>
 

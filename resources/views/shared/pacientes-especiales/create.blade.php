@@ -22,75 +22,66 @@
         <!-- Formulario Principal -->
         <div class="lg:col-span-2 space-y-6">
             
-            <!-- Datos del Paciente -->
+            <!-- Selección de Paciente Existente -->
             <div class="card p-6">
                 <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <i class="bi bi-person-check text-info-600"></i>
+                    Vincular Paciente Existente
+                </h3>
+                <div>
+                    <label class="form-label required">Seleccionar Paciente</label>
+                    <select name="paciente_id" class="form-select" id="pacienteSelect" required>
+                        <option value="">-- Seleccione un paciente --</option>
+                        @foreach($pacientes ?? [] as $pac)
+                            <option value="{{ $pac->id }}" 
+                                    data-nombre="{{ $pac->primer_nombre }}" 
+                                    data-apellido="{{ $pac->primer_apellido }}"
+                                    data-doc="{{ $pac->numero_documento }}"
+                                    data-tipo-doc="{{ $pac->tipo_documento }}"
+                                    data-fnac="{{ $pac->fecha_nac }}"
+                                    data-genero="{{ $pac->genero }}"
+                                    {{ old('paciente_id') == $pac->id ? 'selected' : '' }}>
+                                {{ $pac->primer_nombre }} {{ $pac->primer_apellido }} - {{ $pac->numero_documento }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="bi bi-info-circle mr-1"></i>
+                        Solo pacientes de su sede o nuevos están disponibles. 
+                        <strong>Automáticamente se completarán los campos de abajo.</strong>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Datos del Paciente (Solo Lectura/Informativo) -->
+            <div class="card p-6 opacity-75" id="datosPacienteSection">
+                <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <i class="bi bi-person-fill text-warning-600"></i>
-                    Datos del Paciente
+                    Verificación de Datos del Paciente
                 </h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Primer Nombre -->
                     <div>
-                        <label class="form-label required">Primer Nombre</label>
-                        <input type="text" name="primer_nombre" class="input" value="{{ old('primer_nombre') }}" required>
-                        @error('primer_nombre')
-                            <p class="text-danger-600 text-sm mt-1">{{ $message }}</p>
-                        @enderror
+                        <label class="form-label">Primer Nombre</label>
+                        <input type="text" id="disp_primer_nombre" class="input bg-gray-50" readonly>
                     </div>
 
-                    <!-- Segundo Nombre -->
                     <div>
-                        <label class="form-label">Segundo Nombre</label>
-                        <input type="text" name="segundo_nombre" class="input" value="{{ old('segundo_nombre') }}">
+                        <label class="form-label">Primer Apellido</label>
+                        <input type="text" id="disp_primer_apellido" class="input bg-gray-50" readonly>
                     </div>
 
-                    <!-- Primer Apellido -->
                     <div>
-                        <label class="form-label required">Primer Apellido</label>
-                        <input type="text" name="primer_apellido" class="input" value="{{ old('primer_apellido') }}" required>
-                        @error('primer_apellido')
-                            <p class="text-danger-600 text-sm mt-1">{{ $message }}</p>
-                        @enderror
+                        <label class="form-label">Documento</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="disp_tipo_doc" class="input bg-gray-50 w-20 text-center" readonly>
+                            <input type="text" id="disp_num_doc" class="input bg-gray-50" readonly>
+                        </div>
                     </div>
 
-                    <!-- Segundo Apellido -->
                     <div>
-                        <label class="form-label">Segundo Apellido</label>
-                        <input type="text" name="segundo_apellido" class="input" value="{{ old('segundo_apellido') }}">
-                    </div>
-
-                    <!-- Tipo Documento -->
-                    <div>
-                        <label class="form-label required">Tipo de Documento</label>
-                        <select name="tipo_documento" class="form-select" required>
-                            <option value="">Seleccione...</option>
-                            <option value="V" {{ old('tipo_documento') == 'V' ? 'selected' : '' }}>V - Venezolano</option>
-                            <option value="E" {{ old('tipo_documento') == 'E' ? 'selected' : '' }}>E - Extranjero</option>
-                            <option value="P" {{ old('tipo_documento') == 'P' ? 'selected' : '' }}>P - Pasaporte</option>
-                        </select>
-                    </div>
-
-                    <!-- Número Documento -->
-                    <div>
-                        <label class="form-label required">Número de Documento</label>
-                        <input type="text" name="numero_documento" class="input" value="{{ old('numero_documento') }}" required>
-                    </div>
-
-                    <!-- Fecha Nacimiento -->
-                    <div>
-                        <label class="form-label required">Fecha de Nacimiento</label>
-                        <input type="date" name="fecha_nacimiento" class="input" value="{{ old('fecha_nacimiento') }}" required>
-                    </div>
-
-                    <!-- Género -->
-                    <div>
-                        <label class="form-label required">Género</label>
-                        <select name="genero" class="form-select" required>
-                            <option value="">Seleccione...</option>
-                            <option value="Masculino" {{ old('genero') == 'Masculino' ? 'selected' : '' }}>Masculino</option>
-                            <option value="Femenino" {{ old('genero') == 'Femenino' ? 'selected' : '' }}>Femenino</option>
-                        </select>
+                        <label class="form-label">Fecha de Nacimiento</label>
+                        <input type="text" id="disp_fecha_nac" class="input bg-gray-50" readonly>
                     </div>
                 </div>
             </div>
@@ -275,6 +266,25 @@
 
 @push('scripts')
 <script>
+    // Al cambiar el paciente seleccionado, actualizar los campos de visualización
+    document.getElementById('pacienteSelect').addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        
+        if (this.value) {
+            document.getElementById('disp_primer_nombre').value = option.dataset.nombre || 'N/A';
+            document.getElementById('disp_primer_apellido').value = option.dataset.apellido || 'N/A';
+            document.getElementById('disp_tipo_doc').value = option.dataset.tipoDoc || 'N/A';
+            document.getElementById('disp_num_doc').value = option.dataset.doc || 'N/A';
+            document.getElementById('disp_fecha_nac').value = option.dataset.fnac || 'N/A';
+        } else {
+            document.getElementById('disp_primer_nombre').value = '';
+            document.getElementById('disp_primer_apellido').value = '';
+            document.getElementById('disp_tipo_doc').value = '';
+            document.getElementById('disp_num_doc').value = '';
+            document.getElementById('disp_fecha_nac').value = '';
+        }
+    });
+
     // Toggle nuevo representante fields
     document.getElementById('representanteSelect')?.addEventListener('change', function() {
         const nuevoRepDiv = document.getElementById('nuevoRepresentante');
@@ -285,6 +295,12 @@
             nuevoRepDiv.style.opacity = '1';
             nuevoRepDiv.querySelectorAll('input, select').forEach(el => el.disabled = false);
         }
+    });
+
+    // Ejecutar al cargar por si hay valores previos de 'old()'
+    window.addEventListener('load', function() {
+        document.getElementById('pacienteSelect').dispatchEvent(new Event('change'));
+        document.getElementById('representanteSelect')?.dispatchEvent(new Event('change'));
     });
 </script>
 @endpush

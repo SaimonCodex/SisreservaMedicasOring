@@ -17,29 +17,35 @@
 </div>
 
 <!-- Filtros (Visible solo en modo lista) -->
-<div id="filters-container" class="card p-6 mb-6">
-    <form method="GET" action="{{ route('citas.index') }}" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+<div id="filters-container" class="card p-6 mb-6 shadow-sm border-gray-100">
+    <form method="GET" action="{{ route('citas.index') }}" class="grid grid-cols-1 md:grid-cols-12 gap-4">
         <!-- Búsqueda -->
-        <div class="md:col-span-2">
-            <label class="form-label">Buscar</label>
+        <div class="md:col-span-4">
+            <label class="form-label">Buscar Paciente o Médico</label>
             <div class="relative">
                 <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input type="text" name="buscar" class="input pl-10" placeholder="Paciente, médico, cédula..." value="{{ request('buscar') }}">
+                <input type="text" name="buscar" class="input pl-10" placeholder="Nombre, apellido, documento..." value="{{ request('buscar') }}">
             </div>
         </div>
 
-        <!-- Fecha (Solo afecta lista) -->
-        <div>
-            <label class="form-label">Fecha</label>
-            <input type="date" name="fecha" class="input" value="{{ request('fecha') }}">
+        <!-- Consultorio (Solo Admin) -->
+        <div class="md:col-span-2">
+            <label class="form-label">Sede / Consultorio</label>
+            <select name="consultorio_id" class="form-select">
+                <option value="">Todas las Sedes</option>
+                @foreach($consultorios as $consultorio)
+                    <option value="{{ $consultorio->id }}" {{ request('consultorio_id') == $consultorio->id ? 'selected' : '' }}>
+                        {{ $consultorio->nombre }}
+                    </option>
+                @endforeach
+            </select>
         </div>
 
         <!-- Médico (Solo Admin) -->
-        @if(auth()->user()->rol_id == 1)
-        <div>
-            <label class="form-label">Médico</label>
+        <div class="md:col-span-2">
+            <label class="form-label">Médico Especialista</label>
             <select name="medico_id" id="medico_filter" class="form-select">
-                <option value="">Todos</option>
+                <option value="">Todos los Médicos</option>
                 @foreach($medicos as $medico)
                     <option value="{{ $medico->id }}" {{ request('medico_id') == $medico->id ? 'selected' : '' }}>
                         Dr. {{ $medico->primer_nombre }} {{ $medico->primer_apellido }}
@@ -47,33 +53,35 @@
                 @endforeach
             </select>
         </div>
-        @else
-        <!-- Espacio vacío para layout si no es admin -->
-        <div class="hidden md:block"></div>
-        @endif
 
         <!-- Estado -->
-        <div>
-            <label class="form-label">Estado</label>
+        <div class="md:col-span-2">
+            <label class="form-label">Estado de Cita</label>
             <select name="estado" class="form-select">
-                <option value="">Todos</option>
+                <option value="">Todos los Estados</option>
                 <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente</option>
                 <option value="confirmada" {{ request('estado') == 'confirmada' ? 'selected' : '' }}>Confirmada</option>
                 <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada</option>
-                <option value="cancelada" {{ request('estado') == 'cancelada' ? 'selected' : '' }}>Cancelada</option>
+                <option value="cancelada" {{ request('estado') == 'cancelada' ? 'selected' : '' }}>Cancelada/No Asistió</option>
             </select>
         </div>
 
+        <!-- Fecha (Solo afecta lista) -->
+        <div class="md:col-span-2">
+            <label class="form-label">Fecha Específica</label>
+            <input type="date" name="fecha" class="input" value="{{ request('fecha') }}">
+        </div>
+
         <!-- Botones -->
-        <div class="flex gap-2 items-end md:col-start-5">
-            <button type="submit" class="btn btn-primary w-full justify-center">
-                <i class="bi bi-funnel mr-2"></i> Filtrar
-            </button>
-            @if(request()->hasAny(['buscar', 'fecha', 'medico_id', 'estado']))
-            <a href="{{ route('citas.index') }}" class="btn btn-outline" title="Limpiar filtros">
-                <i class="bi bi-x-lg"></i>
+        <div class="md:col-span-12 flex justify-end gap-2 pt-2 border-t border-gray-50 mt-2">
+            @if(request()->hasAny(['buscar', 'fecha', 'medico_id', 'estado', 'consultorio_id']))
+            <a href="{{ route('citas.index') }}" class="btn btn-ghost text-gray-500" title="Limpiar filtros">
+                <i class="bi bi-eraser mr-2"></i> Limpiar Filtros
             </a>
             @endif
+            <button type="submit" class="btn btn-primary px-8">
+                <i class="bi bi-funnel mr-2"></i> Aplicar Filtros
+            </button>
         </div>
     </form>
 </div>
@@ -297,12 +305,6 @@
                                     </form>
                                 @endif
 
-                                @if(in_array($cita->estado_cita, ['Confirmada', 'En Progreso']))
-                                    <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-clipboard-pulse mr-1"></i> Atender / Evolución
-                                    </a>
-                                @endif
-
                                 @if($cita->facturaPaciente && $cita->facturaPaciente->pagos && $cita->facturaPaciente->pagos->count() > 0)
                                     @php
                                         $pago = $cita->facturaPaciente->pagos->sortByDesc('created_at')->first();
@@ -351,7 +353,15 @@
     let calendar;
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Inicializar si el usuario ya prefirió calendario antes se podría hacer aquí
+        // Escuchar cambios en filtros para refrescar calendario si está visible
+        const filters = document.querySelectorAll('select[name="medico_id"], select[name="consultorio_id"]');
+        filters.forEach(filter => {
+            filter.addEventListener('change', function() {
+                if (calendar) {
+                    calendar.refetchEvents();
+                }
+            });
+        });
     });
 
     function toggleView(viewName) {
@@ -416,7 +426,8 @@
                 url: '{{ route("citas.events") }}',
                 extraParams: function() {
                     return {
-                        medico_id: document.getElementById('medico_filter')?.value || ''
+                        medico_id: document.getElementById('medico_filter')?.value || '',
+                        consultorio_id: document.querySelector('select[name="consultorio_id"]')?.value || ''
                     };
                 }
             },

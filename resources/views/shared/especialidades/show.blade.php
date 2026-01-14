@@ -13,6 +13,7 @@
             <p class="text-gray-500 mt-1">Detalle completo de la especialidad médica</p>
         </div>
         <div class="flex gap-3">
+            @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
             <a href="{{ route('especialidades.edit', $especialidad->id) }}" class="btn btn-primary">
                 <i class="bi bi-pencil mr-2"></i>
                 Editar
@@ -25,6 +26,7 @@
                     Desactivar
                 </button>
             </form>
+            @endif
         </div>
     </div>
 </div>
@@ -172,6 +174,7 @@
                         <p class="text-[10px] opacity-80 font-normal">Agendar paciente aquí</p>
                     </div>
                 </a>
+                @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
                 <a href="{{ route('medicos.create', ['especialidad_id' => $especialidad->id]) }}" class="btn btn-outline w-full justify-start py-3">
                     <i class="bi bi-person-plus mr-3 text-lg"></i>
                     <div>
@@ -179,6 +182,7 @@
                         <p class="text-[10px] text-gray-500 font-normal">Añadir profesional</p>
                     </div>
                 </a>
+                @endif
                 <a href="#" class="btn btn-ghost w-full justify-start text-gray-600 hover:bg-gray-50">
                     <i class="bi bi-file-earmark-bar-graph mr-3 text-lg"></i> Ver Reportes
                 </a>

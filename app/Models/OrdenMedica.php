@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class OrdenMedica extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\ScopedByConsultorio;
 
     protected $table = 'ordenes_medicas';
     protected $primaryKey = 'id';
