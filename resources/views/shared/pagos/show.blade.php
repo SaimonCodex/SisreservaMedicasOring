@@ -28,12 +28,26 @@
 
                     <form action="{{ route('pagos.confirmar', $pago->id_pago) }}" method="POST">
                         @csrf
-                        <input type="hidden" name="confirmado_por" value="{{ auth()->user()->administrador->id ?? '' }}">
                         <button type="submit" class="btn btn-success text-white shadow-lg shadow-emerald-200">
                             <i class="bi bi-check-lg mr-2"></i> Confirmar Pago
                         </button>
                     </form>
                 </div>
+            @endif
+
+            @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
+            <div class="flex gap-2">
+                <a href="{{ route('pagos.edit', $pago->id_pago) }}" class="btn btn-outline border-gray-200" title="Editar">
+                    <i class="bi bi-pencil mr-2"></i> Editar
+                </a>
+                <form action="{{ route('pagos.destroy', $pago->id_pago) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este pago?');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline border-rose-200 text-rose-600 hover:bg-rose-50" title="Eliminar">
+                        <i class="bi bi-trash mr-2"></i> Eliminar
+                    </button>
+                </form>
+            </div>
             @endif
         </div>
     </div>

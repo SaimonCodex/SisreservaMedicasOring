@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-display font-bold text-gray-900">Gestión de Facturación</h1>
             <p class="text-gray-600 mt-1">Administra facturas y cobros</p>
         </div>
-        <a href="{{ url('index.php/shared/facturacion/create') }}" class="btn btn-primary">
+        <a href="{{ route('facturacion.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i>
             <span>Nueva Factura</span>
         </a>
@@ -96,7 +96,7 @@
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-search"></i> Buscar
                 </button>
-                <a href="{{ url('index.php/shared/facturacion') }}" class="btn btn-outline">
+                <a href="{{ route('facturacion.index') }}" class="btn btn-outline">
                     <i class="bi bi-x-lg"></i>
                 </a>
             </div>
@@ -157,15 +157,15 @@
                         </td>
                         <td>
                             <div class="flex gap-2">
-                                <a href="{{ url('index.php/shared/facturacion/' . $factura->id) }}" class="btn btn-sm btn-outline" title="Ver">
+                                <a href="{{ route('facturacion.show', $factura->id) }}" class="btn btn-sm btn-outline" title="Ver">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 @if($factura->status != 'pagada')
-                                <a href="{{ url('index.php/shared/facturacion/' . $factura->id . '/edit') }}" class="btn btn-sm btn-outline" title="Editar">
+                                <a href="{{ route('facturacion.edit', $factura->id) }}" class="btn btn-sm btn-outline" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 @endif
-                                <a href="{{ url('index.php/shared/facturacion/' . $factura->id . '/pdf') }}" class="btn btn-sm btn-outline text-rose-600" title="PDF">
+                                <a href="{{ route('facturacion.show', $factura->id) }}?format=pdf" class="btn btn-sm btn-outline text-rose-600" title="PDF">
                                     <i class="bi bi-file-pdf"></i>
                                 </a>
                             </div>

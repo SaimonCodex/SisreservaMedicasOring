@@ -14,6 +14,23 @@ use Illuminate\Support\Facades\Mail;
 
 class PagoController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+                // Métodos restringidos para administradores locales
+                $restrictedMethods = ['edit', 'update', 'destroy'];
+                $method = $request->route()->getActionMethod();
+
+                if (in_array($method, $restrictedMethods)) {
+                    abort(403, 'Solo los administradores Root tienen permiso para editar o eliminar registros de pago.');
+                }
+            }
+            return $next($request);
+        });
+    }
+
     public function index(Request $request)
     {
         $query = Pago::with([
@@ -60,9 +77,21 @@ class PagoController extends Controller
 
     public function create()
     {
-        $facturas = FacturaPaciente::where('status_factura', 'Emitida')
-                                  ->where('status', true)
-                                  ->get();
+        $user = auth()->user();
+        
+        $query = FacturaPaciente::with(['paciente', 'cita.consultorio'])
+                                ->whereIn('status_factura', ['Emitida', 'Parcialmente Pagada'])
+                                ->where('status', true);
+
+        // Aplicar filtro si es administrador local
+        if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id')->toArray();
+            $query->whereHas('cita', function ($q) use ($consultorioIds) {
+                $q->whereIn('consultorio_id', $consultorioIds);
+            });
+        }
+
+        $facturas = $query->orderBy('created_at', 'desc')->get();
         
         $metodosPago = MetodoPago::where('status', true)->get();
         $tasas = TasaDolar::where('status', true)->orderBy('fecha_tasa', 'desc')->get();
@@ -209,25 +238,19 @@ class PagoController extends Controller
 
     public function confirmarPago(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
-            'confirmado_por' => 'required|exists:administradores,id'
-        ]);
-
-        if ($validator->fails()) {
-            if ($request->ajax()) {
-                return response()->json(['success' => false, 'message' => $validator->errors()->first()], 400);
-            }
-            return redirect()->back()->withErrors($validator);
-        }
-
         try {
             \DB::beginTransaction();
 
             $pago = Pago::with(['facturaPaciente.cita'])->findOrFail($id);
             
+            $adminId = auth()->user()->administrador->id ?? null;
+            if (!$adminId) {
+                throw new \Exception('No se pudo identificar el perfil de administrador para confirmar el pago.');
+            }
+
             $pago->update([
                 'estado' => 'Confirmado',
-                'confirmado_por' => $request->confirmado_por
+                'confirmado_por' => $adminId
             ]);
 
             // Actualizar estado de la factura

@@ -5,175 +5,214 @@
 @section('content')
 <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/shared/facturacion') }}" class="btn btn-outline">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-        <div>
-            <h1 class="text-2xl font-display font-bold text-gray-900">Nueva Factura</h1>
-            <p class="text-gray-600 mt-1">Generar una nueva factura</p>
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <a href="{{ route('facturacion.index') }}" class="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-display font-bold text-gray-900">Nueva Factura</h1>
+                <p class="text-gray-600">Generar cobro para una cita completada</p>
+            </div>
         </div>
     </div>
 
-    <form action="{{ url('index.php/shared/facturacion') }}" method="POST" class="space-y-6">
+    <form action="{{ route('facturacion.store') }}" method="POST" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         @csrf
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Main Form -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Información del Paciente -->
-                <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <i class="bi bi-person text-blue-600"></i>
-                        Información del Paciente
-                    </h3>
+        <!-- Main Column -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Selección de Cita -->
+            <div class="card p-6 shadow-sm border-gray-100 overflow-hidden relative">
+                <div class="absolute top-0 right-0 -mt-2 -mr-2 w-24 h-24 bg-blue-50 rounded-full blur-3xl opacity-50"></div>
+                
+                <h3 class="text-lg font-display font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-200">
+                        <i class="bi bi-calendar-check text-sm"></i>
+                    </span>
+                    Seleccionar Cita Pendiente
+                </h3>
 
-                    <div class="space-y-4">
-                        <div>
-                            <label class="form-label form-label-required">Paciente</label>
-                            <select name="paciente_id" class="form-select" required>
-                                <option value="">Seleccionar paciente...</option>
-                                @foreach($pacientes ?? [] as $paciente)
-                                <option value="{{ $paciente->id }}" {{ old('paciente_id') == $paciente->id ? 'selected' : '' }}>
-                                    {{ $paciente->nombre_completo }} - {{ $paciente->cedula }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label form-label-required">Fecha</label>
-                                <input type="date" name="fecha" class="input" value="{{ old('fecha', date('Y-m-d')) }}" required>
-                            </div>
-                            <div>
-                                <label class="form-label">Fecha de Vencimiento</label>
-                                <input type="date" name="fecha_vencimiento" class="input" value="{{ old('fecha_vencimiento') }}">
-                            </div>
-                        </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="form-label font-semibold text-gray-700 mb-1">Cita por Facturar</label>
+                        <select name="cita_id" id="cita_id" class="form-select select2" required>
+                            <option value="">Seleccionar cita...</option>
+                            @foreach($citas as $cita)
+                            <option value="{{ $cita->id }}" 
+                                    data-paciente="{{ optional($cita->paciente)->nombre_completo ?? 'N/A' }}"
+                                    data-cedula="{{ optional($cita->paciente)->cedula ?? 'N/A' }}"
+                                    data-medico="Dr. {{ optional($cita->medico)->primer_nombre ?? 'N/A' }} {{ optional($cita->medico)->primer_apellido ?? '' }}"
+                                    data-especialidad="{{ optional($cita->especialidad)->nombre ?? 'N/A' }}"
+                                    data-tarifa="{{ $cita->tarifa ?? 0 }}"
+                                    {{ old('cita_id') == $cita->id ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d/m/Y') }} - {{ optional($cita->paciente)->nombre_completo ?? 'Paciente no encontrado' }} ({{ optional($cita->especialidad)->nombre ?? 'Sin especialidad' }})
+                            </option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Solo se muestran citas en estado 'Completada' que aún no han sido facturadas.</p>
                     </div>
-                </div>
 
-                <!-- Detalle de la Factura -->
-                <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <i class="bi bi-receipt text-emerald-600"></i>
-                        Detalle de la Factura
-                    </h3>
-
-                    <div class="space-y-4">
-                        <div>
-                            <label class="form-label form-label-required">Concepto</label>
-                            <input type="text" name="concepto" class="input" placeholder="Ej: Consulta General" value="{{ old('concepto') }}" required>
-                        </div>
-
-                        <div>
-                            <label class="form-label">Descripción</label>
-                            <textarea name="descripcion" rows="3" class="form-textarea" placeholder="Detalles adicionales...">{{ old('descripcion') }}</textarea>
-                        </div>
-
-                        <div class="grid grid-cols-3 gap-4">
+                    <!-- Info dinámica de la cita -->
+                    <div id="cita-info" class="hidden animate-fade-in">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
                             <div>
-                                <label class="form-label form-label-required">Subtotal</label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                                    <input type="number" name="subtotal" class="input pl-8" placeholder="0.00" value="{{ old('subtotal') }}" step="0.01" required>
-                                </div>
+                                <p class="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Paciente</p>
+                                <p id="info-paciente" class="font-semibold text-gray-900">-</p>
+                                <p id="info-cedula" class="text-sm text-gray-600">-</p>
                             </div>
                             <div>
-                                <label class="form-label">Descuento (%)</label>
-                                <input type="number" name="descuento" class="input" placeholder="0" value="{{ old('descuento', 0) }}" min="0" max="100">
-                            </div>
-                            <div>
-                                <label class="form-label">IVA (%)</label>
-                                <input type="number" name="iva" class="input" placeholder="0" value="{{ old('iva', 0) }}" min="0" max="100">
-                            </div>
-                        </div>
-
-                        <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                            <div class="flex items-center justify-between">
-                                <span class="text-lg font-semibold text-gray-900">Total a Pagar:</span>
-                                <span class="text-3xl font-bold text-emerald-700">$0.00</span>
+                                <p class="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Médico / Especialidad</p>
+                                <p id="info-medico" class="font-semibold text-gray-900">-</p>
+                                <p id="info-especialidad" class="text-sm text-gray-600">-</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Sidebar -->
-            <div class="space-y-6">
-                <!-- Estado -->
-                <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Estado de Pago</h3>
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
-                            <input type="radio" name="status" value="pendiente" class="form-radio" {{ old('status', 'pendiente') == 'pendiente' ? 'checked' : '' }}>
-                            <div>
-                                <p class="font-semibold text-gray-900">Pendiente</p>
-                                <p class="text-sm text-gray-600">Por cobrar</p>
-                            </div>
-                        </label>
-                        <label class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
-                            <input type="radio" name="status" value="pagada" class="form-radio" {{ old('status') == 'pagada' ? 'checked' : '' }}>
-                            <div>
-                                <p class="font-semibold text-gray-900">Pagada</p>
-                                <p class="text-sm text-gray-600">Ya cobrada</p>
-                            </div>
-                        </label>
+            <!-- Datos de Facturación -->
+            <div class="card p-6 shadow-sm border-gray-100">
+                <h3 class="text-lg font-display font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-sm shadow-emerald-200">
+                        <i class="bi bi-receipt text-sm"></i>
+                    </span>
+                    Detalles de la Factura
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="form-label font-semibold text-gray-700">Fecha de Emisión</label>
+                        <input type="date" name="fecha_emision" class="input" value="{{ date('Y-m-d') }}" required>
+                    </div>
+                    <div>
+                        <label class="form-label font-semibold text-gray-700">Fecha de Vencimiento (Opcional)</label>
+                        <input type="date" name="fecha_vencimiento" class="input" value="{{ date('Y-m-d', strtotime('+3 days')) }}">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="form-label font-semibold text-gray-700">Número de Factura (Opcional)</label>
+                        <input type="text" name="numero_factura" class="input" placeholder="Ej: 000001">
+                        <p class="text-xs text-gray-500 mt-1">Si se deja vacío, el sistema generará uno secuencial.</p>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Actions -->
-                <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones</h3>
-                    <div class="space-y-3">
-                        <button type="submit" class="btn btn-success w-full">
-                            <i class="bi bi-check-lg"></i>
-                            Generar Factura
-                        </button>
-                        <a href="{{ url('index.php/shared/facturacion') }}" class="btn btn-outline w-full">
-                            <i class="bi bi-x-lg"></i>
-                            Cancelar
-                        </a>
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Tasa y Totales -->
+            <div class="card p-6 bg-gradient-to-br from-indigo-900 to-slate-900 text-white border-none shadow-xl shadow-indigo-100 relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 w-32 h-32 bg-white/5 rounded-full"></div>
+                
+                <h3 class="text-lg font-display font-bold mb-6 flex items-center gap-2">
+                    <i class="bi bi-wallet2"></i>
+                    Monto y Tasa
+                </h3>
+
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-indigo-200 mb-2">Tasa de Cambio Aplicable</label>
+                        <select name="tasa_id" id="tasa_id" class="form-select bg-white/10 border-white/20 text-white focus:ring-indigo-500" required>
+                            @foreach($tasas as $tasa)
+                            <option value="{{ $tasa->id }}" data-valor="{{ $tasa->valor }}" class="text-gray-900" {{ $loop->first ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::parse($tasa->fecha_tasa)->format('d/m/Y') }} - {{ number_format($tasa->valor, 2) }} Bs.
+                            </option>
+                            @endforeach
+                        </select>
                     </div>
-                </div>
 
-                <!-- Info -->
-                <div class="card p-6 bg-blue-50 border-blue-200">
-                    <div class="flex gap-3">
-                        <i class="bi bi-info-circle text-blue-600 text-xl"></i>
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-1">Información</h4>
-                            <p class="text-sm text-gray-600">La factura se generará automáticamente con un número único secuencial.</p>
+                    <div class="space-y-4 pt-4 border-t border-white/10">
+                        <div class="flex justify-between items-center">
+                            <span class="text-indigo-200">Tarifa Consulta:</span>
+                            <span id="label-tarifa-usd" class="text-xl font-bold tracking-tight text-white">$0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center py-4 bg-white/5 rounded-2xl px-4 border border-white/5">
+                            <span class="text-indigo-200">Total en Bs:</span>
+                            <span id="label-total-bs" class="text-2xl font-black text-amber-400">0.00 Bs.</span>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="card p-6 shadow-sm border-gray-100">
+                <button type="submit" class="btn btn-primary w-full py-4 text-lg font-bold shadow-lg shadow-blue-100 mb-3 group">
+                    <span>Generar Factura</span>
+                    <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                </button>
+                <a href="{{ route('facturacion.index') }}" class="btn btn-outline w-full py-3 justify-center">
+                    Cancelar
+                </a>
+            </div>
+
+            <!-- Aviso -->
+            <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
+                <i class="bi bi-shield-lock text-amber-600 text-xl"></i>
+                <p class="text-xs text-amber-800 leading-relaxed">
+                    Al generar la factura, el sistema calculará automáticamente el reparto de honorarios entre médico, consultorio y sistema según la configuración vigente.
+                </p>
             </div>
         </div>
     </form>
 </div>
 
 <script>
-// Calculate total dynamically
 document.addEventListener('DOMContentLoaded', function() {
-    const subtotalInput = document.querySelector('input[name="subtotal"]');
-    const descuentoInput = document.querySelector('input[name="descuento"]');
-    const ivaInput = document.querySelector('input[name="iva"]');
+    const citaSelect = document.getElementById('cita_id');
+    const tasaSelect = document.getElementById('tasa_id');
+    const citaInfo = document.getElementById('cita-info');
     
-    function calculateTotal() {
-        const subtotal = parseFloat(subtotalInput.value) || 0;
-        const descuento = parseFloat(descuentoInput.value) || 0;
-        const iva = parseFloat(ivaInput.value) || 0;
+    // Labels
+    const lblPaciente = document.getElementById('info-paciente');
+    const lblCedula = document.getElementById('info-cedula');
+    const lblMedico = document.getElementById('info-medico');
+    const lblEspecialidad = document.getElementById('info-especialidad');
+    const lblTarifaUsd = document.getElementById('label-tarifa-usd');
+    const lblTotalBs = document.getElementById('label-total-bs');
+
+    function actualizarCalculos() {
+        const option = citaSelect.options[citaSelect.selectedIndex];
         
-        const afterDiscount = subtotal * (1 - descuento / 100);
-        const total = afterDiscount * (1 + iva / 100);
+        if (!option.value) {
+            citaInfo.classList.add('hidden');
+            lblTarifaUsd.textContent = '$0.00';
+            lblTotalBs.textContent = '0.00 Bs.';
+            return;
+        }
+
+        citaInfo.classList.remove('hidden');
         
-        document.querySelector('.text-emerald-700').textContent = '$' + total.toFixed(2);
+        // Data from cita
+        const tarifa = parseFloat(option.dataset.tarifa) || 0;
+        lblPaciente.textContent = option.dataset.paciente;
+        lblCedula.textContent = 'C.I: ' + option.dataset.cedula;
+        lblMedico.textContent = option.dataset.medico;
+        lblEspecialidad.textContent = option.dataset.especialidad;
+        lblTarifaUsd.textContent = '$' + tarifa.toFixed(2);
+
+        // Data from tasa
+        const tasaOption = tasaSelect.options[tasaSelect.selectedIndex];
+        const valorTasa = parseFloat(tasaOption.dataset.valor) || 0;
+        
+        const totalBs = tarifa * valorTasa;
+        lblTotalBs.textContent = new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2 }).format(totalBs) + ' Bs.';
     }
+
+    citaSelect.addEventListener('change', actualizarCalculos);
+    tasaSelect.addEventListener('change', actualizarCalculos);
     
-    subtotalInput?.addEventListener('input', calculateTotal);
-    descuentoInput?.addEventListener('input', calculateTotal);
-    ivaInput?.addEventListener('input', calculateTotal);
+    // Initial call
+    if (citaSelect.value) actualizarCalculos();
 });
 </script>
+
+<style>
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
 @endsection

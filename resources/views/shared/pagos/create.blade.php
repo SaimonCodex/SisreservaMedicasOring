@@ -5,37 +5,51 @@
 @section('content')
 <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center gap-4">
-        <a href="{{ url('index.php/shared/pagos') }}" class="btn btn-outline">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-        <div>
-            <h1 class="text-2xl font-display font-bold text-gray-900">Registrar Nuevo Pago</h1>
-            <p class="text-gray-600 mt-1">Procesar un pago de factura</p>
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <a href="{{ route('pagos.index') }}" class="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-3xl font-display font-bold text-gray-900 leading-tight">Registrar Pago</h1>
+                <p class="text-gray-600">Proceso de recaudación y auditoría de facturas</p>
+            </div>
         </div>
     </div>
 
-    <form action="{{ url('index.php/shared/pagos') }}" method="POST" class="space-y-6">
+    <form action="{{ route('pagos.store') }}" method="POST" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         @csrf
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Main Form -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Factura -->
-                <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <i class="bi bi-receipt text-blue-600"></i>
-                        Seleccionar Factura
-                    </h3>
+        <!-- Main Form Column -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Factura -->
+            <div class="card p-6 shadow-sm border-gray-100 relative overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-2 -mr-2 w-24 h-24 bg-blue-50 rounded-full blur-3xl opacity-50"></div>
+
+                <h3 class="text-lg font-display font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-200">
+                        <i class="bi bi-receipt text-sm"></i>
+                    </span>
+                    Seleccionar Factura Pendiente
+                </h3>
 
                     <div class="space-y-4">
                         <div>
-                            <label class="form-label form-label-required">Factura</label>
-                            <select name="factura_id" class="form-select" required id="facturaSelect">
+                            <label class="form-label font-semibold text-gray-700 mb-1">Factura Pendiente</label>
+                            <select name="id_factura_paciente" id="factura_id" class="form-select select2" required>
                                 <option value="">Seleccionar factura...</option>
-                                @foreach($facturas ?? [] as $factura)
-                                <option value="{{ $factura->id }}" data-monto="{{ $factura->total }}" data-paciente="{{ $factura->paciente->nombre_completo ?? 'N/A' }}" {{ request('factura_id') == $factura->id ? 'selected' : '' }}>
-                                    #{{ $factura->numero }} - {{ $factura->paciente->nombre_completo ?? 'N/A' }} - ${{ number_format($factura->total, 2) }}
+                                @foreach($facturas as $factura)
+                                @php
+                                    $totalPagado = $factura->pagos->where('estado', 'Confirmado')->sum('monto_equivalente_usd');
+                                    $saldoPendiente = $factura->monto_usd - $totalPagado;
+                                @endphp
+                                <option value="{{ $factura->id }}" 
+                                        data-monto-usd="{{ $saldoPendiente }}"
+                                        data-paciente="{{ optional($factura->paciente)->nombre_completo ?? 'N/A' }}"
+                                        data-cedula="{{ optional($factura->paciente)->cedula ?? 'N/A' }}"
+                                        data-nro="{{ $factura->numero_factura }}"
+                                        {{ request('factura_id') == $factura->id ? 'selected' : '' }}>
+                                    {{ $factura->numero_factura }} - {{ optional($factura->paciente)->nombre_completo }} (Pendiente: ${{ number_format($saldoPendiente, 2) }})
                                 </option>
                                 @endforeach
                             </select>
@@ -48,90 +62,72 @@
                                     <p class="font-semibold text-gray-900" id="facturaPaciente">-</p>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-gray-600">Monto a Pagar</p>
+                                    <p class="text-sm text-gray-600">Monto Pendiente (USD)</p>
                                     <p class="text-2xl font-bold text-blue-700" id="facturaMonto">$0.00</p>
+                                    <input type="hidden" id="max_usd" value="0">
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Payment Details -->
-                <div class="card p-6">
-                    <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <i class="bi bi-cash-stack text-emerald-600"></i>
-                        Detalles del Pago
+                <!-- Detalle de Pago -->
+                <div class="card p-6 shadow-sm border-gray-100 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 -mt-2 -mr-2 w-24 h-24 bg-emerald-50 rounded-full blur-3xl opacity-50"></div>
+
+                    <h3 class="text-lg font-display font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-sm shadow-emerald-200">
+                            <i class="bi bi-cash-stack text-sm"></i>
+                        </span>
+                        Información de Recaudación
                     </h3>
 
                     <div class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="form-label form-label-required">Método de Pago</label>
-                                <select name="metodo" class="form-select" required id="metodoPago">
-                                    <option value="">Seleccionar...</option>
-                                    <option value="efectivo" {{ old('metodo') == 'efectivo' ? 'selected' : '' }}>Efectivo</option>
-                                    <option value="tarjeta" {{ old('metodo') == 'tarjeta' ? 'selected' : '' }}>Tarjeta Débito/Crédito</option>
-                                    <option value="transferencia" {{ old('metodo') == 'transferencia' ? 'selected' : '' }}>Transferencia Bancaria</option>
-                                    <option value="cheque" {{ old('metodo') == 'cheque' ? 'selected' : '' }}>Cheque</option>
-                                    <option value="pago_movil" {{ old('metodo') == 'pago_movil' ? 'selected' : '' }}>Pago Móvil</option>
+                                <label class="form-label font-semibold">Tasa de Cambio</label>
+                                <select name="tasa_aplicada_id" id="tasa_id" class="form-select" required>
+                                    @foreach($tasas as $tasa)
+                                    <option value="{{ $tasa->id }}" data-valor="{{ $tasa->valor }}">
+                                        {{ $tasa->nombre }} ({{ number_format($tasa->valor, 2) }} Bs.)
+                                    </option>
+                                    @endforeach
                                 </select>
                             </div>
-
                             <div>
-                                <label class="form-label form-label-required">Monto</label>
+                                <label class="form-label font-semibold">Monto en Bolívares (Bs.)</label>
                                 <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                                    <input type="number" name="monto" class="input pl-8" placeholder="0.00" value="{{ old('monto') }}" step="0.01" required>
+                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-400">Bs.</span>
+                                    <input type="number" name="monto_pagado_bs" id="monto_bs" class="input pl-12 font-bold text-lg" step="0.01" required placeholder="0.00">
                                 </div>
+                                <p class="text-xs text-gray-500 mt-1" id="monto_usd_calc">Equivale a: $0.00 USD</p>
                             </div>
                         </div>
 
-                        <div>
-                            <label class="form-label form-label-required">Fecha de Pago</label>
-                            <input type="date" name="fecha" class="input" value="{{ old('fecha', date('Y-m-d')) }}" required>
-                        </div>
-
-                        <!-- Payment Method Specific Fields -->
-                        <div id="tarjetaFields" class="hidden space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="form-label">Últimos 4 dígitos de la tarjeta</label>
-                                <input type="text" name="tarjeta_ultimos_digitos" class="input" placeholder="XXXX" maxlength="4">
-                            </div>
-                            <div>
-                                <label class="form-label">Tipo de Tarjeta</label>
-                                <select name="tarjeta_tipo" class="form-select">
+                                <label class="form-label font-semibold">Método de Pago</label>
+                                <select name="id_metodo" id="id_metodo" class="form-select" required>
                                     <option value="">Seleccionar...</option>
-                                    <option value="credito">Crédito</option>
-                                    <option value="debito">Débito</option>
+                                    @foreach($metodosPago as $metodo)
+                                    <option value="{{ $metodo->id_metodo }}">{{ $metodo->nombre }}</option>
+                                    @endforeach
                                 </select>
                             </div>
-                        </div>
-
-                        <div id="transferenciaFields" class="hidden space-y-4">
                             <div>
-                                <label class="form-label">Número de Referencia</label>
-                                <input type="text" name="referencia_bancaria" class="input" placeholder="Ej: 1234567890">
-                            </div>
-                            <div>
-                                <label class="form-label">Banco</label>
-                                <input type="text" name="banco" class="input" placeholder="Nombre del banco">
-                            </div>
-                        </div>
-
-                        <div id="chequeFields" class="hidden space-y-4">
-                            <div>
-                                <label class="form-label">Número de Cheque</label>
-                                <input type="text" name="numero_cheque" class="input" placeholder="Ej: 001234">
-                            </div>
-                            <div>
-                                <label class="form-label">Banco Emisor</label>
-                                <input type="text" name="banco_emisor" class="input" placeholder="Nombre del banco">
+                                <label class="form-label font-semibold">Referencia</label>
+                                <input type="text" name="referencia" class="input" placeholder="Nro de comprobante" required>
                             </div>
                         </div>
 
                         <div>
-                            <label class="form-label">Notas Adicionales</label>
-                            <textarea name="notas" rows="3" class="form-textarea" placeholder="Observaciones sobre el pago...">{{ old('notas') }}</textarea>
+                            <label class="form-label font-semibold">Fecha de Pago</label>
+                            <input type="date" name="fecha_pago" class="input" value="{{ date('Y-m-d') }}" required>
+                        </div>
+
+                        <div>
+                            <label class="form-label font-semibold">Observaciones</label>
+                            <textarea name="comentarios" rows="3" class="form-textarea" placeholder="Opcional...">{{ old('comentarios') }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -147,8 +143,8 @@
                             <i class="bi bi-check-lg"></i>
                             Registrar Pago
                         </button>
-                        <a href="{{ url('index.php/shared/pagos') }}" class="btn btn-outline w-full">
-                            <i class="bi bi-x-lg"></i>
+                         <a href="{{ route('pagos.index') }}" class="btn btn-outline w-full py-3 justify-center">
+                            <i class="bi bi-x-lg mr-2"></i>
                             Cancelar
                         </a>
                     </div>
@@ -194,38 +190,59 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const facturaSelect = document.getElementById('facturaSelect');
+    const facturaSelect = document.getElementById('factura_id');
     const facturaInfo = document.getElementById('facturaInfo');
     const facturaPaciente = document.getElementById('facturaPaciente');
     const facturaMonto = document.getElementById('facturaMonto');
-    const montoInput = document.querySelector('input[name="monto"]');
-    const metodoPago = document.getElementById('metodoPago');
+    const maxUsdInput = document.getElementById('max_usd');
     
+    const tasaSelect = document.getElementById('tasa_id');
+    const montoBsInput = document.getElementById('monto_bs');
+    const montoUsdCalc = document.getElementById('monto_usd_calc');
+
+    function actualizarCalculos() {
+        const tasaValor = parseFloat(tasaSelect.options[tasaSelect.selectedIndex]?.getAttribute('data-valor') || 0);
+        const montoBs = parseFloat(montoBsInput.value || 0);
+        const maxUsd = parseFloat(maxUsdInput.value || 0);
+
+        if (tasaValor > 0) {
+            const equivalenteUsd = montoBs / tasaValor;
+            montoUsdCalc.textContent = `Equivale a: $${equivalenteUsd.toFixed(2)} USD`;
+            
+            if (equivalenteUsd > maxUsd + 0.01 && maxUsd > 0) {
+                montoUsdCalc.classList.add('text-red-600', 'font-bold');
+                montoUsdCalc.textContent += ' (Excede el saldo)';
+            } else {
+                montoUsdCalc.classList.remove('text-red-600', 'font-bold');
+            }
+        }
+    }
+
     facturaSelect?.addEventListener('change', function() {
         const selected = this.options[this.selectedIndex];
         if (this.value) {
-            const monto = selected.getAttribute('data-monto');
+            const montoUsd = parseFloat(selected.getAttribute('data-monto-usd'));
             const paciente = selected.getAttribute('data-paciente');
-            facturaPaciente.textContent = paciente;
-            facturaMonto.textContent = '$' + parseFloat(monto).toFixed(2);
-            montoInput.value = parseFloat(monto).toFixed(2);
+            const cedula = selected.getAttribute('data-cedula');
+            
+            facturaPaciente.textContent = `${paciente} (${cedula})`;
+            facturaMonto.textContent = `$${montoUsd.toFixed(2)}`;
+            maxUsdInput.value = montoUsd;
+            
+            // Sugerir monto en Bs según tasa actual
+            const tasaValor = parseFloat(tasaSelect.options[tasaSelect.selectedIndex]?.getAttribute('data-valor') || 0);
+            montoBsInput.value = (montoUsd * tasaValor).toFixed(2);
+            
             facturaInfo.classList.remove('hidden');
+            actualizarCalculos();
         } else {
             facturaInfo.classList.add('hidden');
+            maxUsdInput.value = 0;
         }
     });
-    
-    metodoPago?.addEventListener('change', function() {
-        document.querySelectorAll('#tarjetaFields, #transferenciaFields, #chequeFields').forEach(el => el.classList.add('hidden'));
-        
-        if (this.value === 'tarjeta') {
-            document.getElementById('tarjetaFields').classList.remove('hidden');
-        } else if (this.value === 'transferencia' || this.value === 'pago_movil') {
-            document.getElementById('transferenciaFields').classList.remove('hidden');
-        } else if (this.value === 'cheque') {
-            document.getElementById('chequeFields').classList.remove('hidden');
-        }
-    });
+
+    montoBsInput?.addEventListener('input', actualizarCalculos);
+    tasaSelect?.addEventListener('change', actualizarCalculos);
 });
 </script>
 @endsection

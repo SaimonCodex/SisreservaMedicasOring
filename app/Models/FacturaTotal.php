@@ -28,6 +28,16 @@ class FacturaTotal extends Model
         return $this->belongsTo(FacturaCabecera::class, 'cabecera_id');
     }
 
+    public function medico()
+    {
+        return $this->belongsTo(Medico::class, 'entidad_id');
+    }
+
+    public function consultorio()
+    {
+        return $this->belongsTo(Consultorio::class, 'entidad_id');
+    }
+
     public function liquidacionDetalles()
     {
         return $this->hasMany(LiquidacionDetalle::class, 'factura_total_id');
