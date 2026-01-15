@@ -574,11 +574,12 @@
                 const camposPaciente = [
                     {id: 'pac_primer_nombre', msg: 'Ingrese el primer nombre del paciente'},
                     {id: 'pac_primer_apellido', msg: 'Ingrese el primer apellido del paciente'},
+                    {id: 'pac_fecha_nac', msg: 'Ingrese la fecha de nacimiento del paciente'},
                 ];
                 
                 camposPaciente.forEach(campo => {
                     const el = document.getElementById(campo.id);
-                    if (!el.value.trim()) {
+                    if (!el || !el.value.trim()) {
                         mostrarError(campo.id, campo.msg);
                         valid = false;
                     }
@@ -599,6 +600,22 @@
                 }
             }
         }
+        
+        // Validar que se haya seleccionado un horario
+        const horaInicio = document.getElementById('hora_inicio');
+        if (!horaInicio || !horaInicio.value) {
+            alert('Debe seleccionar un horario para la cita');
+            valid = false;
+        }
+        
+        // Validar campos generales de la cita
+        const camposGenerales = ['consultorio_id', 'especialidad_id', 'medico_id', 'fecha_cita'];
+        camposGenerales.forEach(campoId => {
+            const el = document.getElementById(campoId);
+            if (!el || !el.value) {
+                valid = false;
+            }
+        });
         
         if (!valid) {
             alert('Por favor complete todos los campos requeridos');

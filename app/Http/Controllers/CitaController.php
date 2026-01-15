@@ -324,25 +324,29 @@ class CitaController extends Controller
         // Reglas adicionales para terceros (Paciente - rol 3)
         if ($request->tipo_cita == 'terceros' && $user->rol_id == 3) {
             $rules = array_merge($rules, [
-                // Representante
+                // Representante (siempre requeridos)
                 'rep_primer_nombre' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
                 'rep_primer_apellido' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
                 'rep_tipo_documento' => 'required|in:V,E,P,J',
                 'rep_numero_documento' => 'required|max:20',
-                // 'rep_fecha_nac' => 'required|date|before:today', // No solicitado en formulario paciente
                 'rep_parentesco' => 'required|in:Padre,Madre,Hijo/a,Hermano/a,Tío/a,Sobrino/a,Abuelo/a,Nieto/a,Primo/a,Amigo/a,Tutor,Otro',
-                // Paciente Especial
-                'pac_primer_nombre' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
-                'pac_primer_apellido' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
-                'pac_fecha_nac' => 'required|date|before:today',
-                'pac_tiene_documento' => 'required|in:si,no',
-                'pac_tipo' => 'required|in:Menor de Edad,Discapacitado,Anciano,Incapacitado',
             ]);
             
-            // Si tiene documento, validar
-            if ($request->pac_tiene_documento == 'si') {
-                $rules['pac_tipo_documento'] = 'required|in:V,E,P,J';
-                $rules['pac_numero_documento'] = 'required|max:20';
+            // Validaciones del paciente especial solo si NO se seleccionó uno existente
+            if (!$request->paciente_especial_existente_id) {
+                $rules = array_merge($rules, [
+                    'pac_primer_nombre' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+                    'pac_primer_apellido' => 'required|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
+                    'pac_fecha_nac' => 'required|date|before:today',
+                    'pac_tiene_documento' => 'required|in:si,no',
+                    'pac_tipo' => 'required|in:Menor de Edad,Discapacitado,Anciano,Incapacitado',
+                ]);
+                
+                // Si tiene documento, validar sus campos
+                if ($request->pac_tiene_documento == 'si') {
+                    $rules['pac_tipo_documento'] = 'required|in:V,E,P,J';
+                    $rules['pac_numero_documento'] = 'required|max:20';
+                }
             }
         }
         
@@ -605,8 +609,8 @@ class CitaController extends Controller
                         // Paciente (rol 3): Lógica original
                         $pacienteUsuario = $user->paciente;
 
-                        // 1. Crear o buscar REPRESENTANTE
-                        $representante = Representante::firstOrCreate(
+                        // 1. Crear o actualizar REPRESENTANTE
+                        $representante = Representante::updateOrCreate(
                             [
                                 'tipo_documento' => $request->rep_tipo_documento,
                                 'numero_documento' => $request->rep_numero_documento
@@ -627,17 +631,6 @@ class CitaController extends Controller
                                 'status' => true
                             ]
                         );
-
-                        // Si el representante ya existía pero tenía datos de ubicación nulos, actualizarlos
-                        if (!$representante->wasRecentlyCreated && is_null($representante->estado_id) && $pacienteUsuario) {
-                            $representante->update([
-                                'estado_id' => $pacienteUsuario->estado_id,
-                                'municipio_id' => $pacienteUsuario->municipio_id,
-                                'ciudad_id' => $pacienteUsuario->ciudad_id,
-                                'parroquia_id' => $pacienteUsuario->parroquia_id,
-                                'direccion_detallada' => $pacienteUsuario->direccion_detallada
-                            ]);
-                        }
                         $representanteId = $representante->id;
                         
                         Log::info('Representante creado/encontrado', ['id' => $representanteId]);
@@ -691,8 +684,8 @@ class CitaController extends Controller
                             $pacParroquiaId = $usarMismaDireccion ? $representante->parroquia_id : $request->pac_parroquia_id;
                             $pacDireccion = $usarMismaDireccion ? $representante->direccion_detallada : $request->pac_direccion_detallada;
                             
-                            // 3. Crear registro en tabla PACIENTES (datos principales)
-                            $paciente = Paciente::firstOrCreate(
+                            // 3. Crear o actualizar registro en tabla PACIENTES
+                            $paciente = Paciente::updateOrCreate(
                                 [
                                     'tipo_documento' => $pacTipoDoc,
                                     'numero_documento' => $pacNumeroDoc
@@ -715,11 +708,10 @@ class CitaController extends Controller
                             
                             Log::info('Paciente creado/encontrado', ['id' => $pacienteId]);
                             
-                            // 4. Crear registro en tabla PACIENTES_ESPECIALES (datos adicionales)
-                            $pacienteEspecial = PacienteEspecial::firstOrCreate(
+                            // 4. Crear o actualizar registro en tabla PACIENTES_ESPECIALES
+                            $pacienteEspecial = PacienteEspecial::updateOrCreate(
                                 [
-                                    'paciente_id' => $pacienteId,
-                                    'tipo' => $request->pac_tipo
+                                    'paciente_id' => $pacienteId
                                 ],
                                 [
                                     'primer_nombre' => $request->pac_primer_nombre,
@@ -730,6 +722,7 @@ class CitaController extends Controller
                                     'numero_documento' => $pacNumeroDoc,
                                     'fecha_nac' => $request->pac_fecha_nac,
                                     'tiene_documento' => $tieneDocumento,
+                                    'tipo' => $request->pac_tipo,
                                     'estado_id' => $pacEstadoId,
                                     'ciudad_id' => $pacCiudadId,
                                     'municipio_id' => $pacMunicipioId,

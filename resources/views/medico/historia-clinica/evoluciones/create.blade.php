@@ -30,12 +30,13 @@
     </div>
     @endif
 
-    <form action="{{ route('historia-clinica.evoluciones.store', $cita->id) }}" method="POST" class="space-y-6">
+    <form id="form-evolucion" action="{{ route('historia-clinica.evoluciones.store', $cita->id) }}" method="POST" class="space-y-6">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Main Form -->
+            <!-- Main Form Column -->
             <div class="lg:col-span-2 space-y-6">
+                <!-- Data Content (Patient, Vitals, Evaluation) -->
                 <!-- Patient Info Card -->
                 <div class="card p-6">
                     <h3 class="text-lg font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -86,7 +87,7 @@
                             <label class="form-label">IMC</label>
                             <input type="number" step="0.1" name="imc" id="imc" class="input bg-gray-100" placeholder="24.2" 
                                    value="{{ old('imc', $ultimaEvolucion->imc ?? '') }}" readonly>
-                            <p class="form-help">kg/m² (calculado)</p>
+                            <p class="form-help">kg/m²</p>
                         </div>
                         <div>
                             <label class="form-label">Temperatura</label>
@@ -174,8 +175,9 @@
                     </div>
                 </div>
             </div>
+    </form> <!-- Cierre del form principal ANTES del sidebar -->
 
-            <!-- Sidebar -->
+            <!-- Sidebar (Fuera del form principal) -->
             <div class="space-y-6">
                 <!-- Instructions -->
                 <div class="card p-6">
@@ -206,7 +208,8 @@
                 <div class="card p-6">
                     <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones</h3>
                     <div class="space-y-3">
-                        <button type="submit" class="btn btn-success w-full" onclick="return confirm('¿Está seguro de guardar esta evolución clínica?')">
+                        <!-- Botón vinculado al form principal por ID -->
+                        <button type="submit" form="form-evolucion" class="btn btn-success w-full" onclick="return confirm('¿Está seguro de guardar esta evolución clínica?')">
                             <i class="bi bi-check-lg"></i>
                             Guardar Evolución
                         </button>
@@ -253,8 +256,7 @@
                 @endif
             </div>
         </div>
-    </form>
-</div>
+
 
 @push('scripts')
 <script>

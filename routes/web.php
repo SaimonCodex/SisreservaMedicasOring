@@ -108,6 +108,18 @@ Route::middleware(['auth'])->group(function () {
         // Rutas de perfil del paciente
         Route::get('/perfil/editar', [PacienteController::class, 'editPerfil'])->name('paciente.perfil.edit');
         Route::put('/perfil', [PacienteController::class, 'updatePerfil'])->name('paciente.perfil.update');
+        
+        // Rutas de solicitudes de acceso a historial médico
+        Route::get('/solicitudes-acceso', [HistoriaClinicaController::class, 'listarSolicitudesPaciente'])->name('paciente.solicitudes');
+        Route::post('/solicitudes-acceso/{id}/aprobar', [HistoriaClinicaController::class, 'aprobarSolicitud'])->name('paciente.solicitudes.aprobar');
+        Route::post('/solicitudes-acceso/{id}/rechazar', [HistoriaClinicaController::class, 'rechazarSolicitud'])->name('paciente.solicitudes.rechazar');
+    });
+
+    // Rutas Específicas Representante
+    Route::prefix('representante')->middleware(['auth'])->group(function () {
+        Route::get('/solicitudes-acceso', [HistoriaClinicaController::class, 'listarSolicitudesRepresentante'])->name('representante.solicitudes');
+        Route::post('/solicitudes-acceso/{id}/aprobar', [HistoriaClinicaController::class, 'aprobarSolicitud'])->name('representante.solicitudes.aprobar');
+        Route::post('/solicitudes-acceso/{id}/rechazar', [HistoriaClinicaController::class, 'rechazarSolicitud'])->name('representante.solicitudes.rechazar');
     });
 
     // Rutas Globales de Ubicación (AJAX)
@@ -235,7 +247,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::resource('facturacion', FacturacionController::class);
     Route::post('facturacion/{id}/enviar-recordatorio', [FacturacionController::class, 'enviarRecordatorio'])->name('facturacion.enviar-recordatorio');
-    Route::get('facturacion/liquidaciones', [FacturacionController::class, 'liquidaciones'])->name('facturacion.liquidaciones');
+    Route::get('facturacion/liquidaciones', [FacturacionController::class, 'resumenLiquidaciones'])->name('facturacion.liquidaciones');
     Route::post('facturacion/crear-liquidacion', [FacturacionController::class, 'crearLiquidacion'])->name('facturacion.crear-liquidacion');
     
     // =========================================================================

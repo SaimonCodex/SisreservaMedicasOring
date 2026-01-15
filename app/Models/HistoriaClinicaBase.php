@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\EvolucionClinica;
+use App\Models\AuditoriaHistoriaBase;
 
 class HistoriaClinicaBase extends Model
 {
@@ -37,5 +38,13 @@ class HistoriaClinicaBase extends Model
     public function evoluciones()
     {
         return $this->hasMany(EvolucionClinica::class, 'paciente_id', 'paciente_id');
+    }
+
+    /**
+     * Get the audit trail for this historia clínica base
+     */
+    public function auditorias()
+    {
+        return $this->hasMany(AuditoriaHistoriaBase::class, 'historia_clinica_base_id');
     }
 }
