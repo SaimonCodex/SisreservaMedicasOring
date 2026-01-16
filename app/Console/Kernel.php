@@ -23,6 +23,12 @@ class Kernel extends ConsoleKernel
     
     // Limpiar notificaciones antiguas semanalmente
     $schedule->command('notificaciones:limpiar')->weekly();
+    
+    // Resumen diario para administradores a las 7:00 AM
+    $schedule->command('admin:resumen-diario')->dailyAt('07:00');
+    
+    // Verificar pagos pendientes cada 6 horas
+    $schedule->command('pagos:verificar-pendientes')->everySixHours();
 }
 
     /**

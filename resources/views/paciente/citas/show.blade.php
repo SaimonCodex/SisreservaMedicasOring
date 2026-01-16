@@ -322,7 +322,7 @@
                      <label class="label px-0 pt-0">
                         <span class="label-text font-medium text-gray-700">Motivo Principal</span>
                     </label>
-                    <select id="motivo_cancelacion" name="motivo_cancelacion" class="select select-bordered w-full bg-gray-50 focus:bg-white transition-colors">
+                    <select id="motivo_cancelacion" name="motivo_cancelacion" class="select select-bordered w-full bg-gray-50 focus:bg-white transition-colors" required>
                         <option value="">Seleccione un motivo...</option>
                         <option value="Salud">Problemas de Salud</option>
                         <option value="Trabajo">Motivos Laborales</option>
@@ -343,6 +343,7 @@
                         class="textarea textarea-bordered h-24 w-full focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all resize-none text-gray-900 placeholder:text-gray-400 bg-gray-50" 
                         placeholder="Detalles adicionales..."
                         oninput="document.getElementById('form_error').classList.add('hidden')"
+                        required
                     ></textarea>
                     <p id="form_error" class="hidden text-xs font-bold text-red-500 mt-1 flex items-center gap-1">
                         <i class="bi bi-exclamation-circle"></i> Complete todos los campos

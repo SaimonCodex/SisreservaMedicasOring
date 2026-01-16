@@ -175,6 +175,12 @@ class MedicoController extends Controller
                     }
                     $medico->especialidades()->attach($syncData);
                 }
+
+                // Notificar a todos los administradores (root y locales)
+                $admins = \App\Models\Administrador::where('status', true)->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new \App\Notifications\Admin\NuevoMedicoRegistrado($medico, auth()->user()->administrador->tipo_admin ?? 'Root'));
+                }
             });
 
             return redirect()->route('medicos.index')->with('success', 'Médico creado exitosamente');
@@ -453,6 +459,14 @@ class MedicoController extends Controller
                     }
                 }
             });
+
+            // Notificar a todos los administradores relevantes
+            $admins = \App\Models\Administrador::where('status', true)->get();
+            $medico = Medico::findOrFail($id);
+            
+            foreach ($admins as $admin) {
+                $admin->notify(new \App\Notifications\Admin\MedicoHorarioActualizado($medico));
+            }
 
             return redirect()->back()->with('success', 'Horarios actualizados correctamente');
 

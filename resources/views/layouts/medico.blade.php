@@ -44,6 +44,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Sistema Médico') }} - @yield('title')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -227,12 +228,38 @@
                 <!-- Right: Notifications & User -->
                 <div class="flex items-center gap-3">
                     <!-- Notifications -->
-                    <div class="relative">
-                        <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-                            <i class="bi bi-bell text-xl text-gray-700"></i>
-                            <span class="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
-                        </button>
+                <div class="relative" id="notificaciones-container">
+                    <button id="notificaciones-btn" class="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
+                        <i class="bi bi-bell text-xl text-gray-700"></i>
+                        <span id="notificaciones-badge" class="absolute top-1 right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white hidden">0</span>
+                    </button>
+
+                    <!-- Dropdown -->
+                    <div id="notificaciones-dropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 opacity-0 invisible transform scale-95 transition-all duration-200 origin-top-right z-50">
+                        <!-- Encabezado -->
+                        <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 class="font-semibold text-gray-900">Notificaciones</h3>
+                            <button id="marcar-todas-leidas" class="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
+                                Marcar todas leídas
+                            </button>
+                        </div>
+
+                        <!-- Lista de Notificaciones -->
+                        <div id="notificaciones-lista" class="max-h-96 overflow-y-auto">
+                            <div class="flex items-center justify-center py-8 text-gray-400">
+                                <i class="bi bi-bell text-3xl"></i>
+                            </div>
+                            <p class="text-center text-sm text-gray-500 pb-4">No tienes notificaciones</p>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="p-3 border-t border-gray-100">
+                            <a href="{{ route('medico.notificaciones.index') }}" class="block text-center text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
+                                Ver todas las notificaciones
+                            </a>
+                        </div>
                     </div>
+                </div>
                     
                     <!-- User Dropdown -->
                     <div class="relative group">
@@ -356,7 +383,188 @@
                     setTimeout(() => alert.remove(), 300);
                 }, 5000);
             });
+
+            // Cargar notificaciones no leídas al iniciar
+            cargarNotificaciones();
         });
+
+        // =================== NOTIFICACIONES ===================
+        const notificacionesBtn = document.getElementById('notificaciones-btn');
+        const notificacionesDropdown = document.getElementById('notificaciones-dropdown');
+        const notificacionesBadge = document.getElementById('notificaciones-badge');
+        const notificacionesLista = document.getElementById('notificaciones-lista');
+        const marcarTodasLeidasBtn = document.getElementById('marcar-todas-leidas');
+
+        // Toggle dropdown
+        if (notificacionesBtn) {
+            notificacionesBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const isVisible = !notificacionesDropdown.classList.contains('opacity-0');
+                
+                if (isVisible) {
+                    cerrarDropdown();
+                } else {
+                    abrirDropdown();
+                }
+            });
+        }
+
+        // Cerrar al hacer click fuera
+        document.addEventListener('click', function(e) {
+            const container = document.getElementById('notificaciones-container');
+            if (container && !container.contains(e.target)) {
+                cerrarDropdown();
+            }
+        });
+
+        function abrirDropdown() {
+            notificacionesDropdown.classList.remove('opacity-0', 'invisible', 'scale-95');
+            notificacionesDropdown.classList.add('opacity-100', 'visible', 'scale-100');
+        }
+
+        function cerrarDropdown() {
+            notificacionesDropdown.classList.remove('opacity-100', 'visible', 'scale-100');
+            notificacionesDropdown.classList.add('opacity-0', 'invisible', 'scale-95');
+        }
+
+        // Cargar notificaciones no leídas
+        function cargarNotificaciones() {
+            fetch('{{ route("medico.notificaciones.unread") }}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        actualizarBadge(data.count);
+                        renderizarNotificaciones(data.notificaciones);
+                    }
+                })
+                .catch(error => console.error('Error cargando notificaciones:', error));
+        }
+
+        function actualizarBadge(count) {
+            if (count > 0) {
+                notificacionesBadge.textContent = count > 99 ? '99+' : count;
+                notificacionesBadge.classList.remove('hidden');
+            } else {
+                notificacionesBadge.classList.add('hidden');
+            }
+        }
+
+        function renderizarNotificaciones(notificaciones) {
+            if (!notificaciones || notificaciones.length === 0) {
+                notificacionesLista.innerHTML = `
+                    <div class="flex items-center justify-center py-8 text-gray-400">
+                        <i class="bi bi-bell text-3xl"></i>
+                    </div>
+                    <p class="text-center text-sm text-gray-500 pb-4">No tienes notificaciones</p>
+                `;
+                return;
+            }
+
+            let html = '';
+            notificaciones.forEach(notif => {
+                const data = notif.data;
+                const iconClass = getTipoIcon(data.tipo);
+                const bgClass = getTipoBg(data.tipo);
+                
+                html += `
+                    <a href="${data.link || '#'}" 
+                       onclick="marcarComoLeida('${notif.id}')" 
+                       class="block px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100">
+                        <div class="flex gap-3">
+                            <div class="flex-shrink-0 w-10 h-10 ${bgClass} rounded-lg flex items-center justify-center">
+                                <i class="bi ${iconClass} text-lg text-white"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-gray-900 truncate">${data.titulo}</p>
+                                <p class="text-xs text-gray-600 mt-0.5">${data.mensaje}</p>
+                                <p class="text-[10px] text-gray-400 mt-1">${formatearFecha(notif.created_at)}</p>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            });
+
+            notificacionesLista.innerHTML = html;
+        }
+
+        function getTipoIcon(tipo) {
+            const icons = {
+                'success': 'bi-check-circle-fill',
+                'info': 'bi-info-circle-fill',
+                'warning': 'bi-exclamation-triangle-fill',
+                'danger': 'bi-x-circle-fill'
+            };
+            return icons[tipo] || 'bi-bell-fill';
+        }
+
+        function getTipoBg(tipo) {
+            const bgs = {
+                'success': 'bg-emerald-500',
+                'info': 'bg-blue-500',
+                'warning': 'bg-amber-500',
+                'danger': 'bg-rose-500'
+            };
+            return bgs[tipo] || 'bg-gray-500';
+        }
+
+        function formatearFecha(fecha) {
+            const ahora = new Date();
+            const fechaNotif = new Date(fecha);
+            const diffMs = ahora - fechaNotif;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 1) return 'Ahora';
+            if (diffMins < 60) return `Hace ${diffMins} min`;
+            
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `Hace ${diffHours}h`;
+            
+            const diffDays = Math.floor(diffHours / 24);
+            if (diffDays < 7) return `Hace ${diffDays}d`;
+            
+            return fechaNotif.toLocaleDateString();
+        }
+
+        function marcarComoLeida(notifId) {
+            fetch(`/medico/notificaciones/${notifId}/marcar-leida`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    cargarNotificaciones();
+                }
+            });
+        }
+
+        if (marcarTodasLeidasBtn) {
+            marcarTodasLeidasBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                fetch('{{ route("medico.notificaciones.mark-all-read") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        cargarNotificaciones();
+                        cerrarDropdown();
+                    }
+                });
+            });
+        }
+
+        // Recargar notificaciones cada 30 segundos
+        setInterval(cargarNotificaciones, 30000);
     </script>
     
     @stack('scripts')

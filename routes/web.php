@@ -18,6 +18,7 @@ use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\RepresentanteController;
 use App\Http\Controllers\PacienteEspecialController;
+use App\Http\Controllers\Admin\AdminNotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -92,6 +93,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/medico/dashboard', [MedicoController::class, 'dashboard'])->name('medico.dashboard');
     Route::get('/paciente/dashboard', [PacienteController::class, 'dashboard'])->name('paciente.dashboard');
     
+    // Rutas de Notificaciones Admin
+    Route::prefix('admin/notificaciones')->group(function () {
+        Route::get('/', [AdminNotificationController::class, 'index'])->name('admin.notificaciones.index');
+        Route::post('/{id}/marcar-leida', [AdminNotificationController::class, 'markAsRead'])->name('admin.notificaciones.marcar-leida');
+        Route::post('/leer-todas', [AdminNotificationController::class, 'markAllAsRead'])->name('admin.notificaciones.leer-todas');
+        Route::delete('/{id}', [AdminNotificationController::class, 'destroy'])->name('admin.notificaciones.destroy');
+        Route::post('/eliminar-multiples', [AdminNotificationController::class, 'destroyAll'])->name('admin.notificaciones.destroy-all');
+    });
+
+    // Rutas de Broadcast Admin (Solo Root)
+    Route::prefix('admin/broadcast')->middleware('auth')->group(function () {
+        Route::get('/create', [\App\Http\Controllers\Admin\AdminBroadcastController::class, 'create'])->name('admin.broadcast.create');
+        Route::post('/store', [\App\Http\Controllers\Admin\AdminBroadcastController::class, 'store'])->name('admin.broadcast.store');
+    });
+    
     // Rutas Específicas Paciente
     Route::prefix('paciente')->middleware(['auth'])->group(function () {
         Route::get('/historial', [PacienteController::class, 'historial'])->name('paciente.historial'); // Assumes create a method or point to existing
@@ -108,12 +124,19 @@ Route::middleware(['auth'])->group(function () {
         // Rutas de perfil del paciente
         Route::get('/perfil/editar', [PacienteController::class, 'editPerfil'])->name('paciente.perfil.edit');
         Route::put('/perfil', [PacienteController::class, 'updatePerfil'])->name('paciente.perfil.update');
+        
+        // Rutas de notificaciones del paciente
+        Route::prefix('notificaciones')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'index'])->name('paciente.notificaciones.index');
+            Route::post('/{id}/marcar-leida', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'markAsRead'])->name('paciente.notificaciones.marcar-leida');
+            Route::post('/leer-todas', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'markAllAsRead'])->name('paciente.notificaciones.leer-todas');
+            Route::delete('/{id}', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'destroy'])->name('paciente.notificaciones.destroy');
+            Route::post('/eliminar-multiples', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'destroyAll'])->name('paciente.notificaciones.destroy-all');
+        });
     });
 
     // Rutas Globales de Ubicación (AJAX)
-    Route::get('/ubicacion/get-ciudades/{estadoId}', [UbicacionController::class, 'getCiudadesByEstado']);
-    Route::get('/ubicacion/get-municipios/{estadoId}', [UbicacionController::class, 'getMunicipiosByEstado']);
-    Route::get('/ubicacion/get-parroquias/{municipioId}', [UbicacionController::class, 'getParroquiasByMunicipio']);
+
     
     // =========================================================================
     // ADMINISTRACIÓN DEL SISTEMA
@@ -150,6 +173,14 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('medico')->middleware(['auth'])->group(function () {
         Route::get('/perfil/editar', [MedicoController::class, 'editPerfil'])->name('medico.perfil.edit');
         Route::put('/perfil', [MedicoController::class, 'updatePerfil'])->name('medico.perfil.update');
+
+        // Rutas de notificaciones del médico
+        Route::prefix('notificaciones')->group(function () {
+            Route::get('/', [\App\Http\Controllers\MedicoNotificacionController::class, 'index'])->name('medico.notificaciones.index');
+            Route::get('/no-leidas', [\App\Http\Controllers\MedicoNotificacionController::class, 'getUnread'])->name('medico.notificaciones.unread');
+            Route::post('/{id}/marcar-leida', [\App\Http\Controllers\MedicoNotificacionController::class, 'markAsRead'])->name('medico.notific aciones.mark-read');
+            Route::post('/marcar-todas-leidas', [\App\Http\Controllers\MedicoNotificacionController::class, 'markAllAsRead'])->name('medico.notificaciones.mark-all-read');
+        });
     });
     
     // =========================================================================
@@ -423,4 +454,18 @@ if (app()->environment('local')) {
 
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
+});
+
+// Temporary Fix Route for Payment Methods
+Route::get('/fix-payment-methods', function () {
+    $methods = \App\Models\MetodoPago::all();
+    $count = 0;
+    foreach ($methods as $method) {
+        if (empty($method->nombre)) {
+            $method->nombre = $method->descripcion;
+            $method->save();
+            $count++;
+        }
+    }
+    return "Se han corregido $count métodos de pago. Ya puede recargar la página de registro de pago.";
 });

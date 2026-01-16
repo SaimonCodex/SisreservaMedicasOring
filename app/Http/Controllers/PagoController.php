@@ -7,6 +7,9 @@ use App\Models\FacturaPaciente;
 use App\Models\MetodoPago;
 use App\Models\TasaDolar;
 use App\Models\Administrador;
+use App\Notifications\CitaActualizada;
+use App\Notifications\PagoConfirmado;
+use App\Notifications\PagoRechazado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
@@ -275,12 +278,38 @@ class PagoController extends Controller
 
             // Enviar notificación
             $this->enviarNotificacionPago($pago);
+            
+            // Enviar notificación al paciente o representante (si es paciente especial)
+            if ($cita && $cita->paciente) {
+                $paciente = $cita->paciente;
+                $pacienteEspecial = $paciente->pacienteEspecial;
+                
+                if ($pacienteEspecial && $pacienteEspecial->representante) {
+                    // Es paciente especial: notificar al representante
+                    $representante = $pacienteEspecial->representante;
+                    $pacienteRepresentante = \App\Models\Paciente::where('tipo_documento', $representante->tipo_documento)
+                                              ->where('numero_documento', $representante->numero_documento)
+                                              ->first();
+                    
+                    if ($pacienteRepresentante) {
+                        $pacienteRepresentante->notify(new \App\Notifications\PagoConfirmado($pago));
+                    }
+                } else {
+                    // Paciente regular: notificar directamente
+                    $paciente->notify(new \App\Notifications\PagoConfirmado($pago));
+                }
 
-            if ($request->ajax()) {
-                return response()->json(['success' => true, 'message' => 'Pago confirmado exitosamente. La cita ha sido actualizada a estado Confirmada.']);
+                // Notificar al médico sobre el pago confirmado
+                if ($cita->medico) {
+                    $cita->medico->notify(new \App\Notifications\Medico\PagoConfirmadoCita($pago));
+                }
             }
 
-            return redirect()->back()->with('success', 'Pago confirmado exitosamente. La cita ha sido actualizada a estado Confirmada.');
+            if ($request->ajax()) {
+                return response()->json(['success' => true, 'message' => 'Pago confirmado y cita actualizada exitosamente.']);
+            }
+
+            return redirect()->back()->with('success', 'Pago confirmado y cita actualizada exitosamente.');
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -449,6 +478,31 @@ class PagoController extends Controller
 
         // Actualizar estado de la factura
         $this->actualizarEstadoFactura($pago->id_factura_paciente);
+        
+        
+        // Enviar notificación al paciente o representante (si es paciente especial)
+        if ($pago->facturaPaciente && $pago->facturaPaciente->cita && $pago->facturaPaciente->cita->paciente) {
+            $cita = $pago->facturaPaciente->cita;
+            $paciente = $cita->paciente;
+            
+            // Verificar si es un paciente especial
+            $pacienteEspecial = $paciente->pacienteEspecial;
+            
+            if ($pacienteEspecial && $pacienteEspecial->representante) {
+                // Es paciente especial: notificar al representante
+                $representante = $pacienteEspecial->representante;
+                $pacienteRepresentante = \App\Models\Paciente::where('tipo_documento', $representante->tipo_documento)
+                                          ->where('numero_documento', $representante->numero_documento)
+                                          ->first();
+                
+                if ($pacienteRepresentante) {
+                    $pacienteRepresentante->notify(new PagoRechazado($pago, $request->motivo));
+                }
+            } else {
+                // Paciente regular: notificar directamente
+                $paciente->notify(new PagoRechazado($pago, $request->motivo));
+            }
+        }
 
         if ($request->ajax()) {
             return response()->json(['success' => true, 'message' => 'Pago rechazado exitosamente']);
@@ -490,12 +544,37 @@ class PagoController extends Controller
     private function enviarNotificacionPago($pago)
     {
         try {
-            $pago->load(['facturaPaciente.cita.paciente.usuario']);
+            $pago->load(['facturaPaciente.cita.paciente.usuario', 'facturaPaciente.cita.paciente.pacienteEspecial.representante']);
             
-            Mail::send('emails.confirmacion-pago', ['pago' => $pago], function($message) use ($pago) {
-                $message->to($pago->facturaPaciente->cita->paciente->usuario->correo)
-                        ->subject('Confirmación de Pago - Factura #' . $pago->facturaPaciente->numero_factura);
-            });
+            $paciente = $pago->facturaPaciente->cita->paciente;
+            $pacienteEspecial = $paciente->pacienteEspecial;
+            
+            // Determinar el correo del destinatario
+            $correoDestinatario = null;
+            
+            if ($pacienteEspecial && $pacienteEspecial->representante) {
+                // Es paciente especial: enviar correo al representante
+                $representante = $pacienteEspecial->representante;
+                $pacienteRepresentante = \App\Models\Paciente::where('tipo_documento', $representante->tipo_documento)
+                                          ->where('numero_documento', $representante->numero_documento)
+                                          ->first();
+                
+                if ($pacienteRepresentante && $pacienteRepresentante->usuario) {
+                    $correoDestinatario = $pacienteRepresentante->usuario->correo;
+                }
+            } else {
+                // Paciente regular
+                if ($paciente->usuario) {
+                    $correoDestinatario = $paciente->usuario->correo;
+                }
+            }
+            
+            if ($correoDestinatario) {
+                Mail::send('emails.confirmacion-pago', ['pago' => $pago], function($message) use ($correoDestinatario, $pago) {
+                    $message->to($correoDestinatario)
+                            ->subject('Confirmación de Pago - Factura #' . $pago->facturaPaciente->numero_factura);
+                });
+            }
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación de pago: ' . $e->getMessage());
         }
@@ -726,6 +805,32 @@ class PagoController extends Controller
             ]);
 
             \DB::commit();
+
+            // Notificar a los administradores relevantes
+            try {
+                $consultorioId = $cita->consultorio_id;
+                $admins = \App\Models\Administrador::where('status', true)->get();
+                
+                foreach ($admins as $admin) {
+                    // Root admins ven todo
+                    if ($admin->tipo_admin === 'Root') {
+                        $admin->notify(new \App\Notifications\Admin\NuevoPagoRegistrado($pago));
+                    }
+                    // Local admins solo si es su consultorio
+                    elseif ($admin->tipo_admin === 'Administrador' && $consultorioId) {
+                        $tieneAcceso = \DB::table('administrador_consultorio')
+                            ->where('administrador_id', $admin->id)
+                            ->where('consultorio_id', $consultorioId)
+                            ->exists();
+                        
+                        if ($tieneAcceso) {
+                            $admin->notify(new \App\Notifications\Admin\NuevoPagoRegistrado($pago));
+                        }
+                    }
+                }
+            } catch (\Exception $ne) {
+                \Log::error('Error enviando notificación de pago: ' . $ne->getMessage());
+            }
 
             return redirect()->route('paciente.citas.show', $cita->id)
                            ->with('success', '¡Pago registrado exitosamente! Su pago será revisado por nuestro equipo y recibirá una notificación cuando sea confirmado.');
