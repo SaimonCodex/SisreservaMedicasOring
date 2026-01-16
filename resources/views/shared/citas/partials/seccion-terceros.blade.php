@@ -98,9 +98,17 @@
             </div>
 
             <div>
-                <label class="form-label form-label-required">Fecha Nacimiento</label>
                 <input type="date" name="rep_fecha_nac" id="rep_fecha_nac" class="input" max="{{ date('Y-m-d') }}" onchange="if(document.getElementById('chk_registrar_representante').checked) generarContrasena('rep')">
                 <span class="error-message text-red-500 text-xs mt-1 hidden"></span>
+            </div>
+            
+            <div>
+                <label class="form-label form-label-required">Género</label>
+                <select name="rep_genero" id="rep_genero" class="form-select">
+                    <option value="">Seleccionar...</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                </select>
             </div>
             
             <!-- Ubicación Representante -->

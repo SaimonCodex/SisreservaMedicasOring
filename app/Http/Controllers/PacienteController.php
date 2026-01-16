@@ -219,7 +219,7 @@ class PacienteController extends Controller
         ]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
         
@@ -236,37 +236,101 @@ class PacienteController extends Controller
         // =========================================================================
         // MÉDICO (Rol 2)
         // =========================================================================
+        // =========================================================================
+        // MÉDICO (Rol 2)
+        // =========================================================================
         if ($user->rol_id == 2) {
             $medico = $user->medico;
             if (!$medico) {
                 return redirect()->route('medico.dashboard')->with('error', 'No se encontró el perfil de médico');
             }
             
-            // Query Base ID para Médico
-            $pacienteIdsQuery = \App\Models\Cita::where('medico_id', $medico->id)
-                                          ->where('status', true)
-                                          ->distinct()
-                                          ->select('paciente_id');
+            // Cargar especialidades para el filtro
+            $medico->load('especialidades');
             
-            // Recolectar IDs para usar en stats
-            $pacienteIds = $pacienteIdsQuery->pluck('paciente_id');
+            // Query Base de Citas para identificar pacientes del médico
+            $citasQuery = \App\Models\Cita::where('medico_id', $medico->id)
+                                          ->where('status', true);
+
+            // Aplicar filtro de especialidad si se seleccionó
+            if ($request->filled('especialidad')) {
+                $citasQuery->where('especialidad_id', $request->especialidad);
+            }
             
-            $query = Paciente::with(['usuario', 'estado', 'citas.consultorio'])
+            // Obtener IDs de pacientes únicos
+            $pacienteIds = $citasQuery->distinct()->pluck('paciente_id');
+            
+            // Query de Pacientes
+            $query = Paciente::with(['usuario', 'estado'])
                                 ->whereIn('id', $pacienteIds)
                                 ->where('status', true);
 
-            // Calcular Stats para Médico
-            $stats['total'] = $query->count();
-            $stats['activos'] = $query->where('status', true)->count();
-            $stats['nuevos_mes'] = $query->clone()->whereMonth('created_at', now()->month)->count();
-            $stats['citas_hoy'] = \App\Models\Cita::where('medico_id', $medico->id)
-                                                  ->whereDate('fecha_cita', now())
-                                                  ->where('status', true)
-                                                  ->distinct('paciente_id')
-                                                  ->count('paciente_id');
+            // Filtro de Búsqueda (Nombre, Documento, etc.)
+            if ($request->filled('buscar')) {
+                $busqueda = $request->buscar;
+                $query->where(function($q) use ($busqueda) {
+                    $q->where('primer_nombre', 'like', "%$busqueda%")
+                      ->orWhere('segundo_nombre', 'like', "%$busqueda%")
+                      ->orWhere('primer_apellido', 'like', "%$busqueda%")
+                      ->orWhere('segundo_apellido', 'like', "%$busqueda%")
+                      ->orWhere('numero_documento', 'like', "%$busqueda%");
+                });
+            }
+            
+            // Filtro de Tipo (Regular vs Especial - aproximación simple basada en lógica de negocio si existe)
+            // Si no hay campo explícito 'tipo' en pacientes, omitimos o ajustamos.
+            // Asumimos que todos son 'regular' salvo que tengan 'pacienteEspecial'.
+            
+            // Filtro de Estado (Activo/Inactivo)
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
 
+            // Estadísticas (Dinámicas basadas en el filtro actual o totales del médico si se prefiere)
+            // Calculamos totales globales del médico para las tarjetas, para no confundir al filtrar?
+            // El usuario pidió "datos reales solo relacionados con ese medico". 
+            // Usualmente los stats del header son globales. Calcularé globales del médico.
+            
+            $allPacientesMedicoQuery = \App\Models\Cita::where('medico_id', $medico->id)
+                                            ->where('status', true)
+                                            ->distinct()
+                                            ->select('paciente_id'); 
+                                            
+            // Si se quiere que los stats respondan al filtro de especialidad, usar $citasQuery en su lugar.
+            // Usaremos $citasQuery para que sea consistente con la vista filtrada, 
+            // PERO 'Citas Hoy' siempre debería ser del día.
+            
+            $pacientesFiltradosCount = $query->count();
+            
+            $stats['total'] = $pacientesFiltradosCount;
+            $stats['activos'] = $query->clone()->where('status', true)->count();
+            $stats['nuevos_mes'] = $query->clone()->whereMonth('created_at', now()->month)->count(); // Pacientes registrados este mes
+            
+            // Citas hoy (del médico, filtrado por especialidad si aplica)
+            $citasHoyQuery = \App\Models\Cita::where('medico_id', $medico->id)
+                                             ->whereDate('fecha_cita', now())
+                                             ->where('status', true);
+            if ($request->filled('especialidad')) {
+                $citasHoyQuery->where('especialidad_id', $request->especialidad);
+            }
+            $stats['citas_hoy'] = $citasHoyQuery->count();
+
+            // Obtener pacientes paginados
+            // Eager loading de la última cita con este médico para mostrar en la tabla
             $pacientes = $query->orderBy('created_at', 'desc')->paginate(10);
-            return view('medico.pacientes.index', compact('pacientes', 'stats'));
+            
+            // Adjuntar última cita para la vista
+            foreach ($pacientes as $paciente) {
+                $ultimaCita = \App\Models\Cita::where('medico_id', $medico->id)
+                                              ->where('paciente_id', $paciente->id)
+                                              ->where('status', true)
+                                              ->orderBy('fecha_cita', 'desc')
+                                              ->with('especialidad')
+                                              ->first();
+                $paciente->ultima_cita = $ultimaCita;
+            }
+
+            return view('medico.pacientes.index', compact('pacientes', 'stats', 'medico'));
         }
         
         // =========================================================================

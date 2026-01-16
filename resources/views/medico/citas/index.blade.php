@@ -3,7 +3,21 @@
 @section('title', 'Mis Citas Médicas')
 
 @section('content')
-<div class="space-y-6">
+<div class="space-y-6" x-data="{
+    showConfirmModal: false,
+    modalTitle: '',
+    modalMessage: '',
+    modalActionUrl: '#',
+    modalActionText: 'Confirmar',
+    
+    confirmarAccion(title, message, url, actionText) {
+        this.modalTitle = title;
+        this.modalMessage = message;
+        this.modalActionUrl = url;
+        this.modalActionText = actionText;
+        this.showConfirmModal = true;
+    }
+}">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
@@ -112,29 +126,29 @@
     <!-- Citas List -->
     <div class="card">
         <div class="overflow-x-auto">
-            <table class="table table-hover">
-                <thead>
+            <table class="w-full text-sm">
+                <thead class="bg-gradient-to-r from-medical-600 to-medical-500 text-white">
                     <tr>
-                        <th class="w-36">Fecha y Hora</th>
-                        <th>Paciente</th>
-                        <th>Especialidad</th>
-                        <th>Consultorio</th>
-                        <th class="w-28">Tipo</th>
-                        <th class="w-24">Tarifa</th>
-                        <th class="w-32">Estado</th>
-                        <th class="w-40">Acciones</th>
+                        <th class="px-6 py-4 text-left font-semibold">Fecha y Hora</th>
+                        <th class="px-6 py-4 text-left font-semibold">Paciente</th>
+                        <th class="px-6 py-4 text-left font-semibold">Especialidad</th>
+                        <th class="px-6 py-4 text-left font-semibold">Consultorio</th>
+                        <th class="px-6 py-4 text-left font-semibold">Tipo</th>
+                        <th class="px-6 py-4 text-left font-semibold">Tarifa</th>
+                        <th class="px-6 py-4 text-left font-semibold">Estado</th>
+                        <th class="px-6 py-4 text-center font-semibold">Acciones</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-100">
                     @forelse($citas ?? [] as $cita)
-                    <tr>
-                        <td>
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4">
                             <div class="flex flex-col">
                                 <span class="font-semibold text-gray-900">{{ \Carbon\Carbon::parse($cita->fecha_cita)->format('d/m/Y') }}</span>
                                 <span class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($cita->hora_inicio)->format('h:i A') }}</span>
                             </div>
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-bold">
                                     {{ strtoupper(substr($cita->paciente->primer_nombre ?? 'P', 0, 1)) }}{{ strtoupper(substr($cita->paciente->primer_apellido ?? 'A', 0, 1)) }}
@@ -145,16 +159,16 @@
                                 </div>
                             </div>
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             <span class="text-gray-700">{{ $cita->especialidad->nombre ?? 'N/A' }}</span>
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             <span class="flex items-center gap-2 text-gray-700">
                                 <i class="bi bi-building text-gray-400"></i>
                                 {{ $cita->consultorio->nombre ?? 'N/A' }}
                             </span>
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             @if($cita->tipo_consulta == 'Domicilio')
                                 <span class="badge badge-warning">
                                     <i class="bi bi-house-door"></i> Domicilio
@@ -169,10 +183,10 @@
                                 </span>
                             @endif
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             <span class="font-semibold text-gray-900">${{ number_format($cita->tarifa_total ?? $cita->tarifa ?? 0, 2) }}</span>
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             @php
                                 $estadoClasses = [
                                     'Programada' => 'badge-warning',
@@ -196,41 +210,70 @@
                                 {{ $cita->estado_cita }}
                             </span>
                         </td>
-                        <td>
-                            <div class="flex items-center gap-2">
-                                <a href="{{ route('citas.show', $cita->id) }}" class="btn btn-sm btn-outline" title="Ver Detalles">
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                {{-- Ver Detalles --}}
+                                <a href="{{ route('citas.show', $cita->id) }}" class="btn btn-sm btn-ghost text-gray-600 hover:bg-gray-50" title="Ver Detalles">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                @if($cita->paciente && $cita->paciente->historiaClinicaBase)
-                                    <a href="{{ route('historia-clinica.base.show', $cita->paciente->id) }}" class="btn btn-sm btn-outline text-info-600" title="Historia Clínica Base">
-                                        <i class="bi bi-file-medical"></i>
-                                    </a>
+
+                                {{-- Historia Clínica Base (Solo Pacientes Regulares) --}}
+                                @if($cita->paciente)
+                                    @if($cita->paciente->historiaClinicaBase)
+                                        <a href="{{ route('historia-clinica.base.show', $cita->paciente->id) }}" class="btn btn-sm btn-ghost text-info-600 hover:bg-info-50" title="Historia Clínica Base">
+                                            <i class="bi bi-file-medical"></i>
+                                        </a>
+                                    @else
+                                        <button type="button" 
+                                                @click="confirmarAccion('Historia Clínica Base', 'Este paciente aún no cuenta con una historia clínica base. ¿Desea crearla?', '{{ route('historia-clinica.base.create', ['pacienteId' => $cita->paciente->id]) }}', 'Crear Historia')"
+                                                class="btn btn-sm btn-ghost text-gray-400 hover:text-info-600 hover:bg-info-50" title="Crear Historia Clínica Base">
+                                            <i class="bi bi-file-medical"></i>
+                                        </button>
+                                    @endif
                                 @endif
+
+                                {{-- Evolución Clínica --}}
+                                @if($cita->evolucionClinica)
+                                    {{-- Si existe evolución para esta cita --}}
+                                    <a href="{{ route('historia-clinica.evoluciones.show', $cita->id) }}" class="btn btn-sm btn-ghost text-purple-600 hover:bg-purple-50" title="Ver Evolución">
+                                        <i class="bi bi-journal-check"></i>
+                                    </a>
+                                @else
+                                    {{-- Si no existe, sugerir crear --}}
+                                    @if(in_array($cita->estado_cita, ['Confirmada', 'En Progreso', 'Completada']))
+                                        <button type="button" 
+                                                @click="confirmarAccion('Evolución Clínica', 'No existe una evolución registrada para esta cita. ¿Desea crearla?', '{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}', 'Crear Evolución')"
+                                                class="btn btn-sm btn-ghost text-gray-400 hover:text-purple-600 hover:bg-purple-50" title="Crear Evolución">
+                                            <i class="bi bi-journal-plus"></i>
+                                        </button>
+                                    @endif
+                                @endif
+
+                                {{-- Receta / Orden Médica --}}
                                 @php
-                                    // Verificar si existen evoluciones clínicas entre este paciente y el médico actual
-                                    $medicoId = auth()->user()->medico->id ?? null;
-                                    $tieneEvoluciones = $medicoId && \App\Models\EvolucionClinica::where('paciente_id', $cita->paciente_id)
-                                        ->where('medico_id', $medicoId)
-                                        ->where('status', true)
-                                        ->exists();
+                                    $orden = $cita->ordenesMedicas->first();
                                 @endphp
-                                @if($tieneEvoluciones)
-                                    {{-- Botón para ver todas las evoluciones del paciente con este médico --}}
-                                    <a href="{{ route('historia-clinica.evoluciones.index', $cita->paciente_id) }}" class="btn btn-sm btn-outline text-purple-600" title="Ver Evoluciones Clínicas">
-                                        <i class="bi bi-journal-medical"></i>
+                                @if($orden)
+                                    {{-- Si existe orden para esta cita --}}
+                                    <a href="{{ route('ordenes-medicas.show', $orden->id) }}" class="btn btn-sm btn-ghost text-emerald-600 hover:bg-emerald-50" title="Ver Orden Médica">
+                                        <i class="bi bi-prescription2"></i>
                                     </a>
+                                @else
+                                    {{-- Si no existe, sugerir crear --}}
+                                    @if(in_array($cita->estado_cita, ['Confirmada', 'En Progreso', 'Completada']))
+                                        <button type="button" 
+                                                @click="confirmarAccion('Orden Médica', 'No existe una orden médica registrada para esta cita. ¿Desea crearla?', '{{ route('ordenes-medicas.create', ['cita' => $cita->id, 'paciente' => $cita->paciente_id ?? null]) }}', 'Crear Orden')"
+                                                class="btn btn-sm btn-ghost text-gray-400 hover:text-emerald-600 hover:bg-emerald-50" title="Crear Orden Médica">
+                                            <i class="bi bi-prescription2"></i>
+                                        </button>
+                                    @endif
                                 @endif
-                                @if($cita->estado_cita == 'Confirmada' && !$cita->evolucionClinica)
-                                    {{-- Botón para registrar nueva evolución (solo si cita confirmada/pagada y no tiene evolución) --}}
-                                    <a href="{{ route('historia-clinica.evoluciones.create', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-success" title="Registrar Evolución del Paciente">
-                                        <i class="bi bi-file-earmark-medical"></i>
-                                    </a>
-                                @endif
+
                                 @if(in_array($cita->estado_cita, ['Programada', 'Confirmada']))
                                     <form action="{{ route('citas.destroy', $cita->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de cancelar esta cita?')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Cancelar">
+                                        <button type="submit" class="btn btn-sm btn-ghost text-danger-600 hover:bg-danger-50" title="Cancelar">
                                             <i class="bi bi-x-lg"></i>
                                         </button>
                                     </form>
@@ -263,9 +306,31 @@
 
         @if(isset($citas) && $citas->hasPages())
         <div class="p-6 border-t border-gray-200">
-            {{ $citas->links() }}
+            {{ $citas->appends(request()->query())->links('vendor.pagination.medical') }}
         </div>
         @endif
+    </div>
+    <!-- Modal de Confirmación -->
+    <div x-show="showConfirmModal" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-90"
+         x-transition:enter-end="opacity-100 scale-100"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm"
+         style="display: none;">
+        
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" @click.away="showConfirmModal = false">
+            <h3 class="text-xl font-bold text-gray-900 mb-2" x-text="modalTitle"></h3>
+            <p class="text-gray-600 mb-6" x-text="modalMessage"></p>
+            
+            <div class="flex justify-end gap-3">
+                <button @click="showConfirmModal = false" class="btn btn-outline text-gray-600">
+                    Cancelar
+                </button>
+                <a :href="modalActionUrl" class="btn btn-primary" x-text="modalActionText">
+                    Confirmar
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

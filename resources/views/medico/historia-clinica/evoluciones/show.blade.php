@@ -18,10 +18,12 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
+            @if(auth()->check() && auth()->user()->medico && auth()->user()->medico->id == $evolucion->medico_id)
             <a href="{{ route('historia-clinica.evoluciones.edit', ['citaId' => $evolucion->cita_id ?? 0]) }}" class="btn btn-primary">
                 <i class="bi bi-pencil"></i>
                 <span>Editar</span>
             </a>
+            @endif
             <button onclick="window.print()" class="btn btn-outline">
                 <i class="bi bi-printer"></i>
             </button>
@@ -42,38 +44,95 @@
                 <div class="p-6">
                     <div class="flex items-center gap-4">
                         <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-                            {{ strtoupper(substr($evolucion->historiaClinica->paciente->primer_nombre ?? 'P', 0, 1)) }}{{ strtoupper(substr($evolucion->historiaClinica->paciente->primer_apellido ?? 'A', 0, 1)) }}
+                            {{ strtoupper(substr($evolucion->paciente->primer_nombre ?? 'P', 0, 1)) }}{{ strtoupper(substr($evolucion->paciente->primer_apellido ?? 'A', 0, 1)) }}
                         </div>
                         <div class="flex-1">
                             <h4 class="text-xl font-bold text-gray-900">
-                                {{ $evolucion->historiaClinica->paciente->primer_nombre ?? 'N/A' }} 
-                                {{ $evolucion->historiaClinica->paciente->segundo_nombre ?? '' }}
-                                {{ $evolucion->historiaClinica->paciente->primer_apellido ?? '' }}
-                                {{ $evolucion->historiaClinica->paciente->segundo_apellido ?? '' }}
+                                {{ $evolucion->paciente->primer_nombre ?? 'N/A' }} 
+                                {{ $evolucion->paciente->segundo_nombre ?? '' }}
+                                {{ $evolucion->paciente->primer_apellido ?? '' }}
+                                {{ $evolucion->paciente->segundo_apellido ?? '' }}
                             </h4>
                             <div class="grid grid-cols-3 gap-4 mt-2 text-sm">
                                 <div>
                                     <p class="text-gray-500">Cédula</p>
-                                    <p class="font-semibold text-gray-900">{{ $evolucion->historiaClinica->paciente->cedula ?? 'N/A' }}</p>
+                                    <p class="font-semibold text-gray-900">
+                                        {{ $evolucion->paciente->tipo_documento ?? '' }}-{{ $evolucion->paciente->numero_documento ?? 'N/A' }}
+                                    </p>
                                 </div>
                                 <div>
                                     <p class="text-gray-500">Edad</p>
                                     <p class="font-semibold text-gray-900">
-                                        {{ isset($evolucion->historiaClinica->paciente->fecha_nacimiento) ? \Carbon\Carbon::parse($evolucion->historiaClinica->paciente->fecha_nacimiento)->age . ' años' : 'N/A' }}
+                                        {{ isset($evolucion->paciente->fecha_nac) ? \Carbon\Carbon::parse($evolucion->paciente->fecha_nac)->age . ' años' : 'N/A' }}
                                     </p>
                                 </div>
                                 <div>
                                     <p class="text-gray-500">Teléfono</p>
-                                    <p class="font-semibold text-gray-900">{{ $evolucion->historiaClinica->paciente->telefono ?? 'N/A' }}</p>
+                                    <p class="font-semibold text-gray-900">
+                                        {{ $evolucion->paciente->prefijo_tlf ?? '' }} {{ $evolucion->paciente->numero_tlf ?? 'N/A' }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
-                        <a href="{{ route('pacientes.show', $evolucion->historiaClinica->paciente->id ?? 1) }}" class="btn btn-sm btn-outline">
+                        <a href="{{ route('pacientes.show', $evolucion->paciente->id ?? 1) }}" class="btn btn-sm btn-outline">
                             <i class="bi bi-eye"></i> Ver Perfil
                         </a>
                     </div>
                 </div>
             </div>
+
+            @php
+                $pacienteEspecial = \App\Models\PacienteEspecial::where('paciente_id', $evolucion->paciente->id)
+                    ->where('status', true)
+                    ->first();
+                
+                $representante = null;
+                if ($pacienteEspecial) {
+                    $representante = $pacienteEspecial->representantes()
+                        ->wherePivot('status', true)
+                        ->first();
+                }
+            @endphp
+
+            @if($pacienteEspecial && $representante)
+            <div class="card">
+                <div class="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-white">
+                    <h3 class="text-lg font-display font-bold text-gray-900 flex items-center gap-2">
+                        <i class="bi bi-person-badge text-purple-600"></i>
+                        Datos del Representante
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Nombre Completo</p>
+                            <p class="font-semibold text-gray-900">
+                                {{ $representante->primer_nombre }} {{ $representante->primer_apellido }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Cédula</p>
+                            <p class="font-semibold text-gray-900">
+                                {{ $representante->tipo_documento }}-{{ $representante->numero_documento }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Teléfono</p>
+                            <p class="font-semibold text-gray-900">
+                                {{ $representante->prefijo_tlf }} {{ $representante->numero_tlf }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Parentesco</p>
+                            <p class="font-semibold text-gray-900">
+                                {{ $representante->pivot->parentesco ?? 'Responsable' }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
 
             <!-- Vital Signs -->
             <div class="card">
@@ -222,7 +281,16 @@
                     Cita Asociada
                 </h3>
                 <div class="p-4 bg-blue-50 rounded-xl border border-blue-200">
-                    <p class="text-sm text-gray-700 mb-2">Esta evolución está asociada a una cita programada</p>
+                    <p class="text-sm text-gray-700 mb-2">
+                        Esta evolución está asociada a una cita 
+                        @if($evolucion->cita->estado_cita == 'Confirmada')
+                            <span class="font-bold text-emerald-600">Confirmada</span>
+                        @elseif($evolucion->cita->estado_cita == 'Completada')
+                            <span class="font-bold text-blue-600">Completada</span>
+                        @else
+                            <span class="font-bold">{{ $evolucion->cita->estado_cita }}</span>
+                        @endif
+                    </p>
                     <a href="{{ route('citas.show', $evolucion->cita_id) }}" class="btn btn-sm btn-primary w-full mt-2">
                         <i class="bi bi-eye"></i> Ver Cita
                     </a>
@@ -263,20 +331,7 @@
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="card p-6">
-                <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
-                <div class="space-y-2">
-                    <a href="{{ route('ordenes-medicas.create', ['paciente' => $evolucion->historiaClinica->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-clipboard-plus"></i>
-                        Nueva Orden Médica
-                    </a>
-                    <a href="{{ route('historia-clinica.base.index', ['paciente' => $evolucion->historiaClinica->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-folder2-open"></i>
-                        Ver Expediente Completo
-                    </a>
-                </div>
-            </div>
+
         </div>
     </div>
 </div>

@@ -32,19 +32,44 @@ class MedicoController extends Controller
     public function dashboard()
     {
         $medico = auth()->user()->medico;
-        $citasHoy = \App\Models\Cita::where('medico_id', $medico->id)
+        
+        // Citas de hoy ordenadas por estado (Confirmada > Programada > otras)
+        $citasHoy = \App\Models\Cita::with(['paciente', 'especialidad', 'consultorio'])
+                                   ->where('medico_id', $medico->id)
                                    ->whereDate('fecha_cita', today())
                                    ->where('status', true)
+                                   ->orderByRaw("FIELD(estado_cita, 'Confirmada', 'En Progreso', 'Programada', 'Completada', 'Cancelada', 'No Asistió')")
+                                   ->orderBy('hora_inicio', 'asc')
                                    ->get();
 
-        $proximasCitas = \App\Models\Cita::where('medico_id', $medico->id)
+        $proximasCitas = \App\Models\Cita::with(['paciente', 'especialidad', 'consultorio'])
+                                        ->where('medico_id', $medico->id)
                                         ->where('fecha_cita', '>=', today())
                                         ->where('status', true)
-                                        ->orderBy('fecha_cita')
-                                        ->limit(5)
+                                        ->orderByRaw("FIELD(estado_cita, 'Confirmada', 'En Progreso', 'Programada', 'Completada', 'Cancelada', 'No Asistió')")
+                                        ->orderBy('fecha_cita', 'asc')
+                                        ->orderBy('hora_inicio', 'asc')
+                                        ->limit(10)
                                         ->get();
+        
+        // Estadísticas para las tarjetas
+        $hoy = \Carbon\Carbon::today();
+        $stats = [
+            'citas_hoy' => $citasHoy->count(),
+            'completadas_hoy' => $citasHoy->where('estado_cita', 'Completada')->count(),
+            'pacientes_mes' => \App\Models\Cita::where('medico_id', $medico->id)
+                                              ->whereMonth('fecha_cita', $hoy->month)
+                                              ->whereYear('fecha_cita', $hoy->year)
+                                              ->where('status', true)
+                                              ->distinct('paciente_id')
+                                              ->count('paciente_id'),
+            'pacientes_nuevos' => 0, // Placeholder
+            'historias_pendientes' => 0, // Placeholder
+            'ordenes_pendientes' => 0, // Placeholder
+            'laboratorios_pendientes' => 0, // Placeholder
+        ];
 
-        return view('medico.dashboard', compact('citasHoy', 'proximasCitas'));
+        return view('medico.dashboard', compact('citasHoy', 'proximasCitas', 'stats'));
     }
 
     public function index(Request $request)

@@ -5,51 +5,46 @@
 @section('content')
 @section('content')
 <script>
-    // 1. Data Sources (Global)
+    // 1. Data Sources (Global) - Mapa de Consultorio -> Especialidades que acepta
     window.globalConsultorioRules = @json($consultorios->mapWithKeys(function($c) { 
         return [$c->id => $c->especialidades->pluck('id')]; 
     }));
 
     // 2. Component Logic Factory
-    window.makeScheduleCard = function(hManana, hTarde) {
+    window.makeScheduleCard = function(hManana, hTarde, hMananaConsId, hTardeConsId, hMananaEspId, hTardeEspId) {
         return {
             editing: false,
             
             // State
             manana: {
                 active: hManana,
-                consultorio_id: '',
+                especialidad_id: hMananaEspId || '',
+                consultorio_id: hMananaConsId || '',
             },
             tarde: {
                 active: hTarde,
-                consultorio_id: ''
+                especialidad_id: hTardeEspId || '',
+                consultorio_id: hTardeConsId || '',
             },
             
             get active() { 
                 return this.manana.active || this.tarde.active; 
             },
 
-            // Filtering Logic
-            isAllowed(consultorioId, especialidadId) {
-                // strict check for empty string
-                if (consultorioId === '' || consultorioId === null) return true; 
+            // Verificar si un consultorio acepta la especialidad seleccionada
+            consultorioAceptaEspecialidad(consultorioId, especialidadId) {
+                if (!especialidadId || especialidadId === '') return true; // Mostrar todos si no hay especialidad
+                if (!consultorioId || consultorioId === '') return false;
 
-                const rules = window.globalConsultorioRules[consultorioId];
-                if (!rules) return true; // Safety fallack
+                const especialidadesDelConsultorio = window.globalConsultorioRules[consultorioId];
+                if (!especialidadesDelConsultorio) return false;
 
-                // Ensure types match (rules are ints, id is int passed from blade)
-                return rules.includes(parseInt(especialidadId));
+                return especialidadesDelConsultorio.includes(parseInt(especialidadId));
             },
             
-            // Helper to reset specialty if current selection becomes invalid
-            validateSelection(shift) {
-                let state = this[shift];
-                if (!state.consultorio_id) return;
-
-                // We can't easily access the raw select value if it's hidden, 
-                // but since we aren't using x-model on the specialty select, we verify differently.
-                // However, for this fix, we primarily care about VISUAL filtering.
-                // The users complained about seeing nothing or it not working.
+            // Legacy: mantener compatibilidad
+            isAllowed(consultorioId, especialidadId) {
+                return this.consultorioAceptaEspecialidad(consultorioId, especialidadId);
             }
         };
     };
@@ -109,7 +104,7 @@
                 @endphp
                 
                 <div class="card p-0 overflow-hidden hover:shadow-lg transition-shadow border border-gray-100 mb-4" 
-                     x-data="makeScheduleCard({{ $hManana ? 'true' : 'false' }}, {{ $hTarde ? 'true' : 'false' }})">
+                     x-data="makeScheduleCard({{ $hManana ? 'true' : 'false' }}, {{ $hTarde ? 'true' : 'false' }}, '{{ $hManana->consultorio_id ?? '' }}', '{{ $hTarde->consultorio_id ?? '' }}', '{{ $hManana->especialidad_id ?? '' }}', '{{ $hTarde->especialidad_id ?? '' }}')">
                      
                     <!-- Hidden Input for Active State (Calculated) -->
                     <input type="hidden" name="horarios[{{ $key }}][activo]" 
@@ -155,88 +150,104 @@
                     <div class="p-6">
                         
                         <!-- STATE 1: SUMMARY (Saved & Not Editing) -->
-                        <div x-show="!editing && active" class="space-y-4">
-                            @if($hManana)
-                                <div class="flex items-start gap-3 p-3 rounded-lg bg-blue-50/50 border border-blue-100">
-                                    <div class="bg-blue-100 text-blue-600 p-2 rounded-md">
-                                        <i class="bi bi-sun-fill"></i>
+                        <!-- STATE 1: SUMMARY (Saved & Not Editing) -->
+                        <template x-if="!editing && active">
+                            <div class="space-y-4">
+                                @if($hManana)
+                                    <div class="flex items-start gap-3 p-3 rounded-lg bg-blue-50/50 border border-blue-100">
+                                        <div class="bg-blue-100 text-blue-600 p-2 rounded-md">
+                                            <i class="bi bi-sun-fill"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-blue-900">Mañana ({{ \Carbon\Carbon::parse($hManana->horario_inicio)->format('H:i') }} - {{ \Carbon\Carbon::parse($hManana->horario_fin)->format('H:i') }})</p>
+                                            <p class="text-xs text-blue-700 mt-1">
+                                                {{ $hManana->consultorio->nombre ?? 'Sin Consultorio' }} • {{ $hManana->especialidad->nombre ?? 'Sin Especialidad' }}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-sm font-bold text-blue-900">Mañana ({{ \Carbon\Carbon::parse($hManana->horario_inicio)->format('H:i') }} - {{ \Carbon\Carbon::parse($hManana->horario_fin)->format('H:i') }})</p>
-                                        <p class="text-xs text-blue-700 mt-1">
-                                            {{ $hManana->consultorio->nombre ?? 'Sin Consultorio' }} • {{ $hManana->especialidad->nombre ?? 'Sin Especialidad' }}
-                                        </p>
-                                    </div>
-                                </div>
-                            @endif
+                                @endif
 
-                            @if($hTarde)
-                                <div class="flex items-start gap-3 p-3 rounded-lg bg-orange-50/50 border border-orange-100">
-                                    <div class="bg-orange-100 text-orange-600 p-2 rounded-md">
-                                        <i class="bi bi-sunset-fill"></i>
+                                @if($hTarde)
+                                    <div class="flex items-start gap-3 p-3 rounded-lg bg-orange-50/50 border border-orange-100">
+                                        <div class="bg-orange-100 text-orange-600 p-2 rounded-md">
+                                            <i class="bi bi-sunset-fill"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-orange-900">Tarde ({{ \Carbon\Carbon::parse($hTarde->horario_inicio)->format('H:i') }} - {{ \Carbon\Carbon::parse($hTarde->horario_fin)->format('H:i') }})</p>
+                                            <p class="text-xs text-orange-700 mt-1">
+                                                {{ $hTarde->consultorio->nombre ?? 'Sin Consultorio' }} • {{ $hTarde->especialidad->nombre ?? 'Sin Especialidad' }}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-sm font-bold text-orange-900">Tarde ({{ \Carbon\Carbon::parse($hTarde->horario_inicio)->format('H:i') }} - {{ \Carbon\Carbon::parse($hTarde->horario_fin)->format('H:i') }})</p>
-                                        <p class="text-xs text-orange-700 mt-1">
-                                            {{ $hTarde->consultorio->nombre ?? 'Sin Consultorio' }} • {{ $hTarde->especialidad->nombre ?? 'Sin Especialidad' }}
-                                        </p>
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
+                                @endif
+                            </div>
+                        </template>
 
-                        <!-- STATE 2: EMPTY (Not Active & Not Editing) -->
-                        <div x-show="!editing && !active" class="text-center py-4">
-                            <p class="text-gray-400 text-sm mb-3">No hay horario asignado para este día</p>
-                            <button type="button" @click="editing = true; manana_active = true" class="btn btn-outline-primary btn-sm rounded-full px-4">
-                                <i class="bi bi-plus-lg mr-1"></i> Asignar Horario
-                            </button>
-                        </div>
 
                         <!-- STATE 3: EDITING FORM -->
                         <div x-show="editing" x-transition class="space-y-6">
                             
-                            <!-- Turno Mañana Toggle -->
-                            <div class="border-l-4 border-blue-500 pl-4">
-                                <label class="flex items-center gap-2 mb-3 cursor-pointer">
-                                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                        <input type="checkbox" name="horarios[{{ $key }}][manana_activa]" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer" 
+                            <!-- Turno Mañana Section -->
+                            <div class="border border-blue-100 rounded-xl overflow-hidden">
+                                <div class="bg-blue-50/50 p-4 border-b border-blue-100 flex items-center justify-between cursor-pointer" @click="manana_active = !manana_active">
+                                    
+                                    <!-- Rich Header Mañana -->
+                                    <div class="flex items-center gap-3">
+                                        <div class="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                                            <i class="bi bi-sun-fill"></i>
+                                        </div>
+                                        <div>
+                                            @if($hManana)
+                                                <p class="text-sm font-bold text-blue-900">Mañana ({{ \Carbon\Carbon::parse($hManana->horario_inicio)->format('H:i') }} - {{ \Carbon\Carbon::parse($hManana->horario_fin)->format('H:i') }})</p>
+                                                <p class="text-xs text-blue-700 mt-0.5">
+                                                    {{ $hManana->consultorio->nombre ?? 'Sin Consultorio' }} • {{ $hManana->especialidad->nombre ?? 'Sin Especialidad' }}
+                                                </p>
+                                            @else
+                                                <p class="font-bold text-gray-800">Turno Mañana</p>
+                                                <p class="text-xs text-gray-500">Configurar horario matutino</p>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                                         <input type="checkbox" name="horarios[{{ $key }}][manana_activa]" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer" 
                                             value="1" x-model="manana_active" 
-                                            :class="{'right-0 border-blue-600': manana_active, 'right-auto border-gray-300': !manana_active}"/>
+                                            :class="{'right-0 border-blue-600': manana_active, 'right-auto border-gray-300': !manana_active}"
+                                            @click.stop/>
                                         <div class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer"
                                             :class="{'bg-blue-600': manana_active, 'bg-gray-300': !manana_active}"></div>
                                     </div>
-                                    <span class="font-bold text-gray-700">Turno Mañana</span>
-                                </label>
+                                </div>
 
-                                <div x-show="manana_active" class="grid grid-cols-1 md:grid-cols-2 gap-3 animate-fade-in-down">
+                                <div x-show="manana_active" class="p-4 bg-white grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in-down">
+                                    <div>
+                                        <label class="form-label text-xs">Especialidad</label>
+                                        <select name="horarios[{{ $key }}][manana_especialidad_id]" class="form-select text-sm"
+                                                x-model="manana.especialidad_id">
+                                            <option value="">Seleccione...</option>
+                                            @foreach($medico->especialidades as $especialidad)
+                                                <option value="{{ $especialidad->id }}" 
+                                                    {{ ($hManana && $hManana->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
+                                                    {{ $especialidad->nombre }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <div>
                                         <label class="form-label text-xs">Consultorio</label>
                                         <select name="horarios[{{ $key }}][manana_consultorio_id]" class="form-select text-sm"
                                                 x-model="manana.consultorio_id">
                                             <option value="">Seleccione...</option>
                                             @foreach($consultorios as $consultorio)
-                                                <option value="{{ $consultorio->id }}">
+                                                <option value="{{ $consultorio->id }}" 
+                                                    x-show="consultorioAceptaEspecialidad('{{ $consultorio->id }}', manana.especialidad_id)"
+                                                    {{ ($hManana && $hManana->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
                                                     {{ $consultorio->nombre }}
                                                 </option>
                                             @endforeach
                                         </select>
-                                    </div>
-                                    <div>
-                                        <label class="form-label text-xs">Especialidad</label>
-                                        <select name="horarios[{{ $key }}][manana_especialidad_id]" class="form-select text-sm">
-                                            <option value="">Seleccione...</option>
-                                            @foreach($medico->especialidades as $especialidad)
-                                                <option value="{{ $especialidad->id }}" 
-                                                    x-show="isAllowed(manana.consultorio_id, '{{ $especialidad->id }}')"
-                                                    {{ ($hManana && $hManana->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
-                                                    {{ $especialidad->nombre }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <p class="text-xs text-info-600 mt-1" 
-                                           x-show="manana.consultorio_id && !isAllowed(manana.consultorio_id, $el.previousElementSibling.value)">
-                                            <!-- Simple feedback if selected option becomes invalid -->
+                                        <p class="text-xs text-gray-500 mt-1" x-show="!manana.especialidad_id">
+                                            Primero seleccione una especialidad
                                         </p>
                                     </div>
                                     <div>
@@ -252,44 +263,68 @@
                                 </div>
                             </div>
 
-                            <!-- Turno Tarde Toggle -->
-                            <div class="border-l-4 border-orange-500 pl-4">
-                                <label class="flex items-center gap-2 mb-3 cursor-pointer">
-                                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <!-- Turno Tarde Section -->
+                            <div class="border border-orange-100 rounded-xl overflow-hidden mt-4">
+                                <div class="bg-orange-50/50 p-4 border-b border-orange-100 flex items-center justify-between cursor-pointer" @click="tarde_active = !tarde_active">
+                                    
+                                    <!-- Rich Header Tarde -->
+                                    <div class="flex items-center gap-3">
+                                        <div class="bg-orange-100 text-orange-600 p-2 rounded-lg">
+                                            <i class="bi bi-sunset-fill"></i>
+                                        </div>
+                                        <div>
+                                            @if($hTarde)
+                                                <p class="text-sm font-bold text-orange-900">Tarde ({{ \Carbon\Carbon::parse($hTarde->horario_inicio)->format('H:i') }} - {{ \Carbon\Carbon::parse($hTarde->horario_fin)->format('H:i') }})</p>
+                                                <p class="text-xs text-orange-700 mt-0.5">
+                                                    {{ $hTarde->consultorio->nombre ?? 'Sin Consultorio' }} • {{ $hTarde->especialidad->nombre ?? 'Sin Especialidad' }}
+                                                </p>
+                                            @else
+                                                <p class="font-bold text-gray-800">Turno Tarde</p>
+                                                <p class="text-xs text-gray-500">Configurar horario vespertino</p>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
                                         <input type="checkbox" name="horarios[{{ $key }}][tarde_activa]" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer" 
                                             value="1" x-model="tarde_active"
-                                            :class="{'right-0 border-orange-600': tarde_active, 'right-auto border-gray-300': !tarde_active}"/>
+                                            :class="{'right-0 border-orange-600': tarde_active, 'right-auto border-gray-300': !tarde_active}"
+                                            @click.stop/>
                                         <div class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer"
                                             :class="{'bg-orange-600': tarde_active, 'bg-gray-300': !tarde_active}"></div>
                                     </div>
-                                    <span class="font-bold text-gray-700">Turno Tarde</span>
-                                </label>
+                                </div>
                                 
-                                <div x-show="tarde_active" class="grid grid-cols-1 md:grid-cols-2 gap-3 animate-fade-in-down">
+                                <div x-show="tarde_active" class="p-4 bg-white grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in-down">
+                                    <div>
+                                        <label class="form-label text-xs">Especialidad</label>
+                                        <select name="horarios[{{ $key }}][tarde_especialidad_id]" class="form-select text-sm"
+                                                x-model="tarde.especialidad_id">
+                                            <option value="">Seleccione...</option>
+                                            @foreach($medico->especialidades as $especialidad)
+                                                <option value="{{ $especialidad->id }}" 
+                                                    {{ ($hTarde && $hTarde->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
+                                                    {{ $especialidad->nombre }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <div>
                                         <label class="form-label text-xs">Consultorio</label>
                                         <select name="horarios[{{ $key }}][tarde_consultorio_id]" class="form-select text-sm"
                                                 x-model="tarde.consultorio_id">
                                             <option value="">Seleccione...</option>
                                             @foreach($consultorios as $consultorio)
-                                                <option value="{{ $consultorio->id }}">
+                                                <option value="{{ $consultorio->id }}" 
+                                                    x-show="consultorioAceptaEspecialidad('{{ $consultorio->id }}', tarde.especialidad_id)"
+                                                    {{ ($hTarde && $hTarde->consultorio_id == $consultorio->id) ? 'selected' : '' }}>
                                                     {{ $consultorio->nombre }}
                                                 </option>
                                             @endforeach
                                         </select>
-                                    </div>
-                                    <div>
-                                        <label class="form-label text-xs">Especialidad</label>
-                                        <select name="horarios[{{ $key }}][tarde_especialidad_id]" class="form-select text-sm">
-                                            <option value="">Seleccione...</option>
-                                            @foreach($medico->especialidades as $especialidad)
-                                                <option value="{{ $especialidad->id }}" 
-                                                    x-show="isAllowed(tarde.consultorio_id, '{{ $especialidad->id }}')"
-                                                    {{ ($hTarde && $hTarde->especialidad_id == $especialidad->id) ? 'selected' : '' }}>
-                                                    {{ $especialidad->nombre }}
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                        <p class="text-xs text-gray-500 mt-1" x-show="!tarde.especialidad_id">
+                                            Primero seleccione una especialidad
+                                        </p>
                                     </div>
                                     <div>
                                         <label class="form-label text-xs">Inicio</label>
@@ -302,12 +337,6 @@
                                             value="{{ $hTarde ? \Carbon\Carbon::parse($hTarde->horario_fin)->format('H:i') : '18:00' }}">
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <div class="text-right">
-                                <button type="button" @click="editing = false" class="text-xs text-gray-400 hover:text-gray-600 underline">
-                                    Ocultar editor
-                                </button>
                             </div>
                         </div>
 
@@ -340,7 +369,7 @@
                 <div class="bg-medical-50 rounded-xl p-4 mb-4">
                     <p class="text-xs text-medical-700 font-medium mb-2">💡 Consejo</p>
                     <p class="text-xs text-gray-600">
-                        Configure descansos de 15-30 min cada 4 horas para mantener la calidad de atención.
+                        Considere descansos de 15-30 min cada 4 horas para mantener la calidad de atención.
                     </p>
                 </div>
 

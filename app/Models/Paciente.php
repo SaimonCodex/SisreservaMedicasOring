@@ -35,6 +35,7 @@ class Paciente extends Model
         'banner_perfil',
         'banner_color',
         'tema_dinamico',
+        'es_especial',
         'status'
     ];
 
@@ -107,5 +108,21 @@ class Paciente extends Model
     public function solicitudesHistorial()
     {
         return $this->hasMany(SolicitudHistorial::class, 'paciente_id');
+    }
+
+    /**
+     * Relación: cuando este paciente actúa como representante
+     */
+    public function representante()
+    {
+        return $this->hasOne(Representante::class, 'paciente_id');
+    }
+
+    /**
+     * Verificar si es paciente especial
+     */
+    public function getEsEspecialAttribute($value)
+    {
+        return $value == 1;
     }
 }

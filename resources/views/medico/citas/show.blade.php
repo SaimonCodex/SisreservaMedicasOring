@@ -25,12 +25,7 @@
                     <span>Registrar Evolución</span>
                 </a>
             @endif
-            @if(in_array($cita->estado_cita, ['Programada', 'Confirmada']))
-                <a href="{{ route('citas.edit', $cita->id) }}" class="btn btn-primary">
-                    <i class="bi bi-pencil"></i>
-                    <span>Editar</span>
-                </a>
-            @endif
+           
         </div>
     </div>
 
@@ -77,19 +72,19 @@
                                     <p class="font-semibold text-gray-900">
                                         @if($cita->paciente->fecha_nac)
                                             {{ \Carbon\Carbon::parse($cita->paciente->fecha_nac)->age }} años
-                                            ({{ $cita->paciente->genero == 'M' ? 'Masculino' : 'Femenino' }})
+                                            ({{ $cita->paciente->genero }})
                                         @else
                                             N/A
                                         @endif
                                     </p>
                                 </div>
                             </div>
-                            <div class="mt-4 flex gap-2">
+                            <div class="mt-6 flex flex-wrap gap-3">
                                 <a href="{{ route('pacientes.show', $cita->paciente->id) }}" class="btn btn-sm btn-outline">
                                     <i class="bi bi-eye"></i> Ver Perfil Completo
                                 </a>
                                 @if($cita->paciente->historiaClinicaBase)
-                                    <a href="{{ route('historia-clinica.base.show', $cita->paciente->id) }}" class="btn btn-sm btn-info">
+                                    <a href="{{ route('historia-clinica.base.show', $cita->paciente->id) }}" class="btn btn-sm btn-outline">
                                         <i class="bi bi-file-medical"></i> Historia Clínica Base
                                     </a>
                                 @else
@@ -97,32 +92,12 @@
                                         <i class="bi bi-plus-circle"></i> Crear Historia Clínica Base
                                     </a>
                                 @endif
+                                @if($cita->evolucionClinica)
+                                <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-outline">
+                                    <i class="bi bi-eye"></i> Ver Evolución Completa
+                                </a>
+                                @endif
                             </div>
-
-<!-- ... other blocks ... -->
-
-                        <div class="pt-4 border-t border-gray-200">
-                            <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $cita->id]) }}" class="btn btn-sm btn-outline">
-                                <i class="bi bi-eye"></i> Ver Evolución Completa
-                            </a>
-                        </div>
-
-<!-- ... other blocks ... -->
-
-            <!-- Quick Actions -->
-            <div class="card p-6">
-                <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
-                <div class="space-y-2">
-                    <a href="{{ route('ordenes-medicas.create', ['paciente' => $cita->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-clipboard-plus"></i>
-                        Nueva Orden Médica
-                    </a>
-                    <a href="{{ route('historia-clinica.base.index', ['paciente' => $cita->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-folder2-open"></i>
-                        Ver Expediente
-                    </a>
-                </div>
-            </div>
                         </div>
                     </div>
                 </div>
@@ -329,9 +304,22 @@
                                             {{ $evolucion->cita->especialidad->nombre ?? 'Consulta General' }}
                                         </p>
                                     </div>
-                                    <a href="{{ route('historia-clinica.evoluciones.show', $evolucion->id) }}" class="btn btn-sm btn-outline">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
+                                    @php
+                                        $medicoAuthId = auth()->user()->medico->id ?? 0;
+                                        $esPropia = $evolucion->medico_id == $medicoAuthId;
+                                        $tieneAcceso = $esPropia || \App\Models\SolicitudHistorial::tieneAccesoActivo($medicoAuthId, $evolucion->id);
+                                    @endphp
+
+                                    @if($tieneAcceso)
+                                        <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $evolucion->cita_id]) }}" class="btn btn-sm btn-outline" title="Ver Evolución">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    @else
+                                        <button onclick="solicitarAcceso({{ $evolucion->id }}, '{{ $evolucion->medico->usuario->primer_nombre ?? '' }} {{ $evolucion->medico->usuario->primer_apellido ?? '' }}')" 
+                                                class="btn btn-sm btn-outline text-blue-600" title="Solicitar Acceso">
+                                            <i class="bi bi-shield-lock"></i>
+                                        </button>
+                                    @endif
                                 </div>
                                 <div class="mt-2">
                                     <p class="text-sm text-gray-700">
@@ -369,7 +357,7 @@
                             <p class="mt-1 text-gray-900">{{ $cita->evolucionClinica->tratamiento ?? 'N/A' }}</p>
                         </div>
                         <div class="pt-4 border-t border-gray-200">
-                            <a href="{{ route('historia-clinica.evoluciones.show', $cita->evolucionClinica->id) }}" class="btn btn-sm btn-outline">
+                            <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $cita->evolucionClinica->cita_id]) }}" class="btn btn-sm btn-outline">
                                 <i class="bi bi-eye"></i> Ver Evolución Completa
                             </a>
                         </div>
@@ -432,26 +420,7 @@
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="card p-6">
-                <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
-                <div class="space-y-2">
-                    <a href="{{ route('ordenes-medicas.create') }}?paciente={{ $cita->paciente->id }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-clipboard-plus"></i>
-                        Nueva Orden Médica
-                    </a>
-                    @if($cita->paciente->historiaClinicaBase)
-                        <a href="{{ route('historia-clinica.base.show', $cita->paciente->id) }}" class="btn btn-outline w-full justify-start">
-                            <i class="bi bi-folder2-open"></i>
-                            Ver Expediente Completo
-                        </a>
-                    @endif
-                    <a href="{{ route('historia-clinica.evoluciones.index', $cita->paciente->id) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-journal-medical"></i>
-                        Ver Todas las Evoluciones
-                    </a>
-                </div>
-            </div>
+
 
             <!-- Timeline -->
             <div class="card">
@@ -509,4 +478,82 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Solicitud de Acceso -->
+<div id="modalSolicitudAcceso" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="cerrarModalSolicitud()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="bi bi-shield-lock text-blue-600 text-xl"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Solicitar Acceso a Evolución</h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500 mb-4">
+                                Esta evolución pertenece al Dr. <span id="nombreMedicoPropietario" class="font-bold"></span>. 
+                                Para visualizarla, debes solicitar acceso.
+                            </p>
+                            <form id="formSolicitudAcceso" method="POST">
+                                @csrf
+                                <input type="hidden" id="evolucionIdSolicitud" name="evolucion_id">
+                                <div class="mb-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Motivo de la solicitud</label>
+                                    <select name="motivo" class="form-select w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200" required>
+                                        <option value="">Seleccione un motivo...</option>
+                                        <option value="Consulta de seguimiento">Consulta de seguimiento</option>
+                                        <option value="Interconsulta">Interconsulta</option>
+                                        <option value="Emergencia médica">Emergencia médica</option>
+                                        <option value="Segunda opinión">Segunda opinión</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones adicionales</label>
+                                    <textarea name="observaciones" rows="3" class="form-textarea w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200" placeholder="Detalle por qué necesita acceso..."></textarea>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button" onclick="enviarSolicitud()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    Enviar Solicitud
+                </button>
+                <button type="button" onclick="cerrarModalSolicitud()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function solicitarAcceso(evolucionId, nombreMedico) {
+        document.getElementById('evolucionIdSolicitud').value = evolucionId;
+        document.getElementById('nombreMedicoPropietario').textContent = nombreMedico;
+        document.getElementById('modalSolicitudAcceso').classList.remove('hidden');
+        
+        // Configurar la acción del formulario
+        const form = document.getElementById('formSolicitudAcceso');
+        // Aseguramos que la ruta base sea correcta, asumiendo que el ID se pasa dinámicamente o se maneja en el controlador
+        // Como la ruta definida es 'post' a 'evolucion/{id}/solicitar-acceso', la construimos aquí
+        form.action = "{{ url('historia-clinica/evolucion') }}/" + evolucionId + "/solicitar-acceso";
+    }
+
+    function cerrarModalSolicitud() {
+        document.getElementById('modalSolicitudAcceso').classList.add('hidden');
+    }
+
+    function enviarSolicitud() {
+        const form = document.getElementById('formSolicitudAcceso');
+        if(form.reportValidity()) {
+            form.submit();
+        }
+    }
+</script>
 @endsection

@@ -154,6 +154,20 @@
                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="10">
                             </div>
                         </div>
+
+                        <div>
+                            <label class="form-label form-label-required">Fecha Nacimiento</label>
+                            <input type="date" name="rep_fecha_nac" id="rep_fecha_nac" class="input" max="{{ date('Y-m-d') }}">
+                        </div>
+
+                        <div>
+                            <label class="form-label form-label-required">Género</label>
+                            <select name="rep_genero" id="rep_genero" class="form-select">
+                                <option value="">Seleccionar...</option>
+                                <option value="Masculino">Masculino</option>
+                                <option value="Femenino">Femenino</option>
+                            </select>
+                        </div>
                         
                         <div class="md:col-span-2">
                             <label class="form-label form-label-required">Parentesco con el Paciente</label>
@@ -316,8 +330,16 @@
                         </div>
                         
                         <div>
-                            <label class="form-label">Fecha de Nacimiento</label>
                             <input type="date" name="pac_fecha_nac" id="pac_fecha_nac" class="input" max="{{ date('Y-m-d') }}">
+                        </div>
+                        
+                        <div>
+                            <label class="form-label form-label-required">Género</label>
+                            <select name="pac_genero" id="pac_genero" class="form-select">
+                                <option value="">Seleccionar...</option>
+                                <option value="Masculino">Masculino</option>
+                                <option value="Femenino">Femenino</option>
+                            </select>
                         </div>
                         
                         <!-- Dirección -->

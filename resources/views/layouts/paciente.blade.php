@@ -8,6 +8,10 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
 
     @php
         $paciente = auth()->user()->paciente;
@@ -133,6 +137,7 @@
                                 ['route' => 'paciente.dashboard', 'icon' => 'bi-grid-1x2', 'label' => 'Inicio'],
                                 ['route' => 'paciente.citas.index', 'icon' => 'bi-calendar3', 'label' => 'Mis Citas'],
                                 ['route' => 'paciente.citas.create', 'icon' => 'bi-calendar-plus', 'label' => 'Nueva Cita'],
+                                ['route' => 'paciente.ordenes.index', 'icon' => 'bi-file-medical', 'label' => 'Recetas'],
                                 ['route' => 'paciente.historial', 'icon' => 'bi-folder2-open', 'label' => 'Historial'],
                                 ['route' => 'paciente.solicitudes', 'icon' => 'bi-shield-lock', 'label' => 'Permisos'],
                                 ['route' => 'paciente.pagos', 'icon' => 'bi-wallet2', 'label' => 'Pagos'],

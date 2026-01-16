@@ -118,21 +118,21 @@
     <!-- Ordenes List -->
     <div class="card">
         <div class="overflow-x-auto">
-            <table class="table table-hover">
-                <thead>
+            <table class="w-full text-sm">
+                <thead class="bg-gradient-to-r from-medical-600 to-medical-500 text-white">
                     <tr>
-                        <th>Fecha</th>
-                        <th>Tipo</th>
-                        <th>Paciente</th>
-                        <th>Descripción</th>
-                        <th>Estado</th>
-                        <th class="w-40">Acciones</th>
+                        <th class="px-6 py-4 text-left font-semibold">Fecha</th>
+                        <th class="px-6 py-4 text-left font-semibold">Tipo</th>
+                        <th class="px-6 py-4 text-left font-semibold">Paciente</th>
+                        <th class="px-6 py-4 text-left font-semibold">Descripción</th>
+                        <th class="px-6 py-4 text-left font-semibold">Estado</th>
+                        <th class="px-6 py-4 text-center font-semibold">Acciones</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-100">
                     @forelse($ordenes ?? [] as $orden)
-                    <tr>
-                        <td>
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4">
                             <div class="flex flex-col">
                                 <span class="font-semibold text-gray-900">
                                     {{ isset($orden->created_at) ? \Carbon\Carbon::parse($orden->created_at)->format('d/m/Y') : 'N/A' }}
@@ -142,7 +142,7 @@
                                 </span>
                             </div>
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             @if($orden->tipo == 'receta')
                             <span class="badge badge-purple">
                                 <i class="bi bi-prescription"></i> Receta
@@ -161,7 +161,7 @@
                             </span>
                             @endif
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
                                     {{ strtoupper(substr($orden->paciente->primer_nombre ?? 'P', 0, 1)) }}{{ strtoupper(substr($orden->paciente->primer_apellido ?? 'A', 0, 1)) }}
@@ -171,14 +171,17 @@
                                         {{ $orden->paciente->primer_nombre ?? 'N/A' }} 
                                         {{ $orden->paciente->primer_apellido ?? '' }}
                                     </p>
-                                    <p class="text-sm text-gray-500">{{ $orden->paciente->cedula ?? 'N/A' }}</p>
+                                    <p class="text-sm text-gray-500">
+                                        {{ $orden->paciente->tipo_documento ?? '' }}-{{ $orden->paciente->numero_documento ?? 'N/A' }}
+                                    </p>
+                                    <p class="text-xs text-gray-400 capitalize">{{ $orden->paciente->genero ?? '' }}</p>
                                 </div>
                             </div>
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             <p class="text-gray-900 line-clamp-2">{{ $orden->descripcion ?? $orden->observaciones ?? 'Sin descripción' }}</p>
                         </td>
-                        <td>
+                        <td class="px-6 py-4">
                             @if($orden->status == 'completada')
                             <span class="badge badge-success">
                                 <i class="bi bi-check-circle"></i> Completada
@@ -197,13 +200,13 @@
                             </span>
                             @endif
                         </td>
-                        <td>
-                            <div class="flex items-center gap-2">
-                                <a href="{{ route('ordenes-medicas.show', $orden->id) }}" class="btn btn-sm btn-outline" title="Ver">
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <a href="{{ route('ordenes-medicas.show', $orden->id) }}" class="btn btn-sm btn-ghost text-purple-600 hover:bg-purple-50" title="Ver">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 @if($orden->status != 'completada' && auth()->user()->rol_id == 2)
-                                <a href="{{ route('ordenes-medicas.edit', $orden->id) }}" class="btn btn-sm btn-primary" title="Editar">
+                                <a href="{{ route('ordenes-medicas.edit', $orden->id) }}" class="btn btn-sm btn-ghost text-blue-600 hover:bg-blue-50" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 @endif
@@ -235,7 +238,7 @@
 
         @if(isset($ordenes) && $ordenes->hasPages())
         <div class="p-6 border-t border-gray-200">
-            {{ $ordenes->links() }}
+            {{ $ordenes->appends(request()->query())->links('vendor.pagination.medical') }}
         </div>
         @endif
     </div>

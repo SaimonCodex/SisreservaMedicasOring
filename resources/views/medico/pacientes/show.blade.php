@@ -13,14 +13,14 @@
             <p class="text-gray-500 mt-1">Información completa y registro médico</p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ route('citas.create') }}?paciente={{ $paciente->id }}" class="btn btn-outline">
+            {{-- <a href="{{ route('citas.create') }}?paciente={{ $paciente->id }}" class="btn btn-outline">
                 <i class="bi bi-calendar-plus mr-2"></i>
                 Nueva Cita
-            </a>
-            <a href="{{ route('pacientes.edit', $paciente->id) }}" class="btn btn-primary">
+            </a> --}}
+            {{-- <a href="{{ route('pacientes.edit', $paciente->id) }}" class="btn btn-primary">
                 <i class="bi bi-pencil mr-2"></i>
                 Editar
-            </a>
+            </a> --}}
         </div>
     </div>
 </div>
@@ -143,7 +143,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-gray-500 mb-1">Correo Electrónico</p>
-                    <p class="font-semibold text-gray-900">{{ $paciente->usuario->correo }}</p>
+                    <p class="font-semibold text-gray-900">{{ $paciente->usuario->correo ?? 'No registrado' }}</p>
                 </div>
                 <div class="md:col-span-2">
                     <p class="text-sm text-gray-500 mb-1">Dirección</p>
@@ -170,9 +170,10 @@
                     <i class="bi bi-calendar-check text-warning-600"></i>
                     Próximas Citas
                 </h3>
-                <a href="{{ route('citas.create') }}?paciente={{ $paciente->id }}" class="text-sm text-medical-600 hover:underline">
-                    <i class="bi bi-plus-lg mr-1"></i>Agendar
-                </a>
+            <!--  <a href="{{ route('citas.create') }}?paciente={{ $paciente->id }}" class="text-sm text-medical-600 hover:underline">
+             //       <i class="bi bi-plus-lg mr-1"></i>Agendar
+              </a>-->
+
             </div>
             
             @php
@@ -211,30 +212,7 @@
 
     <!-- Sidebar -->
     <div class="lg:col-span-1 space-y-6">
-        <!-- Acciones Rápidas -->
-        <div class="card p-6 sticky top-6">
-            <h4 class="font-bold text-gray-900 mb-4">Acciones Rápidas</h4>
-            <div class="space-y-2">
-                @if($paciente->historiaClinicaBase)
-                    <a href="{{ route('historia-clinica.base.show', $paciente->id) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-file-medical mr-2"></i>
-                        Ver Historia Clínica
-                    </a>
-                @else
-                    <a href="{{ route('historia-clinica.base.create', $paciente->id) }}" class="btn btn-primary w-full justify-start">
-                        <i class="bi bi-plus-circle mr-2"></i>
-                        Crear Historia Clínica
-                    </a>
-                @endif
-                
-                <a href="{{ route('citas.create') }}?paciente={{ $paciente->id }}" class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-calendar-plus mr-2"></i>
-                    Agendar Cita
-                </a>
-                
-                <!-- Otros botones de acciones -->
-            </div>
-        </div>
+
 
         <!-- Estado -->
         <div class="card p-6">

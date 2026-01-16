@@ -113,6 +113,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/solicitudes-acceso', [HistoriaClinicaController::class, 'listarSolicitudesPaciente'])->name('paciente.solicitudes');
         Route::post('/solicitudes-acceso/{id}/aprobar', [HistoriaClinicaController::class, 'aprobarSolicitud'])->name('paciente.solicitudes.aprobar');
         Route::post('/solicitudes-acceso/{id}/rechazar', [HistoriaClinicaController::class, 'rechazarSolicitud'])->name('paciente.solicitudes.rechazar');
+        
+        // Rutas de Órdenes Médicas para Paciente
+        Route::get('/ordenes', [OrdenMedicaController::class, 'indexPaciente'])->name('paciente.ordenes.index');
+        Route::get('/ordenes/{id}', [OrdenMedicaController::class, 'showPaciente'])->name('paciente.ordenes.show');
+        Route::get('/ordenes/solicitudes', [OrdenMedicaController::class, 'listarSolicitudesPaciente'])->name('paciente.ordenes.solicitudes');
+        Route::post('/ordenes/solicitudes/{id}/aprobar', [OrdenMedicaController::class, 'aprobarSolicitudPaciente'])->name('paciente.ordenes.solicitudes.aprobar');
+        Route::post('/ordenes/solicitudes/{id}/rechazar', [OrdenMedicaController::class, 'rechazarSolicitudPaciente'])->name('paciente.ordenes.solicitudes.rechazar');
     });
 
     // Rutas Específicas Representante
@@ -274,6 +281,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('base/{pacienteId}', [HistoriaClinicaController::class, 'updateBase'])->name('historia-clinica.base.update');
 
         // Evoluciones Clínicas
+        Route::get('evoluciones-clinicas', [HistoriaClinicaController::class, 'indexGeneral'])->name('historia-clinica.evoluciones.general');
         Route::get('evoluciones/{pacienteId}', [HistoriaClinicaController::class, 'indexEvoluciones'])->name('historia-clinica.evoluciones.index');
         Route::get('evoluciones/cita/{citaId}/create', [HistoriaClinicaController::class, 'createEvolucion'])->name('historia-clinica.evoluciones.create');
         Route::post('evoluciones/cita/{citaId}', [HistoriaClinicaController::class, 'storeEvolucion'])->name('historia-clinica.evoluciones.store');
@@ -294,6 +302,7 @@ Route::middleware(['auth'])->group(function () {
         
         // Permisos de acceso
         Route::post('solicitar-acceso/{pacienteId}', [HistoriaClinicaController::class, 'solicitarAcceso'])->name('historia-clinica.solicitar-acceso');
+        Route::post('evolucion/{evolucionId}/solicitar-acceso', [HistoriaClinicaController::class, 'solicitarAccesoEvolucion'])->name('historia-clinica.solicitar-acceso-evolucion');
         Route::post('validar-token/{solicitudId}', [HistoriaClinicaController::class, 'validarTokenAcceso'])->name('historia-clinica.validar-token');
     });
     
@@ -312,6 +321,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('ordenes-medicas/{id}/imprimir', [OrdenMedicaController::class, 'imprimir'])->name('ordenes-medicas.imprimir');
     Route::get('ordenes-medicas/exportar-periodo', [OrdenMedicaController::class, 'exportarPorPeriodo'])->name('ordenes-medicas.exportar-periodo');
     Route::get('ordenes-medicas/estadisticas', [OrdenMedicaController::class, 'estadisticas'])->name('ordenes-medicas.estadisticas');
+    
+    // Nuevas rutas de órdenes médicas
+    Route::post('ordenes-medicas/{id}/solicitar-acceso', [OrdenMedicaController::class, 'solicitarAcceso'])->name('ordenes-medicas.solicitar-acceso');
+    Route::post('ordenes-medicas/store-con-items', [OrdenMedicaController::class, 'storeConItems'])->name('ordenes-medicas.store-con-items');
     
     // =========================================================================
     // NOTIFICACIONES
