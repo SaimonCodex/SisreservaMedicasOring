@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 
 class Administrador extends Model
 {
-    use HasFactory;
+    use HasFactory, Notifiable;
 
     protected $table = 'administradores';
     protected $primaryKey = 'id';
@@ -70,5 +71,20 @@ class Administrador extends Model
     {
         return $this->belongsToMany(Consultorio::class, 'administrador_consultorio', 'administrador_id', 'consultorio_id')
                     ->withTimestamps();
+    }
+
+    public function getNombreCompletoAttribute()
+    {
+        return $this->primer_nombre . ' ' . $this->primer_apellido;
+    }
+
+    public function routeNotificationForMail($notification)
+    {
+        return $this->usuario->correo ?? null;
+    }
+
+    public function receivesBroadcastNotificationsOn()
+    {
+        return 'App.Models.Administrador.' . $this->id;
     }
 }

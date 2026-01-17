@@ -2,39 +2,59 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Cita;
-use App\Http\Controllers\NotificacionController;
 use Illuminate\Console\Command;
+use App\Models\Cita;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class EnviarRecordatoriosCitas extends Command
 {
-    protected $signature = 'citas:enviar-recordatorios';
-    protected $description = 'Enviar recordatorios de citas 24 horas antes';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'citas:recordatorios';
 
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Envia recordatorios a los pacientes con citas programadas para el día siguiente';
+
+    /**
+     * Execute the console command.
+     */
     public function handle()
     {
-        $fechaManana = Carbon::tomorrow()->toDateString();
+        $manana = Carbon::tomorrow()->format('Y-m-d');
         
-        $citas = Cita::where('fecha_cita', $fechaManana)
-            ->whereIn('estado_cita', ['Programada', 'Confirmada'])
-            ->where('status', true)
-            ->with(['paciente.usuario'])
-            ->get();
+        $this->info("Buscando citas para mañana: $manana");
+        Log::info("Iniciando comando de recordatorios para: $manana");
 
-        $controller = new NotificacionController();
+        $citas = Cita::with(['paciente.usuario', 'medico', 'consultorio'])
+                     ->whereDate('fecha_cita', $manana)
+                     ->whereIn('estado_cita', ['Programada', 'Confirmada'])
+                     ->where('status', true)
+                     ->get();
+
+        $count = 0;
         
         foreach ($citas as $cita) {
-            if ($cita->paciente && $cita->paciente->usuario) {
-                try {
-                    $controller->enviarRecordatorioCita($cita->id);
-                    $this->info("Recordatorio enviado para cita ID: {$cita->id}");
-                } catch (\Exception $e) {
-                    $this->error("Error enviando recordatorio para cita ID: {$cita->id} - " . $e->getMessage());
+            try {
+                if ($cita->paciente && $cita->paciente->usuario) {
+                    $cita->paciente->usuario->notify(new \App\Notifications\RecordatorioCita($cita));
+                    $this->info("Recordatorio enviado a Cita #{$cita->id}");
+                    $count++;
                 }
+            } catch (\Exception $e) {
+                Log::error("Error enviando recordatorio cita #{$cita->id}: " . $e->getMessage());
+                $this->error("Error en cita #{$cita->id}");
             }
         }
 
-        $this->info("Total recordatorios enviados: " . $citas->count());
+        $this->info("Proceso finalizado. $count recordatorios enviados.");
+        Log::info("Comando recordatorios finalizado. $count enviados.");
     }
 }

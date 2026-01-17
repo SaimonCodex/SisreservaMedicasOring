@@ -38,8 +38,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Sistema Médico') }} - @yield('title')</title>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <script>
@@ -73,8 +71,21 @@
         .animate-float-orb { animation: float-orb 15s ease-in-out infinite; }
         .animate-float-orb-slow { animation: float-orb 25s ease-in-out infinite reverse; }
         .animate-float-orb-delayed { animation: float-orb 20s ease-in-out infinite; animation-delay: -5s; }
+
+        /* Toast Animations */
+        .toast-card {
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .toast-card.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
     </style>
     @endif
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @stack('styles')
 </head>
@@ -88,6 +99,9 @@
         <div class="absolute -bottom-[10%] left-[20%] w-[35%] h-[45%] rounded-full animate-float-orb-delayed blur-[130px]"
              style="background-color: var(--medical-500, #10b981); opacity: 0.05;"></div>
     </div>
+
+    <!-- Toast Container for Admin Notifications -->
+    <div id="toast-container" class="fixed top-24 right-6 z-[100] flex flex-col gap-3 w-full max-w-sm pointer-events-none"></div>
 
     <!-- Sidebar Overlay (Mobile) -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden lg:hidden"></div>
@@ -227,9 +241,9 @@
                 <span class="font-medium text-sm">Pagos</span>
             </a>
  
-            <a href="{{ route('notificaciones.index') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/notificaciones*') ? 'bg-medical-500/20 text-medical-500 ring-1 ring-medical-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-bell-fill text-lg mr-3 {{ request()->is('*/notificaciones*') ? 'text-medical-500' : 'text-slate-500 group-hover:text-slate-200' }}"></i>
+            <a href="{{ route('admin.notificaciones.index') }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/notificaciones*') || request()->is('admin/notificaciones*') ? 'bg-medical-500/20 text-medical-500 ring-1 ring-medical-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+                <i class="bi bi-bell-fill text-lg mr-3 {{ request()->is('*/notificaciones*') || request()->is('admin/notificaciones*') ? 'text-medical-500' : 'text-slate-500 group-hover:text-slate-200' }}"></i>
                 <span class="font-medium text-sm">Notificaciones</span>
             </a>
  
@@ -289,11 +303,69 @@
                 <!-- Right: Notifications & User -->
                 <div class="flex items-center gap-3">
                     <!-- Notifications -->
-                    <div class="relative">
-                        <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-                            <i class="bi bi-bell text-xl text-gray-700"></i>
-                            <span class="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
-                        </button>
+                    <div class="relative group">
+                        <a href="{{ route('admin.notificaciones.index') }}" 
+                           class="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition-all hover:bg-medical-50 hover:text-medical-600 ring-1 ring-slate-200 group-hover:ring-medical-500">
+                            <i class="bi bi-bell-fill text-xl"></i>
+                            @php
+                                $unreadAdminCount = auth()->user()->administrador->unreadNotifications()->count();
+                            @endphp
+                            @if($unreadAdminCount > 0)
+                                <span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white" id="notif-count">
+                                    {{ $unreadAdminCount > 9 ? '9+' : $unreadAdminCount }}
+                                </span>
+                            @else
+                                <span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white hidden" id="notif-count">0</span>
+                            @endif
+                        </a>
+                        
+                        <!-- Notification Dropdown -->
+                        <div class="absolute right-0 top-full mt-2 w-80 scale-95 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                                <div class="flex items-center justify-between px-4 py-3 bg-medical-50 border-b border-medical-100">
+                                    <h3 class="text-sm font-bold text-medical-800">Notificaciones</h3>
+                                    @if($unreadAdminCount > 0)
+                                        <form method="POST" action="{{ route('admin.notificaciones.leer-todas') }}" class="inline">
+                                            @csrf
+                                            <button type="submit" class="text-xs font-bold text-medical-600 hover:text-medical-700">
+                                                Marcar todas como leídas
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+                                <div class="max-h-96 overflow-y-auto">
+                                    @forelse(auth()->user()->administrador->unreadNotifications()->take(5)->get() as $notification)
+                                        <a href="{{ $notification->data['link'] ?? '#' }}" 
+                                           class="block px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+                                           onclick="event.preventDefault(); marcarComoLeidaAdmin('{{ $notification->id }}', '{{ $notification->data['link'] ?? '#' }}')">
+                                            <div class="flex items-start gap-3">
+                                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-{{ $notification->data['tipo'] === 'success' ? 'medical' : ($notification->data['tipo'] === 'warning' ? 'amber' : 'blue') }}-100 flex items-center justify-center">
+                                                    <i class="bi bi-{{ $notification->data['tipo'] === 'success' ? 'check-circle' : ($notification->data['tipo'] === 'warning' ? 'exclamation-triangle' : 'info-circle') }}-fill text-{{ $notification->data['tipo'] === 'success' ? 'medical' : ($notification->data['tipo'] === 'warning' ? 'amber' : 'blue') }}-600"></i>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-sm font-bold text-slate-800 truncate">{{ $notification->data['titulo'] ?? 'Notificación' }}</p>
+                                                    <p class="text-xs text-slate-600 mt-0.5 line-clamp-2">{{ $notification->data['mensaje'] ?? '' }}</p>
+                                                    <p class="text-xs text-slate-500 mt-0.5">{{ $notification->created_at->diffForHumans() }}</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    @empty
+                                        <div class="px-4 py-8 text-center">
+                                            <i class="bi bi-bell-slash text-4xl text-slate-300 mb-2"></i>
+                                            <p class="text-sm text-slate-500">No tienes notificaciones nuevas</p>
+                                        </div>
+                                    @endforelse
+                                </div>
+                                @if($unreadAdminCount > 0)
+                                    <div class="px-4 py-3 bg-slate-50 border-t border-slate-100">
+                                        <a href="{{ route('notificaciones.index') }}" class="text-xs font-bold text-medical-600 hover:text-medical-700 flex items-center justify-center gap-1">
+                                            Ver todas las notificaciones
+                                            <i class="bi bi-arrow-right"></i>
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- User Dropdown -->
@@ -443,6 +515,202 @@
                 if (usuariosIcon) usuariosIcon.classList.add('rotate-180');
             @endif
         });
+
+        // Admin Toast Notification System
+        function createToast(title, message, type = 'info', id = null, actions = null) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast-card pointer-events-auto w-full backdrop-blur-xl rounded-2xl shadow-2xl p-4 flex flex-col gap-3 group border-t border-white/20`;
+            
+            const config = {
+                success: { bg: 'bg-medical-500/90', text: 'text-white', icon: 'check-circle-fill', iconBg: 'bg-white/20' },
+                warning: { bg: 'bg-amber-500/90', text: 'text-white', icon: 'exclamation-triangle-fill', iconBg: 'bg-white/20' },
+                danger: { bg: 'bg-rose-500/90', text: 'text-white', icon: 'exclamation-circle-fill', iconBg: 'bg-white/20' },
+                info: { bg: 'bg-blue-600/90', text: 'text-white', icon: 'info-circle-fill', iconBg: 'bg-white/20' }
+            }[type] || { bg: 'bg-slate-700/90', text: 'text-white', icon: 'bell-fill', iconBg: 'bg-white/20' };
+
+            toast.classList.add(...config.bg.split(' '));
+            
+            // Main content
+            let htmlContent = `
+                <div class="flex gap-4 items-start">
+                    <div class="flex-shrink-0 h-10 w-10 rounded-xl ${config.iconBg} flex items-center justify-center text-white shadow-inner">
+                        <i class="bi bi-${config.icon} text-xl"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-bold ${config.text} text-shadow-sm">${title}</h4>
+                        <p class="text-xs ${config.text} opacity-90 mt-1 line-clamp-2">${message}</p>
+                    </div>
+                    <button class="text-white/60 hover:text-white transition-colors p-1" onclick="this.closest('.toast-card').remove()">
+                        <i class="bi bi-x-lg text-xs"></i>
+                    </button>
+                </div>
+            `;
+
+            // Action buttons
+            if (actions && actions.length > 0) {
+                htmlContent += `<div class="flex gap-2 ml-14">`;
+                actions.forEach(action => {
+                    const btnClass = action.tipo === 'success' ? 'bg-white/20 hover:bg-white/30' : 
+                                   action.tipo === 'secondary' ? 'bg-black/20 hover:bg-black/30' : 
+                                   'bg-white/20 hover:bg-white/30';
+                    const btnId = `action-${Math.random().toString(36).substr(2, 9)}`;
+                    
+                    htmlContent += `
+                        <button id="${btnId}" 
+                                class="${btnClass} text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1"
+                                ${action.url ? `onclick="window.location.href='${action.url}'"` : ''}>
+                            <i class="bi bi-${action.icono}"></i>
+                            ${action.texto}
+                        </button>
+                    `;
+                    
+                    // Attach action handler if needed
+                    if (action.accion) {
+                        setTimeout(() => {
+                            document.getElementById(btnId)?.addEventListener('click', () => {
+                                ejecutarAccionToast(action.accion, action.data, toast);
+                            });
+                        }, 100);
+                    }
+                });
+                htmlContent += `</div>`;
+            }
+
+            toast.innerHTML = htmlContent;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 500);
+            }, 12000); // 12 seconds for toasts with actions
+        }
+
+        // Execute Toast Action
+        function ejecutarAccionToast(accion, data, toastElement) {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+            if (accion === 'confirmar-pago' && data.pago_id) {
+                if (!confirm('¿Estás seguro de confirmar este pago?')) return;
+
+                fetch(`/pagos/${data.pago_id}/confirmar`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        toastElement.remove();
+                        createToast('¡Éxito!', 'Pago confirmado correctamente', 'success');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        alert('Error: ' + (result.message || 'No se pudo confirmar el pago'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al procesar la acción');
+                });
+            }
+        }
+
+        // Mark notification as read (Admin)
+        function marcarComoLeidaAdmin(notificationId, redirectUrl) {
+            fetch(`/admin/notificaciones/${notificationId}/marcar-leida`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && redirectUrl && redirectUrl !== '#') {
+                    window.location.href = redirectUrl;
+                } else {
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (redirectUrl && redirectUrl !== '#') {
+                    window.location.href = redirectUrl;
+                }
+            });
+        }
+
+        // Real-time Notifications Listener (Laravel Echo)
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.Echo) {
+                const adminId = "{{ auth()->user()->administrador->id ?? '' }}";
+                if (adminId) {
+                    window.Echo.private(`App.Models.Administrador.${adminId}`)
+                        .notification((notification) => {
+                            console.log('Real-time notification received:', notification);
+                            
+                            // Handle potential nesting in .data
+                            const data = notification.data || notification;
+                            
+                            // Trigger toast
+                            createToast(
+                                data.titulo || 'Nueva Notificación',
+                                data.mensaje || '',
+                                data.tipo || 'info',
+                                notification.id || data.id,
+                                data.acciones || null
+                            );
+
+                            // Update bell badge
+                            const badge = document.getElementById('notif-count');
+                            if (badge) {
+                                let currentCount = parseInt(badge.innerText) || 0;
+                                badge.innerText = currentCount + 1;
+                                badge.classList.remove('hidden');
+                                
+                                // Simple bounce animation on badge
+                                badge.style.transform = 'scale(1.4)';
+                                setTimeout(() => badge.style.transform = 'scale(1)', 300);
+                            }
+                        })
+                        .error((error) => {
+                            console.error('WebSocket Error:', error);
+                        });
+                }
+            } else {
+                console.warn('Laravel Echo not found. Real-time notifications disabled.');
+            }
+        });
+
+        // Show unread admin notifications as toasts ONLY if the login flag is present
+        @if(session('mostrar_bienvenida_toasts'))
+            @php
+                $toasts = auth()->user()->administrador->unreadNotifications->take(3)->map(function($n) {
+                    return [
+                        'id' => $n->id,
+                        'title' => $n->data['titulo'] ?? 'Notificación',
+                        'message' => $n->data['mensaje'] ?? '',
+                        'tipo' => $n->data['tipo'] ?? 'info',
+                        'acciones' => $n->data['acciones'] ?? null
+                    ];
+                });
+                session()->forget('mostrar_bienvenida_toasts');
+            @endphp
+
+            const unreadToasts = @json($toasts);
+            unreadToasts.forEach((toast, index) => {
+                setTimeout(() => {
+                    createToast(toast.title, toast.message, toast.tipo, toast.id, toast.acciones);
+                }, 500 * (index + 1));
+            });
+        @endif
     </script>
     
     @stack('scripts')

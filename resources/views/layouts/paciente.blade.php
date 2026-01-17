@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Sistema Médico') }} - @yield('title')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -87,6 +88,14 @@
             animation: float-orb 20s ease-in-out infinite;
             animation-delay: -5s;
         }
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toast-card.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
     </style>
     @endif
 
@@ -150,6 +159,69 @@
 
                     <div class="flex items-center gap-4">
                         <div class="hidden h-10 w-[1px] bg-slate-200 lg:block"></div>
+                        
+                        <!-- Notification Bell -->
+                        <div class="relative group">
+                            <a href="{{ route('paciente.notificaciones.index') }}" 
+                               class="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition-all hover:bg-medical-50 hover:text-medical-600 ring-1 ring-slate-200 group-hover:ring-medical-500">
+                                <i class="bi bi-bell-fill text-xl"></i>
+                                @php
+                                    $unreadCount = auth()->user()->paciente->unreadNotifications()->count();
+                                @endphp
+                                @if($unreadCount > 0)
+                                    <span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white">
+                                        {{ $unreadCount > 9 ? '9+' : $unreadCount }}
+                                    </span>
+                                @endif
+                            </a>
+                            
+                            <!-- Notification Dropdown -->
+                            <div class="absolute right-0 top-full mt-2 w-80 scale-95 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                                <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                                    <div class="flex items-center justify-between px-4 py-3 bg-medical-50 border-b border-medical-100">
+                                        <h3 class="text-sm font-bold text-medical-800">Notificaciones</h3>
+                                        @if($unreadCount > 0)
+                                            <form method="POST" action="{{ route('paciente.notificaciones.leer-todas') }}" class="inline">
+                                                @csrf
+                                                <button type="submit" class="text-xs font-bold text-medical-600 hover:text-medical-700">
+                                                    Marcar todas como leídas
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                    <div class="max-h-96 overflow-y-auto">
+                                        @forelse(auth()->user()->paciente->unreadNotifications()->take(5)->get() as $notification)
+                                            <a href="{{ $notification->data['link'] ?? '#' }}" 
+                                               class="block px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+                                               onclick="event.preventDefault(); marcarComoLeida('{{ $notification->id }}', '{{ $notification->data['link'] ?? '#' }}')">
+                                                <div class="flex items-start gap-3">
+                                                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-{{ $notification->data['tipo'] === 'success' ? 'medical' : ($notification->data['tipo'] === 'danger' ? 'rose' : 'blue') }}-100 flex items-center justify-center">
+                                                        <i class="bi bi-{{ $notification->data['tipo'] === 'success' ? 'check-circle' : ($notification->data['tipo'] === 'danger' ? 'exclamation-circle' : 'info-circle') }}-fill text-{{ $notification->data['tipo'] === 'success' ? 'medical' : ($notification->data['tipo'] === 'danger' ? 'rose' : 'blue') }}-600"></i>
+                                                    </div>
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="text-sm font-bold text-slate-800 truncate">{{ $notification->data['mensaje'] ?? 'Nueva notificación' }}</p>
+                                                        <p class="text-xs text-slate-500 mt-0.5">{{ $notification->created_at->diffForHumans() }}</p>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        @empty
+                                            <div class="px-4 py-8 text-center">
+                                                <i class="bi bi-bell-slash text-4xl text-slate-300 mb-2"></i>
+                                                <p class="text-sm text-slate-500">No tienes notificaciones nuevas</p>
+                                            </div>
+                                        @endforelse
+                                    </div>
+                                    @if($unreadCount > 0)
+                                        <div class="px-4 py-3 bg-slate-50 border-t border-slate-100">
+                                            <a href="{{ route('paciente.notificaciones.index') }}" class="text-xs font-bold text-medical-600 hover:text-medical-700 flex items-center justify-center gap-1">
+                                                Ver todas las notificaciones
+                                                <i class="bi bi-arrow-right"></i>
+                                            </a>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- User Card -->
                         <div class="hidden sm:flex items-center gap-3 pl-2">
@@ -258,6 +330,9 @@
             @yield('content')
         </main>
     </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-24 right-6 z-[100] flex flex-col gap-3 w-full max-w-sm pointer-events-none"></div>
     </div>
 
     @push('scripts')
@@ -294,9 +369,137 @@
                 });
             });
         });
+        
+        // Function to mark notification as read
+        window.marcarComoLeida = function(notificationId, redirectUrl) {
+            fetch(`/paciente/notificaciones/${notificationId}/marcar-leida`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && redirectUrl && redirectUrl !== '#') {
+                    window.location.href = redirectUrl;
+                } else {
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (redirectUrl && redirectUrl !== '#') {
+                    window.location.href = redirectUrl;
+                }
+            });
+        };
+
+        // Laravel Echo Listener
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.Echo) {
+                const pacienteId = {{ auth()->user()->paciente->id }};
+                
+                window.Echo.private(`App.Models.Paciente.${pacienteId}`)
+                    .notification((notification) => {
+                        console.log('Notificación recibida:', notification);
+                        
+                        const data = notification.data || notification;
+                        const title = data.titulo || 'Nueva Notificación';
+                        const message = data.mensaje || '';
+                        const type = data.tipo || 'info';
+                        
+                        // Crear toast
+                        createToast(title, message, type, notification.id);
+                        
+                        // Actualizar contador en la campana
+                        const badge = document.querySelector('.relative .bg-rose-500');
+                        if (badge) {
+                            let count = parseInt(badge.innerText.replace('+', '')) || 0;
+                            count++;
+                            badge.innerText = count > 9 ? '9+' : count;
+                        } else {
+                            // Si no hay badge, crearlo (esto es más complejo, por ahora al menos intentamos buscarlo)
+                            const bellLink = document.querySelector('a[href="{{ route('paciente.notificaciones.index') }}"]');
+                            if (bellLink) {
+                                const newBadge = document.createElement('span');
+                                newBadge.className = "absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white";
+                                newBadge.innerText = "1";
+                                bellLink.appendChild(newBadge);
+                            }
+                        }
+                    });
+            }
+        });
+
+        // Toast Notification System
+        function createToast(title, message, type = 'info', id = null) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const config = {
+                success: { bg: 'bg-emerald-500/90', icon: 'check-circle-fill' },
+                danger: { bg: 'bg-rose-500/90', icon: 'exclamation-circle-fill' },
+                warning: { bg: 'bg-amber-500/90', icon: 'exclamation-triangle-fill' },
+                info: { bg: 'bg-blue-600/90', icon: 'info-circle-fill' }
+            }[type] || { bg: 'bg-slate-700/90', icon: 'bell-fill' };
+
+            const toast = document.createElement('div');
+            toast.className = `toast-card pointer-events-auto w-full backdrop-blur-xl rounded-2xl shadow-2xl p-4 flex gap-4 items-start group border-t border-white/20 shadow-lg ${config.bg} text-white`;
+            
+            toast.innerHTML = `
+                <div class="flex-shrink-0 h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center text-white shadow-inner">
+                    <i class="bi bi-${config.icon} text-xl"></i>
+                </div>
+                <div class="flex-1 min-w-0 text-white">
+                    <h4 class="text-sm font-bold text-shadow-sm">${title}</h4>
+                    <p class="text-xs opacity-90 mt-1 line-clamp-2">${message}</p>
+                </div>
+                <button class="text-white/60 hover:text-white transition-colors p-1" onclick="this.parentElement.remove()">
+                    <i class="bi bi-x-lg text-xs"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 100);
+
+            // Auto-remove after 8 seconds
+            setTimeout(() => {
+                if (toast && toast.parentNode) {
+                    toast.classList.remove('show');
+                    setTimeout(() => { if (toast && toast.parentNode) toast.remove(); }, 500);
+                }
+            }, 8000);
+        }
+
+        // Show unread notifications as toasts ONLY if the login flag is present
+        @if(session('mostrar_bienvenida_toasts'))
+            @php
+                $toasts = auth()->user()->paciente->unreadNotifications->take(3)->map(function($n) {
+                    return [
+                        'id' => $n->id,
+                        'title' => $n->data['titulo'] ?? 'Notificación',
+                        'message' => $n->data['mensaje'] ?? '',
+                        'tipo' => $n->data['tipo'] ?? 'info'
+                    ];
+                });
+                // Consumir el flag para que no aparezca en la siguiente página
+                session()->forget('mostrar_bienvenida_toasts');
+            @endphp
+
+            const unreadToasts = @json($toasts);
+            unreadToasts.forEach((toast, index) => {
+                setTimeout(() => {
+                    createToast(toast.title, toast.message, toast.tipo, toast.id);
+                }, 500 * (index + 1));
+            });
+        @endif
     </script>
     @endpush
 
     @stack('scripts')
 </body>
 </html>
+```

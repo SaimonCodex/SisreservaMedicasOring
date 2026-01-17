@@ -88,4 +88,14 @@ class Usuario extends Authenticatable
         }
         return 'N/A';
     }
+
+    /**
+     * Route notifications for the mail channel.
+     *
+     * @return  array<string, string>|string
+     */
+    public function routeNotificationForMail($notification)
+    {
+        return $this->correo;
+    }
 }
