@@ -143,6 +143,7 @@
                                 ['route' => 'paciente.citas.index', 'icon' => 'bi-calendar3', 'label' => 'Mis Citas'],
                                 ['route' => 'paciente.citas.create', 'icon' => 'bi-calendar-plus', 'label' => 'Nueva Cita'],
                                 ['route' => 'paciente.historial', 'icon' => 'bi-folder2-open', 'label' => 'Historial'],
+                                ['route' => 'paciente.solicitudes', 'icon' => 'bi-shield-lock', 'label' => 'Permisos'],
                                 ['route' => 'paciente.pagos', 'icon' => 'bi-wallet2', 'label' => 'Pagos'],
                             ];
                         @endphp

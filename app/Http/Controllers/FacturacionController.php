@@ -352,11 +352,10 @@ class FacturacionController extends Controller
 
         return redirect()->route('facturacion.liquidaciones')->with('success', 'Liquidación creada exitosamente');
     }
-
     /**
      * Mostrar vista de liquidaciones con totales pendientes
      */
-    public function liquidaciones()
+    public function resumenLiquidaciones()
     {
         $user = auth()->user();
         $isLocalAdmin = $user && $user->administrador && $user->administrador->tipo_admin !== 'Root';

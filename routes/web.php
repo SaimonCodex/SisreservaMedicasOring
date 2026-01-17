@@ -110,9 +110,9 @@ Route::middleware(['auth'])->group(function () {
     
     // Rutas Específicas Paciente
     Route::prefix('paciente')->middleware(['auth'])->group(function () {
-        Route::get('/historial', [PacienteController::class, 'historial'])->name('paciente.historial'); // Assumes create a method or point to existing
+        Route::get('/historial', [PacienteController::class, 'historial'])->name('paciente.historial');
         Route::get('/pagos', [PacienteController::class, 'pagos'])->name('paciente.pagos');
-        Route::get('/citas/create', [CitaController::class, 'create'])->name('paciente.citas.create'); // Specific route for paciente create
+        Route::get('/citas/create', [CitaController::class, 'create'])->name('paciente.citas.create');
         Route::post('/citas', [CitaController::class, 'store'])->name('paciente.citas.store');
         Route::get('/citas', [CitaController::class, 'index'])->name('paciente.citas.index');
         Route::get('/citas/{id}', [CitaController::class, 'show'])->name('paciente.citas.show');
@@ -133,10 +133,26 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{id}', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'destroy'])->name('paciente.notificaciones.destroy');
             Route::post('/eliminar-multiples', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'destroyAll'])->name('paciente.notificaciones.destroy-all');
         });
+
+        // Rutas de solicitudes de acceso a historial médico
+        Route::get('/solicitudes-acceso', [HistoriaClinicaController::class, 'listarSolicitudesPaciente'])->name('paciente.solicitudes');
+        Route::post('/solicitudes-acceso/{id}/aprobar', [HistoriaClinicaController::class, 'aprobarSolicitud'])->name('paciente.solicitudes.aprobar');
+        Route::post('/solicitudes-acceso/{id}/rechazar', [HistoriaClinicaController::class, 'rechazarSolicitud'])->name('paciente.solicitudes.rechazar');
+    });
+
+    // Rutas Específicas Representante
+    Route::prefix('representante')->middleware(['auth'])->group(function () {
+        Route::get('/solicitudes-acceso', [HistoriaClinicaController::class, 'listarSolicitudesRepresentante'])->name('representante.solicitudes');
+        Route::post('/solicitudes-acceso/{id}/aprobar', [HistoriaClinicaController::class, 'aprobarSolicitud'])->name('representante.solicitudes.aprobar');
+        Route::post('/solicitudes-acceso/{id}/rechazar', [HistoriaClinicaController::class, 'rechazarSolicitud'])->name('representante.solicitudes.rechazar');
     });
 
     // Rutas Globales de Ubicación (AJAX)
-
+    Route::prefix('ubicacion')->group(function () {
+        Route::get('get-ciudades/{estadoId}', [UbicacionController::class, 'getCiudadesByEstado'])->name('ubicacion.get-ciudades');
+        Route::get('get-municipios/{estadoId}', [UbicacionController::class, 'getMunicipiosByEstado'])->name('ubicacion.get-municipios');
+        Route::get('get-parroquias/{municipioId}', [UbicacionController::class, 'getParroquiasByMunicipio'])->name('ubicacion.get-parroquias');
+    });
     
     // =========================================================================
     // ADMINISTRACIÓN DEL SISTEMA
@@ -178,7 +194,7 @@ Route::middleware(['auth'])->group(function () {
         Route::prefix('notificaciones')->group(function () {
             Route::get('/', [\App\Http\Controllers\MedicoNotificacionController::class, 'index'])->name('medico.notificaciones.index');
             Route::get('/no-leidas', [\App\Http\Controllers\MedicoNotificacionController::class, 'getUnread'])->name('medico.notificaciones.unread');
-            Route::post('/{id}/marcar-leida', [\App\Http\Controllers\MedicoNotificacionController::class, 'markAsRead'])->name('medico.notific aciones.mark-read');
+            Route::post('/{id}/marcar-leida', [\App\Http\Controllers\MedicoNotificacionController::class, 'markAsRead'])->name('medico.notificaciones.mark-read');
             Route::post('/marcar-todas-leidas', [\App\Http\Controllers\MedicoNotificacionController::class, 'markAllAsRead'])->name('medico.notificaciones.mark-all-read');
         });
     });
@@ -201,7 +217,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('buscar-disponibilidad', [CitaController::class, 'buscarDisponibilidad'])->name('citas.buscar-disponibilidad');
     Route::get('events', [CitaController::class, 'events'])->name('citas.events');
     Route::get('admin/buscar-paciente', [CitaController::class, 'buscarPaciente'])->name('admin.buscar-paciente');
-    Route::get('ajax/verificar-correo', [CitaController::class, 'verificarCorreo'])->name('ajax.verificar-correo');
     
     // =========================================================================
     // ESPECIALIDADES MÉDICAS
@@ -257,7 +272,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('parroquias/{id}/edit', [UbicacionController::class, 'editParroquia'])->name('ubicacion.parroquias.edit');
         Route::put('parroquias/{id}', [UbicacionController::class, 'updateParroquia'])->name('ubicacion.parroquias.update');
         Route::delete('parroquias/{id}', [UbicacionController::class, 'destroyParroquia'])->name('ubicacion.parroquias.destroy');
-
     });
     
     // =========================================================================
@@ -266,7 +280,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::resource('facturacion', FacturacionController::class);
     Route::post('facturacion/{id}/enviar-recordatorio', [FacturacionController::class, 'enviarRecordatorio'])->name('facturacion.enviar-recordatorio');
-    Route::get('facturacion/liquidaciones', [FacturacionController::class, 'liquidaciones'])->name('facturacion.liquidaciones');
+    Route::get('facturacion/liquidaciones', [FacturacionController::class, 'resumenLiquidaciones'])->name('facturacion.liquidaciones');
     Route::post('facturacion/crear-liquidacion', [FacturacionController::class, 'crearLiquidacion'])->name('facturacion.crear-liquidacion');
     
     // =========================================================================

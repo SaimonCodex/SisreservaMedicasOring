@@ -109,10 +109,124 @@ class HistoriaClinicaController extends Controller
         if (Auth::user()->rol_id != 2) {
             abort(403, 'Solo los médicos pueden crear historias clínicas.');
         }
+        
+        $medico = Auth::user()->medico;
+        
+        // Verificar que el médico tiene al menos una cita con este paciente
+        $tieneRelacion = \App\Models\Cita::where('medico_id', $medico->id)
+                                         ->where('paciente_id', $pacienteId)
+                                         ->where('status', true)
+                                         ->exists();
+        
+        if (!$tieneRelacion) {
+            return redirect()->back()->with('error', 'No tiene relación con este paciente. Debe tener al menos una cita agendada.');
+        }
+        
+        // Verificar que el paciente no tenga ya una historia base
+        if (HistoriaClinicaBase::where('paciente_id', $pacienteId)->exists()) {
+            return redirect()->route('historia-clinica.base.edit', $pacienteId)
+                           ->with('info', 'Este paciente ya tiene historia clínica base. Puede editarla.');
+        }
+        
         $paciente = Paciente::with('usuario')->findOrFail($pacienteId);
         return view('medico.historia-clinica.base.create', compact('paciente'));
     }
-// ...
+
+    public function storeBase(Request $request, $pacienteId)
+    {
+        if (Auth::user()->rol_id != 2) {
+            abort(403, 'Solo los médicos pueden crear historias clínicas.');
+        }
+        
+        $medico = Auth::user()->medico;
+        
+        // Verificar relación médico-paciente
+        $tieneRelacion = \App\Models\Cita::where('medico_id', $medico->id)
+                                         ->where('paciente_id', $pacienteId)
+                                         ->where('status', true)
+                                         ->exists();
+        
+        if (!$tieneRelacion) {
+            return redirect()->back()->with('error', 'No tiene relación con este paciente.');
+        }
+        
+        // Verificar que no exista ya
+        if (HistoriaClinicaBase::where('paciente_id', $pacienteId)->exists()) {
+            return redirect()->route('historia-clinica.base.edit', $pacienteId)
+                           ->with('info', 'Este paciente ya tiene historia clínica base.');
+        }
+        
+        // Validación
+        $validator = Validator::make($request->all(), [
+            'grupo_sanguineo' => 'nullable|in:A,B,AB,O',
+            'factor_rh' => 'nullable|in:+,-',
+            'no_especificado' => 'nullable|boolean',
+            // Si 'No Especificado' está marcado, ignoramos grupo y factor
+            'alergias' => 'nullable|string|max:2000',
+            'alergias_medicamentos' => 'nullable|string|max:2000',
+            'antecedentes_familiares' => 'nullable|string|max:2000',
+            'antecedentes_personales' => 'nullable|string|max:2000',
+            'enfermedades_cronicas' => 'nullable|string|max:2000',
+            'medicamentos_actuales' => 'nullable|string|max:2000',
+            'cirugias_previas' => 'nullable|string|max:2000',
+            
+            // Nuevos campos de hábitos
+            'habito_tabaco' => 'nullable|string|max:255',
+            'habito_alcohol' => 'nullable|string|max:255',
+            'actividad_fisica' => 'nullable|string|max:255',
+            'dieta' => 'nullable|string|max:255',
+            'habitos' => 'nullable|string|max:2000', // Campo legacy o general
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        // Procesar Tipo de Sangre
+        $tipoSangre = null;
+        if ($request->has('no_especificado') && $request->no_especificado) {
+            $tipoSangre = 'No Especificado';
+        } elseif ($request->grupo_sanguineo && $request->factor_rh) {
+            $tipoSangre = $request->grupo_sanguineo . $request->factor_rh;
+        }
+
+        // Crear la historia clínica base
+        $historia = HistoriaClinicaBase::create([
+            'paciente_id' => $pacienteId,
+            'tipo_sangre' => $tipoSangre,
+            'alergias' => $request->alergias,
+            'alergias_medicamentos' => $request->alergias_medicamentos,
+            'antecedentes_familiares' => $request->antecedentes_familiares,
+            'antecedentes_personales' => $request->antecedentes_personales,
+            'enfermedades_cronicas' => $request->enfermedades_cronicas,
+            'medicamentos_actuales' => $request->medicamentos_actuales,
+            'cirugias_previas' => $request->cirugias_previas,
+            'habitos' => $request->habitos,
+            // Nuevos campos
+            'habito_tabaco' => $request->habito_tabaco,
+            'habito_alcohol' => $request->habito_alcohol,
+            'actividad_fisica' => $request->actividad_fisica,
+            'dieta' => $request->dieta,
+            'status' => true
+        ]);
+
+        // Registrar auditoría - CREACIÓN
+        \App\Models\AuditoriaHistoriaBase::create([
+            'historia_clinica_base_id' => $historia->id,
+            'medico_id' => $medico->id,
+            'tipo_accion' => 'CREACION',
+            'campo_modificado' => null,
+            'valor_anterior' => null,
+            'valor_nuevo' => json_encode($request->except(['_token', '_method'])),
+            'motivo_cambio' => 'Creación inicial de historia clínica base',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent()
+        ]);
+
+        return redirect()->route('historia-clinica.base.show', $pacienteId)
+                        ->with('success', 'Historia clínica base creada exitosamente.');
+    }
+
     public function editBase($pacienteId)
     {
         if (Auth::user()->rol_id != 2) {
@@ -127,7 +241,100 @@ class HistoriaClinicaController extends Controller
 
         return view('medico.historia-clinica.base.edit', compact('paciente', 'historia'));
     }
-// ...
+
+    public function updateBase(Request $request, $pacienteId)
+    {
+        if (Auth::user()->rol_id != 2) {
+            abort(403, 'Solo los médicos pueden editar historias clínicas.');
+        }
+        
+        $medico = Auth::user()->medico;
+        $historia = HistoriaClinicaBase::where('paciente_id', $pacienteId)->firstOrFail();
+        
+        // Validación
+        $validator = Validator::make($request->all(), [
+            'grupo_sanguineo' => 'nullable|in:A,B,AB,O',
+            'factor_rh' => 'nullable|in:+,-',
+            'no_especificado' => 'nullable|boolean',
+            'alergias' => 'nullable|string|max:2000',
+            'alergias_medicamentos' => 'nullable|string|max:2000',
+            'antecedentes_familiares' => 'nullable|string|max:2000',
+            'antecedentes_personales' => 'nullable|string|max:2000',
+            'enfermedades_cronicas' => 'nullable|string|max:2000',
+            'medicamentos_actuales' => 'nullable|string|max:2000',
+            'cirugias_previas' => 'nullable|string|max:2000',
+            // Hábitos
+            'habito_tabaco' => 'nullable|string|max:255',
+            'habito_alcohol' => 'nullable|string|max:255',
+            'actividad_fisica' => 'nullable|string|max:255',
+            'dieta' => 'nullable|string|max:255',
+            'habitos' => 'nullable|string|max:2000',
+            'motivo_cambio' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        // Procesar Tipo de Sangre
+        $tipoSangre = $historia->tipo_sangre; // Mantener valor actual por defecto
+        
+        if ($request->has('no_especificado') && $request->no_especificado) {
+            $tipoSangre = 'No Especificado';
+        } elseif ($request->filled('grupo_sanguineo') && $request->filled('factor_rh')) {
+            $tipoSangre = $request->grupo_sanguineo . $request->factor_rh;
+        }
+
+        // Guardar valores anteriores para auditoría
+        $valoresAnteriores = $historia->only([
+            'tipo_sangre', 'alergias', 'alergias_medicamentos', 
+            'antecedentes_familiares', 'antecedentes_personales',
+            'enfermedades_cronicas', 'medicamentos_actuales', 
+            'cirugias_previas', 'habitos', 'habito_tabaco', 'habito_alcohol',
+            'actividad_fisica', 'dieta'
+        ]);
+
+        // Campos a actualizar en el modelo
+        $dataToUpdate = $request->only([
+            'alergias', 'alergias_medicamentos',
+            'antecedentes_familiares', 'antecedentes_personales',
+            'enfermedades_cronicas', 'medicamentos_actuales',
+            'cirugias_previas', 'habitos',
+            'habito_tabaco', 'habito_alcohol', 'actividad_fisica', 'dieta'
+        ]);
+        
+        if ($tipoSangre) {
+            $dataToUpdate['tipo_sangre'] = $tipoSangre;
+        }
+
+        // Actualizar la historia
+        $historia->update($dataToUpdate);
+
+        // Registrar auditoría para cada campo modificado
+        foreach ($dataToUpdate as $campo => $valorNuevo) {
+            $valorAnterior = $valoresAnteriores[$campo] ?? null;
+            
+            // Comparación simple, cuidado con tipos null vs empty string
+            if ($valorNuevo != $valorAnterior) {
+                \App\Models\AuditoriaHistoriaBase::create([
+                    'historia_clinica_base_id' => $historia->id,
+                    'medico_id' => $medico->id,
+                    'tipo_accion' => 'EDICION',
+                    'campo_modificado' => $campo,
+                    'valor_anterior' => substr((string)$valorAnterior, 0, 255),
+                    'valor_nuevo' => substr((string)$valorNuevo, 0, 255),
+                    'motivo_cambio' => $request->motivo_cambio ?? 'Actualización de datos clínicos',
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent()
+                ]);
+            }
+        }
+
+        return redirect()->route('historia-clinica.base.show', $pacienteId)
+                        ->with('success', 'Historia clínica base actualizada exitosamente.');
+    }
+
+
     public function indexEvoluciones($pacienteId)
     {
         $user = Auth::user();
@@ -416,97 +623,327 @@ class HistoriaClinicaController extends Controller
         return view('shared.historia-clinica.resumen', compact('paciente', 'ultimaEvolucion'));
     }
 
-    // =========================================================================
-    // SISTEMA DE PERMISOS PARA COMPARTIR HISTORIAL
-    // =========================================================================
-
+    /**
+     * Médico solicita acceso a evoluciones de un paciente creadas por otro médico.
+     * El PACIENTE es quien debe aprobar esta solicitud.
+     */
     public function solicitarAcceso(Request $request, $pacienteId)
     {
+        // Solo médicos pueden solicitar acceso
+        if (Auth::user()->rol_id != 2) {
+            return redirect()->back()->with('error', 'Solo los médicos pueden solicitar acceso al historial.');
+        }
+        
+        $medicoSolicitante = Auth::user()->medico;
+        
+        if (!$medicoSolicitante) {
+            return redirect()->back()->with('error', 'No se encontró el perfil de médico.');
+        }
+
         $validator = Validator::make($request->all(), [
-            'medico_solicitante_id' => 'required|exists:medicos,id',
+            'medico_propietario_id' => 'required|exists:medicos,id|different:' . $medicoSolicitante->id,
             'motivo_solicitud' => 'required|in:Interconsulta,Emergencia,Segunda Opinion,Referencia',
-            'cita_id' => 'nullable|exists:citas,id',
-            'observaciones' => 'nullable|string'
+            'evolucion_id' => 'nullable|exists:evolucion_clinica,id',
+            'observaciones' => 'nullable|string|max:500'
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator);
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $paciente = Paciente::findOrFail($pacienteId);
-        $medicoPropietario = Auth::user()->medico;
-
-        if (!$medicoPropietario) {
-            return redirect()->back()->with('error', 'Solo los médicos pueden solicitar acceso al historial.');
+        $paciente = Paciente::with('usuario')->findOrFail($pacienteId);
+        
+        // Verificar que el médico propietario tenga evoluciones con este paciente
+        $tieneEvoluciones = EvolucionClinica::where('paciente_id', $pacienteId)
+                                           ->where('medico_id', $request->medico_propietario_id)
+                                           ->where('status', true)
+                                           ->exists();
+        
+        if (!$tieneEvoluciones) {
+            return redirect()->back()->with('error', 'El médico seleccionado no tiene evoluciones registradas con este paciente.');
+        }
+        
+        // Verificar si ya existe una solicitud pendiente para esta combinación (y evolucion específica si aplica)
+        $querySolicitud = \App\Models\SolicitudHistorial::where('paciente_id', $pacienteId)
+            ->where('medico_solicitante_id', $medicoSolicitante->id)
+            ->where('medico_propietario_id', $request->medico_propietario_id)
+            ->where('estado_permiso', 'Pendiente')
+            ->where('status', true);
+            
+        if ($request->filled('evolucion_id')) {
+            $querySolicitud->where('evolucion_id', $request->evolucion_id);
+        }
+        
+        $solicitudExistente = $querySolicitud->first();
+            
+        if ($solicitudExistente) {
+            return redirect()->back()->with('info', 'Ya existe una solicitud pendiente con estas características.');
         }
 
+        // Crear la solicitud - El token se envía al PACIENTE
+        $token = $this->generarToken();
+        
         $solicitud = \App\Models\SolicitudHistorial::create([
-            'cita_id' => $request->cita_id,
+            'cita_id' => $request->cita_id ?? null,
             'paciente_id' => $pacienteId,
-            'medico_solicitante_id' => $request->medico_solicitante_id,
-            'medico_propietario_id' => $medicoPropietario->id,
-            'token_validacion' => $this->generarToken(),
-            'token_expira_at' => now()->addMinutes(15),
+            'medico_solicitante_id' => $medicoSolicitante->id,
+            'medico_propietario_id' => $request->medico_propietario_id,
+            'evolucion_id' => $request->evolucion_id ?? null,
+            'token_validacion' => $token,
+            'token_expira_at' => now()->addHours(24), // 24 horas para que el paciente responda
             'motivo_solicitud' => $request->motivo_solicitud,
             'observaciones' => $request->observaciones,
+            'estado_permiso' => 'Pendiente',
             'status' => true
         ]);
 
-        // Enviar notificación al médico propietario
-        $this->enviarNotificacionSolicitud($solicitud);
+        // Enviar notificación al PACIENTE (no al médico propietario)
+        $this->enviarNotificacionSolicitudPaciente($solicitud, $paciente);
 
-        return redirect()->back()->with('success', 'Solicitud de acceso enviada exitosamente.');
+        return redirect()->back()->with('success', 'Solicitud de acceso enviada. El paciente debe aprobar la solicitud.');
     }
 
-    public function validarTokenAcceso(Request $request, $solicitudId)
+    public function listarSolicitudesRepresentante()
     {
-        $validator = Validator::make($request->all(), [
-            'token' => 'required|string|size:6'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => 'Token inválido'], 400);
+        $user = Auth::user();
+        
+        if ($user->rol_id != 4 || !$user->representante) {
+            return redirect()->route('home')->with('error', 'Acceso no autorizado.');
         }
 
-        $solicitud = \App\Models\SolicitudHistorial::findOrFail($solicitudId);
+        $representante = $user->representante;
+        
+        // Obtener Ids de pacientes especiales del representante
+        $pacienteIds = $representante->pacientesEspeciales()->pluck('paciente_especiales.paciente_id');
 
-        if ($solicitud->token_validacion !== $request->token) {
-            $solicitud->increment('intentos_fallidos');
-            
-            if ($solicitud->intentos_fallidos >= 3) {
-                $solicitud->update(['estado_permiso' => 'Expirado']);
-                return response()->json(['error' => 'Demasiados intentos fallidos. La solicitud ha expirado.'], 400);
+        $solicitudesPendientes = \App\Models\SolicitudHistorial::with(['medicoSolicitante.usuario', 'medicoPropietario.usuario', 'paciente'])
+            ->whereIn('paciente_id', $pacienteIds)
+            ->where('estado_permiso', 'Pendiente')
+            ->where('token_expira_at', '>', now())
+            ->where('status', true)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $solicitudesHistorial = \App\Models\SolicitudHistorial::with(['medicoSolicitante.usuario', 'medicoPropietario.usuario', 'paciente'])
+            ->whereIn('paciente_id', $pacienteIds)
+            ->where(function($query) {
+                $query->where('estado_permiso', '!=', 'Pendiente')
+                      ->orWhere('token_expira_at', '<', now());
+            })
+            ->where('status', true)
+            ->orderBy('updated_at', 'desc')
+            ->take(20)
+            ->get();
+
+        return view('representante.solicitudes.index', compact('solicitudesPendientes', 'solicitudesHistorial'));
+    }
+
+    /**
+     * El PACIENTE aprueba o rechaza una solicitud de acceso a su historial.
+     * Este método se llama desde el panel del paciente.
+     */
+    public function aprobarSolicitud(Request $request, $solicitudId)
+    {
+        $user = Auth::user();
+        
+        $solicitud = \App\Models\SolicitudHistorial::where('id', $solicitudId)
+            ->where('estado_permiso', 'Pendiente')
+            ->where('status', true)
+            ->firstOrFail();
+
+        // Verificar permisos
+        $permisoValido = false;
+
+        // Caso 1: Usuario es Paciente
+        if ($user->rol_id == 3 && $user->paciente) {
+            if ($solicitud->paciente_id == $user->paciente->id) {
+                $permisoValido = true;
             }
-            
-            return response()->json(['error' => 'Token incorrecto. Intentos restantes: ' . (3 - $solicitud->intentos_fallidos)], 400);
+        }
+        
+        // Caso 2: Usuario es Representante
+        if ($user->rol_id == 4 && $user->representante) {
+            // Verificar si el paciente de la solicitud es un representado de este usuario
+            $esRepresentado = $user->representante->pacientesEspeciales()
+                                  ->where('paciente_especiales.paciente_id', $solicitud->paciente_id)
+                                  ->exists();
+            if ($esRepresentado) {
+                $permisoValido = true;
+            }
         }
 
+        if (!$permisoValido) {
+            return redirect()->back()->with('error', 'No tiene permisos para aprobar esta solicitud.');
+        }
+
+        // Verificar que no haya expirado el tiempo para responder
         if ($solicitud->token_expira_at < now()) {
             $solicitud->update(['estado_permiso' => 'Expirado']);
-            return response()->json(['error' => 'El token ha expirado.'], 400);
+            return redirect()->back()->with('error', 'La solicitud ha expirado.');
+        }
+
+        // Aprobar la solicitud
+        $solicitud->update([
+            'estado_permiso' => 'Aprobado',
+            'acceso_valido_hasta' => now()->addHours(24) // Acceso válido por 24 horas
+        ]);
+
+        // Notificar al médico solicitante podría ir aquí (opcional)
+        \Log::info("Solicitud {$solicitud->id} aprobada por usuario {$user->id} (Rol: {$user->rol_id})");
+
+        return redirect()->back()->with('success', 'Solicitud aprobada. El médico tendrá acceso temporal por 24 horas.');
+    }
+
+    /**
+     * El PACIENTE rechaza una solicitud de acceso.
+     */
+    public function rechazarSolicitud(Request $request, $solicitudId)
+    {
+        $user = Auth::user();
+        
+        $solicitud = \App\Models\SolicitudHistorial::where('id', $solicitudId)
+            ->where('estado_permiso', 'Pendiente')
+            ->where('status', true)
+            ->firstOrFail();
+
+        // Verificar permisos (lógica compartida con aprobar)
+        $permisoValido = false;
+
+        // Caso 1: Usuario es Paciente
+        if ($user->rol_id == 3 && $user->paciente) {
+            if ($solicitud->paciente_id == $user->paciente->id) {
+                $permisoValido = true;
+            }
+        }
+        
+        // Caso 2: Usuario es Representante
+        if ($user->rol_id == 4 && $user->representante) {
+            $esRepresentado = $user->representante->pacientesEspeciales()
+                                  ->where('paciente_especiales.paciente_id', $solicitud->paciente_id)
+                                  ->exists();
+            if ($esRepresentado) {
+                $permisoValido = true;
+            }
+        }
+
+        if (!$permisoValido) {
+            return redirect()->back()->with('error', 'No tiene permisos para rechazar esta solicitud.');
         }
 
         $solicitud->update([
-            'estado_permiso' => 'Aprobado',
-            'acceso_valido_hasta' => now()->addHours(24)
+            'estado_permiso' => 'Rechazado'
         ]);
 
-        return response()->json(['success' => 'Acceso autorizado. Válido por 24 horas.']);
+        \Log::info("Solicitud {$solicitud->id} rechazada por usuario {$user->id} (Rol: {$user->rol_id})");
+
+        return redirect()->back()->with('success', 'Solicitud rechazada.');
+    }
+
+    /**
+     * Verificar si un médico tiene acceso aprobado a las evoluciones de otro médico con un paciente.
+     */
+    public function tieneAccesoAprobado($medicoSolicitanteId, $pacienteId, $medicoPropietarioId)
+    {
+        return \App\Models\SolicitudHistorial::where('paciente_id', $pacienteId)
+            ->where('medico_solicitante_id', $medicoSolicitanteId)
+            ->where('medico_propietario_id', $medicoPropietarioId)
+            ->where('estado_permiso', 'Aprobado')
+            ->where('acceso_valido_hasta', '>', now())
+            ->where('status', true)
+            ->exists();
+    }
+
+    /**
+     * Listar solicitudes pendientes para el paciente autenticado.
+     * Este método se usa en el panel del paciente.
+     */
+    public function listarSolicitudesPaciente()
+    {
+        $user = Auth::user();
+        
+        if ($user->rol_id != 3) {
+            abort(403, 'Solo los pacientes pueden ver sus solicitudes.');
+        }
+        
+        $paciente = $user->paciente;
+        
+        $solicitudesPendientes = \App\Models\SolicitudHistorial::with(['medicoSolicitante.usuario', 'medicoPropietario.usuario'])
+            ->where('paciente_id', $paciente->id)
+            ->where('estado_permiso', 'Pendiente')
+            ->where('status', true)
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        $solicitudesHistorial = \App\Models\SolicitudHistorial::with(['medicoSolicitante.usuario', 'medicoPropietario.usuario'])
+            ->where('paciente_id', $paciente->id)
+            ->whereIn('estado_permiso', ['Aprobado', 'Rechazado', 'Expirado'])
+            ->where('status', true)
+            ->orderBy('updated_at', 'desc')
+            ->take(20)
+            ->get();
+            
+        return view('paciente.solicitudes.index', compact('solicitudesPendientes', 'solicitudesHistorial', 'paciente'));
     }
 
     private function generarToken()
     {
-        return strtoupper(substr(md5(uniqid()), 0, 6));
+        return strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6));
     }
 
-    private function enviarNotificacionSolicitud($solicitud)
+    private function enviarNotificacionSolicitudPaciente($solicitud, $paciente)
     {
-        // Implementar notificación (email, sistema interno, etc.)
         try {
-            $solicitud->load(['medicoPropietario.usuario', 'medicoSolicitante.usuario', 'paciente.usuario']);
+            $solicitud->load(['medicoSolicitante.usuario', 'medicoPropietario.usuario']);
             
-            // Aquí iría el código para enviar la notificación
-            \Log::info("Solicitud de acceso al historial creada: {$solicitud->id}");
+            // Obtener nombres de médicos de forma segura
+            $nombreSolicitante = $solicitud->medicoSolicitante->usuario->primer_nombre ?? 'Médico';
+            $nombrePropietario = $solicitud->medicoPropietario->usuario->primer_nombre ?? 'Médico';
+            $motivo = $solicitud->motivo_solicitud;
+            
+            // Determinar si es paciente especial (verificar si tiene representante)
+            $pacienteEspecial = \App\Models\PacienteEspecial::where('paciente_id', $paciente->id)
+                ->where('status', true)
+                ->first();
+            
+            if ($pacienteEspecial) {
+                // Es paciente especial - notificar al representante
+                $representante = $pacienteEspecial->representantes()
+                    ->wherePivot('status', true)
+                    ->first();
+                    
+                if ($representante && $representante->usuario) {
+                    // Notificar al representante
+                    \App\Models\Notificacion::create([
+                        'receptor_id' => $representante->usuario->id,
+                        'receptor_rol' => 'representante',
+                        'tipo' => 'solicitud_acceso',
+                        'titulo' => 'Solicitud de acceso al historial de su representado',
+                        'mensaje' => "El Dr. {$nombreSolicitante} solicita ver las evoluciones clínicas de {$pacienteEspecial->primer_nombre} registradas por el Dr. {$nombrePropietario}. Motivo: {$motivo}",
+                        'via' => 'sistema',
+                        'estado_envio' => 'Pendiente',
+                        'status' => true
+                    ]);
+                    
+                    \Log::info("Notificación enviada al representante {$representante->id} para paciente especial {$pacienteEspecial->id} - Solicitud: {$solicitud->id}");
+                    return;
+                }
+            }
+            
+            // Paciente regular - notificar directamente al paciente
+            if ($paciente->usuario) {
+                \App\Models\Notificacion::create([
+                    'receptor_id' => $paciente->usuario->id,
+                    'receptor_rol' => 'paciente',
+                    'tipo' => 'solicitud_acceso',
+                    'titulo' => 'Solicitud de acceso a tu historial médico',
+                    'mensaje' => "El Dr. {$nombreSolicitante} solicita ver tus evoluciones clínicas registradas por el Dr. {$nombrePropietario}. Motivo: {$motivo}",
+                    'via' => 'sistema',
+                    'estado_envio' => 'Pendiente',
+                    'status' => true
+                ]);
+                
+                \Log::info("Notificación de solicitud enviada al paciente {$paciente->id} - Solicitud: {$solicitud->id}");
+            }
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación de solicitud: ' . $e->getMessage());
         }
