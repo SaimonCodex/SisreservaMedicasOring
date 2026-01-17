@@ -546,7 +546,7 @@ class HistoriaClinicaController extends Controller
         }
 
         // Crear la evolución clínica
-        EvolucionClinica::create([
+        $evolucion = EvolucionClinica::create([
             'cita_id' => $citaId,
             'paciente_id' => $cita->paciente_id,
             'medico_id' => $medicoId,
@@ -568,6 +568,34 @@ class HistoriaClinicaController extends Controller
             'notas_adicionales' => $request->notas_adicionales,
             'status' => true
         ]);
+
+        // Enviar Notificación al Paciente
+        try {
+            $paciente = Paciente::with(['pacienteEspecial.representante'])->find($cita->paciente_id);
+            
+            // Recargar relaciones necesarias para la notificación
+            $evolucion->load(['medico', 'cita.especialidad']);
+            
+            if ($paciente) {
+                // Verificar si es paciente especial para notificar al representante
+                $pacienteEspecial = $paciente->pacienteEspecial;
+                
+                if ($pacienteEspecial && $pacienteEspecial->representante) {
+                    $representante = $pacienteEspecial->representante;
+                    $pacienteRepresentante = Paciente::where('tipo_documento', $representante->tipo_documento)
+                        ->where('numero_documento', $representante->numero_documento)
+                        ->first();
+                    
+                    if ($pacienteRepresentante) {
+                        $pacienteRepresentante->notify(new \App\Notifications\HistoriaClinicaActualizada($evolucion));
+                    }
+                } else {
+                    $paciente->notify(new \App\Notifications\HistoriaClinicaActualizada($evolucion));
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error enviando notificación historia clínica: ' . $e->getMessage());
+        }
 
         return redirect()->route('citas.show', $citaId)
                         ->with('success', 'Evolución clínica registrada exitosamente.');

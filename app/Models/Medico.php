@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 use App\Traits\ScopedByConsultorio;
 
 class Medico extends Model
 {
-    use HasFactory, ScopedByConsultorio;
+    use HasFactory, Notifiable, ScopedByConsultorio;
 
     protected $table = 'medicos';
     protected $primaryKey = 'id';
@@ -125,5 +126,15 @@ class Medico extends Model
     public function solicitudesHistorialPropietario()
     {
         return $this->hasMany(SolicitudHistorial::class, 'medico_propietario_id');
+    }
+
+    public function getNombreCompletoAttribute()
+    {
+        return $this->primer_nombre . ' ' . $this->primer_apellido;
+    }
+
+    public function routeNotificationForMail($notification)
+    {
+        return $this->usuario->correo ?? null;
     }
 }

@@ -17,18 +17,35 @@ class FacturacionController extends Controller
 {
     public function index()
     {
-        $facturas = FacturaPaciente::with(['cita.paciente', 'cita.medico', 'tasa'])
-                                  ->where('status', true)
-                                  ->paginate(10);
+        $user = auth()->user();
+        $query = FacturaPaciente::with(['cita.paciente', 'cita.medico', 'tasa'])
+                                  ->where('status', true);
+
+        if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios()->pluck('consultorios.id');
+            $query->whereHas('cita', function($q) use ($consultorioIds) {
+                $q->whereIn('consultorio_id', $consultorioIds);
+            });
+        }
+
+        $facturas = $query->paginate(10);
         return view('shared.facturacion.index', compact('facturas'));
     }
 
     public function create()
     {
-        $citas = Cita::whereDoesntHave('facturaPaciente')
+        $user = auth()->user();
+        $query = Cita::with(['paciente', 'medico', 'especialidad', 'consultorio'])
+                     ->whereDoesntHave('facturaPaciente')
                      ->where('estado_cita', 'Completada')
-                     ->where('status', true)
-                     ->get();
+                     ->where('status', true);
+
+        if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios()->pluck('consultorios.id');
+            $query->whereIn('consultorio_id', $consultorioIds);
+        }
+
+        $citas = $query->get();
         
         $tasas = TasaDolar::where('status', true)
                           ->orderBy('fecha_tasa', 'desc')
@@ -57,6 +74,14 @@ class FacturacionController extends Controller
         // Calcular monto en bolívares
         $montoBS = $cita->tarifa * $tasa->valor;
 
+        // Generar número de factura si no se proporcionó uno
+        $numeroFactura = $request->numero_factura;
+        if (!$numeroFactura) {
+            $year = date('Y');
+            $count = FacturaPaciente::whereYear('fecha_emision', $year)->count() + 1;
+            $numeroFactura = 'FAC-' . $year . '-' . str_pad($count, 6, '0', STR_PAD_LEFT);
+        }
+
         $factura = FacturaPaciente::create([
             'cita_id' => $cita->id,
             'paciente_id' => $cita->paciente_id,
@@ -66,7 +91,7 @@ class FacturacionController extends Controller
             'monto_bs' => $montoBS,
             'fecha_emision' => $request->fecha_emision,
             'fecha_vencimiento' => $request->fecha_vencimiento,
-            'numero_factura' => $request->numero_factura,
+            'numero_factura' => $numeroFactura,
             'status_factura' => 'Emitida',
             'status' => true
         ]);
@@ -269,12 +294,7 @@ class FacturacionController extends Controller
         }
     }
 
-    // Liquidaciones
-    public function liquidaciones()
-    {
-        $liquidaciones = \App\Models\Liquidacion::with(['detalles.facturaTotal.cabecera'])->where('status', true)->get();
-        return view('shared.facturacion.liquidaciones', compact('liquidaciones'));
-    }
+
 
     public function crearLiquidacion(Request $request)
     {
@@ -337,17 +357,43 @@ class FacturacionController extends Controller
      */
     public function resumenLiquidaciones()
     {
+        $user = auth()->user();
+        $isLocalAdmin = $user && $user->administrador && $user->administrador->tipo_admin !== 'Root';
+        $consultorioIds = [];
+
+        if ($isLocalAdmin) {
+            $consultorioIds = $user->administrador->consultorios()->pluck('consultorios.id');
+        }
+
         // Obtener totales pendientes agrupados por entidad
-        $totalesPendientes = FacturaTotal::with(['medico', 'consultorio'])
+        $query = FacturaTotal::with(['medico', 'consultorio'])
                                         ->where('estado_liquidacion', 'Pendiente')
-                                        ->where('status', true)
-                                        ->get();
+                                        ->where('status', true);
+
+        if ($isLocalAdmin) {
+            $query->where(function($q) use ($consultorioIds) {
+                // Liquidaciones para sus consultorios
+                $q->where(function($sq) use ($consultorioIds) {
+                    $sq->where('entidad_tipo', 'Consultorio')
+                       ->whereIn('entidad_id', $consultorioIds);
+                })
+                // O liquidaciones para medicos que trabajan en sus consultorios
+                ->orWhere(function($sq) use ($consultorioIds) {
+                    $sq->where('entidad_tipo', 'Medico')
+                       ->whereHas('medico.consultorios', function($ssq) use ($consultorioIds) {
+                           $ssq->whereIn('consultorios.id', $consultorioIds);
+                       });
+                });
+            });
+        }
+
+        $totalesPendientes = $query->get();
 
         // Calcular totales por tipo de entidad
         $totalesPorEntidad = [
             'Medico' => $totalesPendientes->where('entidad_tipo', 'Medico')->sum('total_final_usd'),
             'Consultorio' => $totalesPendientes->where('entidad_tipo', 'Consultorio')->sum('total_final_usd'),
-            'Sistema' => $totalesPendientes->where('entidad_tipo', 'Sistema')->sum('total_final_usd'),
+            'Sistema' => $isLocalAdmin ? 0 : $totalesPendientes->where('entidad_tipo', 'Sistema')->sum('total_final_usd'),
         ];
 
         return view('shared.facturacion.liquidaciones', compact('totalesPendientes', 'totalesPorEntidad'));

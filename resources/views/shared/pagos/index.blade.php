@@ -168,6 +168,19 @@
                                     <i class="bi bi-x-lg"></i>
                                 </button>
                                 @endif
+
+                                @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
+                                <a href="{{ route('pagos.edit', $pago->id_pago) }}" class="btn btn-sm btn-outline" title="Editar Pago">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="{{ route('pagos.destroy', $pago->id_pago) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este registro de pago? Esto afectará el saldo de la factura.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline text-rose-600 hover:bg-rose-50" title="Eliminar Pago">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -235,12 +248,6 @@
     }
 
     async function ejecutarConfirmacion() {
-        const adminId = {{ auth()->user()->administrador->id ?? 'null' }};
-        if (!adminId) {
-            alert('No se encontró el ID del administrador');
-            return;
-        }
-
         const btn = document.getElementById('confirmBtn');
         const originalText = btn.innerHTML;
         btn.disabled = true;
@@ -248,7 +255,6 @@
 
         try {
             const formData = new FormData();
-            formData.append('confirmado_por', adminId);
             formData.append('_token', '{{ csrf_token() }}');
 
             const response = await fetch(`{{ url('pagos') }}/${currentPagoId}/confirmar`, {

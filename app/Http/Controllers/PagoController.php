@@ -7,6 +7,9 @@ use App\Models\FacturaPaciente;
 use App\Models\MetodoPago;
 use App\Models\TasaDolar;
 use App\Models\Administrador;
+use App\Notifications\CitaActualizada;
+use App\Notifications\PagoConfirmado;
+use App\Notifications\PagoRechazado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +17,23 @@ use Illuminate\Support\Facades\Mail;
 
 class PagoController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+                // Métodos restringidos para administradores locales
+                $restrictedMethods = ['edit', 'update', 'destroy'];
+                $method = $request->route()->getActionMethod();
+
+                if (in_array($method, $restrictedMethods)) {
+                    abort(403, 'Solo los administradores Root tienen permiso para editar o eliminar registros de pago.');
+                }
+            }
+            return $next($request);
+        });
+    }
+
     public function index(Request $request)
     {
         $query = Pago::with([
@@ -60,9 +80,21 @@ class PagoController extends Controller
 
     public function create()
     {
-        $facturas = FacturaPaciente::where('status_factura', 'Emitida')
-                                  ->where('status', true)
-                                  ->get();
+        $user = auth()->user();
+        
+        $query = FacturaPaciente::with(['paciente', 'cita.consultorio'])
+                                ->whereIn('status_factura', ['Emitida', 'Parcialmente Pagada'])
+                                ->where('status', true);
+
+        // Aplicar filtro si es administrador local
+        if ($user && $user->administrador && $user->administrador->tipo_admin !== 'Root') {
+            $consultorioIds = $user->administrador->consultorios->pluck('id')->toArray();
+            $query->whereHas('cita', function ($q) use ($consultorioIds) {
+                $q->whereIn('consultorio_id', $consultorioIds);
+            });
+        }
+
+        $facturas = $query->orderBy('created_at', 'desc')->get();
         
         $metodosPago = MetodoPago::where('status', true)->get();
         $tasas = TasaDolar::where('status', true)->orderBy('fecha_tasa', 'desc')->get();
@@ -209,25 +241,19 @@ class PagoController extends Controller
 
     public function confirmarPago(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
-            'confirmado_por' => 'required|exists:administradores,id'
-        ]);
-
-        if ($validator->fails()) {
-            if ($request->ajax()) {
-                return response()->json(['success' => false, 'message' => $validator->errors()->first()], 400);
-            }
-            return redirect()->back()->withErrors($validator);
-        }
-
         try {
             \DB::beginTransaction();
 
             $pago = Pago::with(['facturaPaciente.cita'])->findOrFail($id);
             
+            $adminId = auth()->user()->administrador->id ?? null;
+            if (!$adminId) {
+                throw new \Exception('No se pudo identificar el perfil de administrador para confirmar el pago.');
+            }
+
             $pago->update([
                 'estado' => 'Confirmado',
-                'confirmado_por' => $request->confirmado_por
+                'confirmado_por' => $adminId
             ]);
 
             // Actualizar estado de la factura
@@ -252,12 +278,38 @@ class PagoController extends Controller
 
             // Enviar notificación
             $this->enviarNotificacionPago($pago);
+            
+            // Enviar notificación al paciente o representante (si es paciente especial)
+            if ($cita && $cita->paciente) {
+                $paciente = $cita->paciente;
+                $pacienteEspecial = $paciente->pacienteEspecial;
+                
+                if ($pacienteEspecial && $pacienteEspecial->representante) {
+                    // Es paciente especial: notificar al representante
+                    $representante = $pacienteEspecial->representante;
+                    $pacienteRepresentante = \App\Models\Paciente::where('tipo_documento', $representante->tipo_documento)
+                                              ->where('numero_documento', $representante->numero_documento)
+                                              ->first();
+                    
+                    if ($pacienteRepresentante) {
+                        $pacienteRepresentante->notify(new \App\Notifications\PagoConfirmado($pago));
+                    }
+                } else {
+                    // Paciente regular: notificar directamente
+                    $paciente->notify(new \App\Notifications\PagoConfirmado($pago));
+                }
 
-            if ($request->ajax()) {
-                return response()->json(['success' => true, 'message' => 'Pago confirmado exitosamente. La cita ha sido actualizada a estado Confirmada.']);
+                // Notificar al médico sobre el pago confirmado
+                if ($cita->medico) {
+                    $cita->medico->notify(new \App\Notifications\Medico\PagoConfirmadoCita($pago));
+                }
             }
 
-            return redirect()->back()->with('success', 'Pago confirmado exitosamente. La cita ha sido actualizada a estado Confirmada.');
+            if ($request->ajax()) {
+                return response()->json(['success' => true, 'message' => 'Pago confirmado y cita actualizada exitosamente.']);
+            }
+
+            return redirect()->back()->with('success', 'Pago confirmado y cita actualizada exitosamente.');
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -426,6 +478,31 @@ class PagoController extends Controller
 
         // Actualizar estado de la factura
         $this->actualizarEstadoFactura($pago->id_factura_paciente);
+        
+        
+        // Enviar notificación al paciente o representante (si es paciente especial)
+        if ($pago->facturaPaciente && $pago->facturaPaciente->cita && $pago->facturaPaciente->cita->paciente) {
+            $cita = $pago->facturaPaciente->cita;
+            $paciente = $cita->paciente;
+            
+            // Verificar si es un paciente especial
+            $pacienteEspecial = $paciente->pacienteEspecial;
+            
+            if ($pacienteEspecial && $pacienteEspecial->representante) {
+                // Es paciente especial: notificar al representante
+                $representante = $pacienteEspecial->representante;
+                $pacienteRepresentante = \App\Models\Paciente::where('tipo_documento', $representante->tipo_documento)
+                                          ->where('numero_documento', $representante->numero_documento)
+                                          ->first();
+                
+                if ($pacienteRepresentante) {
+                    $pacienteRepresentante->notify(new PagoRechazado($pago, $request->motivo));
+                }
+            } else {
+                // Paciente regular: notificar directamente
+                $paciente->notify(new PagoRechazado($pago, $request->motivo));
+            }
+        }
 
         if ($request->ajax()) {
             return response()->json(['success' => true, 'message' => 'Pago rechazado exitosamente']);
@@ -467,12 +544,37 @@ class PagoController extends Controller
     private function enviarNotificacionPago($pago)
     {
         try {
-            $pago->load(['facturaPaciente.cita.paciente.usuario']);
+            $pago->load(['facturaPaciente.cita.paciente.usuario', 'facturaPaciente.cita.paciente.pacienteEspecial.representante']);
             
-            Mail::send('emails.confirmacion-pago', ['pago' => $pago], function($message) use ($pago) {
-                $message->to($pago->facturaPaciente->cita->paciente->usuario->correo)
-                        ->subject('Confirmación de Pago - Factura #' . $pago->facturaPaciente->numero_factura);
-            });
+            $paciente = $pago->facturaPaciente->cita->paciente;
+            $pacienteEspecial = $paciente->pacienteEspecial;
+            
+            // Determinar el correo del destinatario
+            $correoDestinatario = null;
+            
+            if ($pacienteEspecial && $pacienteEspecial->representante) {
+                // Es paciente especial: enviar correo al representante
+                $representante = $pacienteEspecial->representante;
+                $pacienteRepresentante = \App\Models\Paciente::where('tipo_documento', $representante->tipo_documento)
+                                          ->where('numero_documento', $representante->numero_documento)
+                                          ->first();
+                
+                if ($pacienteRepresentante && $pacienteRepresentante->usuario) {
+                    $correoDestinatario = $pacienteRepresentante->usuario->correo;
+                }
+            } else {
+                // Paciente regular
+                if ($paciente->usuario) {
+                    $correoDestinatario = $paciente->usuario->correo;
+                }
+            }
+            
+            if ($correoDestinatario) {
+                Mail::send('emails.confirmacion-pago', ['pago' => $pago], function($message) use ($correoDestinatario, $pago) {
+                    $message->to($correoDestinatario)
+                            ->subject('Confirmación de Pago - Factura #' . $pago->facturaPaciente->numero_factura);
+                });
+            }
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación de pago: ' . $e->getMessage());
         }
@@ -703,6 +805,32 @@ class PagoController extends Controller
             ]);
 
             \DB::commit();
+
+            // Notificar a los administradores relevantes
+            try {
+                $consultorioId = $cita->consultorio_id;
+                $admins = \App\Models\Administrador::where('status', true)->get();
+                
+                foreach ($admins as $admin) {
+                    // Root admins ven todo
+                    if ($admin->tipo_admin === 'Root') {
+                        $admin->notify(new \App\Notifications\Admin\NuevoPagoRegistrado($pago));
+                    }
+                    // Local admins solo si es su consultorio
+                    elseif ($admin->tipo_admin === 'Administrador' && $consultorioId) {
+                        $tieneAcceso = \DB::table('administrador_consultorio')
+                            ->where('administrador_id', $admin->id)
+                            ->where('consultorio_id', $consultorioId)
+                            ->exists();
+                        
+                        if ($tieneAcceso) {
+                            $admin->notify(new \App\Notifications\Admin\NuevoPagoRegistrado($pago));
+                        }
+                    }
+                }
+            } catch (\Exception $ne) {
+                \Log::error('Error enviando notificación de pago: ' . $ne->getMessage());
+            }
 
             return redirect()->route('paciente.citas.show', $cita->id)
                            ->with('success', '¡Pago registrado exitosamente! Su pago será revisado por nuestro equipo y recibirá una notificación cuando sea confirmado.');

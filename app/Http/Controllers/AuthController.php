@@ -144,6 +144,21 @@ class AuthController extends Controller
         // Iniciar sesión usando el guard web explícitamente
         Auth::guard('web')->login($usuario, true);
 
+        // Flag para mostrar toasts solo al iniciar sesión
+        session(['mostrar_bienvenida_toasts' => true]);
+
+        // Alerta de Seguridad (Login Notification)
+        try {
+            $destinatario = $usuario->paciente ?: ($usuario->medico ?: $usuario);
+            $destinatario->notify(new \App\Notifications\AlertaInicioSesion(
+                $request->ip(),
+                $request->header('User-Agent'),
+                now()->format('d/m/Y H:i:s')
+            ));
+        } catch (\Exception $e) {
+            Log::error('Error enviando alerta de login: ' . $e->getMessage());
+        }
+
         // Guardar en historial de passwords
         HistorialPassword::create([
             'user_id' => $usuario->id,
@@ -257,6 +272,9 @@ class AuthController extends Controller
 
             // Autenticar automáticamente
             Auth::login($usuario);
+
+            // Flag para mostrar toasts solo al registrarse/iniciar sesión
+            session(['mostrar_bienvenida_toasts' => true]);
 
             return $this->redirectByRole($usuario);
 
@@ -478,12 +496,10 @@ class AuthController extends Controller
     private function enviarEmailConfirmacion($usuario)
     {
         try {
-            Mail::send('emails.confirmacion', ['usuario' => $usuario], function($message) use ($usuario) {
-                $message->to($usuario->correo)
-                        ->subject('Confirmación de Registro - Sistema Médico');
-            });
+            $destinatario = $usuario->paciente ?: ($usuario->medico ?: $usuario);
+            $destinatario->notify(new \App\Notifications\BienvenidaSistema($usuario));
         } catch (\Exception $e) {
-            Log::error('Error enviando email de confirmación: ' . $e->getMessage());
+            Log::error('Error enviando notificación de bienvenida: ' . $e->getMessage());
         }
     }
 

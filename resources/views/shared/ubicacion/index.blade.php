@@ -22,6 +22,7 @@
                 </p>
             </div>
             <div>
+                @if(auth()->user()->administrador && auth()->user()->administrador->tipo_admin === 'Root')
                 @switch($activeTab)
                     @case('estados')
                         <a href="{{ route('ubicacion.estados.create') }}" class="btn bg-white text-indigo-700 hover:bg-indigo-50 border-none shadow-md transition-all hover:scale-105 font-semibold">
@@ -44,6 +45,7 @@
                         </a>
                         @break
                 @endswitch
+                @endif
             </div>
         </div>
     </div>

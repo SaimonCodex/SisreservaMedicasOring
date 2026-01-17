@@ -837,8 +837,43 @@ class CitaController extends Controller
 
                 Log::info('Cita creada exitosamente', ['cita_id' => $cita->id, 'paciente_especial_id' => $pacienteEspecialId]);
 
-                // Enviar notificación
+                // Enviar notificación al paciente
                 $this->enviarNotificacionCita($cita);
+
+                // Notificar a los administradores relevantes
+                try {
+                    $consultorioId = $cita->consultorio_id;
+                    $admins = \App\Models\Administrador::where('status', true)->get();
+                    
+                    foreach ($admins as $admin) {
+                        // Root admins ven todo
+                        if ($admin->tipo_admin === 'Root') {
+                            $admin->notify(new \App\Notifications\Admin\NuevaCitaAgendada($cita));
+                        }
+                        // Local admins solo si es su consultorio
+                        elseif ($admin->tipo_admin === 'Administrador' && $consultorioId) {
+                            $tieneAcceso = DB::table('administrador_consultorio')
+                                ->where('administrador_id', $admin->id)
+                                ->where('consultorio_id', $consultorioId)
+                                ->exists();
+                            
+                            if ($tieneAcceso) {
+                                $admin->notify(new \App\Notifications\Admin\NuevaCitaAgendada($cita));
+                            }
+                        }
+                    }
+                } catch (\Exception $ne) {
+                    Log::error('Error enviando notificación de nueva cita a administradores: ' . $ne->getMessage());
+                }
+
+                // Notificar al médico asignado
+                try {
+                    if ($cita->medico) {
+                        $cita->medico->notify(new \App\Notifications\Medico\NuevaCitaAsignada($cita));
+                    }
+                } catch (\Exception $ne) {
+                    Log::error('Error enviando notificación de nueva cita al médico: ' . $ne->getMessage());
+                }
 
                 // Redirigir según el rol
                 if ($user->rol_id == 3) {
@@ -948,18 +983,32 @@ class CitaController extends Controller
             // Si no, lo dejamos en pendiente pero notificamos.
             $cita->save();
 
-            // Crear Notificación para Admin
-            // Buscamos un usuario admin (rol_id = 1) o genérico
-            // Asumiremos rol 'admin' para el receptor
-            Notificacion::create([
-                'receptor_rol' => 'admin', // Sistema debe tener listener o panel para ver notificaciones 'admin'
-                'tipo' => 'solicitud',
-                'titulo' => 'Solicitud de Cancelación - Cita #' . $cita->id,
-                'mensaje' => "Paciente solicitó cancelar cita del " . Carbon::parse($cita->fecha_cita)->format('d/m/Y') . ".\nMotivo: " . $request->motivo_cancelacion . " - " . $request->explicacion,
-                'via' => 'sistema', // interna
-                'estado_envio' => 'pendiente',
-                'status' => true
-            ]);
+            // Notificar a los administradores relevantes sobre la cancelación
+            try {
+                $consultorioId = $cita->consultorio_id;
+                $motivo = $request->motivo_cancelacion . ': ' . $request->explicacion;
+                $admins = \App\Models\Administrador::where('status', true)->get();
+                
+                foreach ($admins as $admin) {
+                    // Root admins ven todo
+                    if ($admin->tipo_admin === 'Root') {
+                        $admin->notify(new \App\Notifications\Admin\CitaCanceladaAdmin($cita, $motivo));
+                    }
+                    // Local admins solo si es su consultorio
+                    elseif ($admin->tipo_admin === 'Administrador' && $consultorioId) {
+                        $tieneAcceso = DB::table('administrador_consultorio')
+                            ->where('administrador_id', $admin->id)
+                            ->where('consultorio_id', $consultorioId)
+                            ->exists();
+                        
+                        if ($tieneAcceso) {
+                            $admin->notify(new \App\Notifications\Admin\CitaCanceladaAdmin($cita, $motivo));
+                        }
+                    }
+                }
+            } catch (\Exception $ne) {
+                Log::error('Error enviando notificación de cancelación a administradores: ' . $ne->getMessage());
+            }
 
             DB::commit();
 
@@ -1064,9 +1113,78 @@ class CitaController extends Controller
             return redirect()->back()->with('error', 'El médico no está disponible en ese horario')->withInput();
         }
 
+        // Capture old values for rescheduling check
+        $fechaAnterior = $cita->fecha_cita;
+        $horaAnterior = $cita->hora_inicio;
+        $estadoAnterior = $cita->estado_cita;
+
         $cita->update(array_merge($request->all(), [
             'duracion_minutos' => $this->calcularDuracion($request->hora_inicio, $request->hora_fin)
         ]));
+
+        // NOTIFICACIONES
+        try {
+                $paciente = $cita->paciente;
+                if ($paciente) {
+                    // Check if special patient to notify representative
+                    $pacienteEspecial = $paciente->pacienteEspecial;
+                    $notifiable = $paciente;
+                    
+                    if ($pacienteEspecial && $pacienteEspecial->representante) {
+                        $representante = $pacienteEspecial->representante;
+                        $pacienteRepresentante = Paciente::where('tipo_documento', $representante->tipo_documento)
+                            ->where('numero_documento', $representante->numero_documento)
+                            ->first();
+                        if ($pacienteRepresentante) $notifiable = $pacienteRepresentante;
+                    }
+
+                    // 1. Caso Cancelación
+                    if ($request->estado_cita == 'Cancelada' && $estadoAnterior != 'Cancelada') {
+                        $motivo = $request->observaciones ?? 'Cancelada por administración';
+                        $notifiable->notify(new \App\Notifications\CitaCancelada($cita, $motivo));
+
+                        // Notificar al médico sobre la cancelación
+                        if ($cita->medico) {
+                            $cita->medico->notify(new \App\Notifications\Medico\CitaCanceladaPaciente($cita, $motivo));
+                        }
+                    }
+                    // 2. Caso Reprogramación (Solo si no se canceló)
+                    elseif ($request->estado_cita != 'Cancelada') {
+                        $seMovio = ($fechaAnterior != $request->fecha_cita) || ($horaAnterior != $request->hora_inicio);
+                        if ($seMovio) {
+                            $notifiable->notify(new \App\Notifications\CitaReprogramada($cita, $fechaAnterior, $horaAnterior));
+
+                            // Notificar a los administradores relevantes sobre la reprogramación
+                            $consultorioId = $cita->consultorio_id;
+                            $admins = \App\Models\Administrador::where('status', true)->get();
+                            
+                            foreach ($admins as $admin) {
+                                if ($admin->tipo_admin === 'Root') {
+                                    $admin->notify(new \App\Notifications\Admin\CitaReprogramada($cita, $fechaAnterior, $horaAnterior));
+                                }
+                                elseif ($admin->tipo_admin === 'Administrador' && $consultorioId) {
+                                    $tieneAcceso = DB::table('administrador_consultorio')
+                                        ->where('administrador_id', $admin->id)
+                                        ->where('consultorio_id', $consultorioId)
+                                        ->exists();
+                                    
+                                    if ($tieneAcceso) {
+                                        $admin->notify(new \App\Notifications\Admin\CitaReprogramada($cita, $fechaAnterior, $horaAnterior));
+                                    }
+                                }
+                            }
+
+                            // Notificar al médico sobre la reprogramación
+                            if ($cita->medico) {
+                                $cita->medico->notify(new \App\Notifications\Medico\CitaReprogramada($cita, $fechaAnterior, $horaAnterior));
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error enviando notificación (Update): ' . $e->getMessage());
+        }
 
         return redirect()->route('citas.index')->with('success', 'Cita actualizada exitosamente');
     }
@@ -1075,6 +1193,19 @@ class CitaController extends Controller
     {
         $cita = Cita::findOrFail($id);
         $cita->update(['status' => false, 'estado_cita' => 'Cancelada']);
+
+        try {
+            if ($cita->paciente && $cita->paciente->usuario) {
+               $cita->paciente->usuario->notify(new \App\Notifications\CitaCancelada($cita, 'Cancelada por el sistema/admin'));
+            }
+
+            // Notificar al médico sobre la cancelación
+            if ($cita->medico) {
+                $cita->medico->notify(new \App\Notifications\Medico\CitaCanceladaPaciente($cita, 'Cancelada por el sistema/admin'));
+            }
+        } catch (\Exception $e) {
+            Log::error('Error enviando notificación (Destroy): ' . $e->getMessage());
+        }
 
         return redirect()->route('citas.index')->with('success', 'Cita cancelada exitosamente');
     }
@@ -1092,6 +1223,7 @@ class CitaController extends Controller
             return redirect()->back()->withErrors($validator)->with('error', 'Estado inválido');
         }
 
+        $estadoAnterior = $cita->estado_cita;
         $cita->estado_cita = $request->estado_cita;
         
         // Si viene un motivo/observación (ej: al cancelar), lo guardamos
@@ -1101,10 +1233,33 @@ class CitaController extends Controller
 
         $cita->save();
 
-        // Si se confirma la cita, se podría enviar una notificación (código comentado opcional)
-        // if ($request->estado_cita == 'Confirmada') {
-        //     $this->enviarNotificacionCita($cita);
-        // }
+        try {
+            $paciente = $cita->paciente;
+            if ($paciente) {
+                $pacienteEspecial = $paciente->pacienteEspecial;
+                $notifiable = $paciente;
+                
+                if ($pacienteEspecial && $pacienteEspecial->representante) {
+                    $representante = $pacienteEspecial->representante;
+                    $pacienteRepresentante = Paciente::where('tipo_documento', $representante->tipo_documento)
+                        ->where('numero_documento', $representante->numero_documento)
+                        ->first();
+                    if ($pacienteRepresentante) $notifiable = $pacienteRepresentante;
+                }
+
+                if ($request->estado_cita == 'Cancelada' && $estadoAnterior != 'Cancelada') {
+                    $motivo = $request->observaciones ?? 'Cancelada administrativamente';
+                    $notifiable->notify(new \App\Notifications\CitaCancelada($cita, $motivo));
+
+                    // Notificar al médico sobre la cancelación
+                    if ($cita->medico) {
+                        $cita->medico->notify(new \App\Notifications\Medico\CitaCanceladaPaciente($cita, $motivo));
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error enviando notificación (CambioEstado): ' . $e->getMessage());
+        }
 
         return redirect()->back()->with('success', 'Estado de la cita actualizado correctamente');
     }

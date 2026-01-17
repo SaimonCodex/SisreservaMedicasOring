@@ -447,14 +447,17 @@
         setTimeout(() => {
             modal.classList.add('hidden');
             currentCitaId = null;
-            document.getElementById('motivo_input').value = '';
+            document.getElementById('motivo_cancelacion_input').value = '';
+            document.getElementById('explicacion_input').value = '';
             document.getElementById('motivo_error').classList.add('hidden');
         }, 300);
     }
 
     async function confirmarCancelacion() {
-        const motivo = document.getElementById('motivo_input').value.trim();
-        if (!motivo) {
+        const motivo = document.getElementById('motivo_cancelacion_input').value;
+        const explicacion = document.getElementById('explicacion_input').value;
+
+        if (!motivo || !explicacion) {
             document.getElementById('motivo_error').classList.remove('hidden');
             return;
         }
@@ -466,7 +469,8 @@
 
         try {
             const formData = new FormData();
-            formData.append('motivo', motivo);
+            formData.append('motivo_cancelacion', motivo);
+            formData.append('explicacion', explicacion);
             formData.append('_token', '{{ csrf_token() }}');
 
             const response = await fetch(`{{ url('citas') }}/${currentCitaId}/solicitar-cancelacion`, {
@@ -505,14 +509,30 @@
             </div>
             <h3 class="text-2xl font-display font-bold text-gray-900 mb-2">¿Cancelar esta cita?</h3>
             <p class="text-gray-500 mb-6 font-medium">Por favor, indícanos el motivo de la cancelación para reagendarte pronto.</p>
-            <div class="space-y-1.5">
-                <label for="motivo_input" class="text-sm font-bold text-gray-700 ml-1">Motivo de cancelación</label>
-                <textarea id="motivo_input" rows="3" 
-                    class="w-full px-4 py-3 rounded-xl border-gray-200 bg-gray-50 text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all resize-none placeholder:text-gray-400"
-                    placeholder="Escriba aquí el motivo..."
-                    oninput="document.getElementById('motivo_error').classList.add('hidden')"></textarea>
+            <div class="space-y-4">
+                <div class="form-control">
+                    <label for="motivo_cancelacion_input" class="text-sm font-bold text-gray-700 ml-1 mb-1 block">Motivo Principal</label>
+                    <select id="motivo_cancelacion_input" class="select select-bordered w-full bg-gray-50 focus:bg-white transition-colors" required>
+                        <option value="">Seleccione un motivo...</option>
+                        <option value="Salud">Problemas de Salud</option>
+                        <option value="Trabajo">Motivos Laborales</option>
+                        <option value="Personal">Asuntos Personales</option>
+                        <option value="Transporte">Problemas de Transporte</option>
+                        <option value="Economico">Motivos Económicos</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label for="explicacion_input" class="text-sm font-bold text-gray-700 ml-1 mb-1 block">Explícanos un poco más</label>
+                    <textarea id="explicacion_input" rows="3" 
+                        class="w-full px-4 py-3 rounded-xl border-gray-200 bg-gray-50 text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all resize-none placeholder:text-gray-400"
+                        placeholder="Detalles adicionales..."
+                        oninput="document.getElementById('motivo_error').classList.add('hidden')" required></textarea>
+                </div>
+
                 <p id="motivo_error" class="hidden text-xs font-bold text-red-500 mt-1 flex items-center gap-1">
-                    <i class="bi bi-exclamation-circle"></i> Debes ingresar un motivo
+                    <i class="bi bi-exclamation-circle"></i> Debes completar todos los campos
                 </p>
             </div>
             <div class="flex gap-3 mt-8">

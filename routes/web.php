@@ -18,6 +18,7 @@ use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\RepresentanteController;
 use App\Http\Controllers\PacienteEspecialController;
+use App\Http\Controllers\Admin\AdminNotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -92,11 +93,26 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/medico/dashboard', [MedicoController::class, 'dashboard'])->name('medico.dashboard');
     Route::get('/paciente/dashboard', [PacienteController::class, 'dashboard'])->name('paciente.dashboard');
     
+    // Rutas de Notificaciones Admin
+    Route::prefix('admin/notificaciones')->group(function () {
+        Route::get('/', [AdminNotificationController::class, 'index'])->name('admin.notificaciones.index');
+        Route::post('/{id}/marcar-leida', [AdminNotificationController::class, 'markAsRead'])->name('admin.notificaciones.marcar-leida');
+        Route::post('/leer-todas', [AdminNotificationController::class, 'markAllAsRead'])->name('admin.notificaciones.leer-todas');
+        Route::delete('/{id}', [AdminNotificationController::class, 'destroy'])->name('admin.notificaciones.destroy');
+        Route::post('/eliminar-multiples', [AdminNotificationController::class, 'destroyAll'])->name('admin.notificaciones.destroy-all');
+    });
+
+    // Rutas de Broadcast Admin (Solo Root)
+    Route::prefix('admin/broadcast')->middleware('auth')->group(function () {
+        Route::get('/create', [\App\Http\Controllers\Admin\AdminBroadcastController::class, 'create'])->name('admin.broadcast.create');
+        Route::post('/store', [\App\Http\Controllers\Admin\AdminBroadcastController::class, 'store'])->name('admin.broadcast.store');
+    });
+    
     // Rutas Específicas Paciente
     Route::prefix('paciente')->middleware(['auth'])->group(function () {
-        Route::get('/historial', [PacienteController::class, 'historial'])->name('paciente.historial'); // Assumes create a method or point to existing
+        Route::get('/historial', [PacienteController::class, 'historial'])->name('paciente.historial');
         Route::get('/pagos', [PacienteController::class, 'pagos'])->name('paciente.pagos');
-        Route::get('/citas/create', [CitaController::class, 'create'])->name('paciente.citas.create'); // Specific route for paciente create
+        Route::get('/citas/create', [CitaController::class, 'create'])->name('paciente.citas.create');
         Route::post('/citas', [CitaController::class, 'store'])->name('paciente.citas.store');
         Route::get('/citas', [CitaController::class, 'index'])->name('paciente.citas.index');
         Route::get('/citas/{id}', [CitaController::class, 'show'])->name('paciente.citas.show');
@@ -109,6 +125,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/perfil/editar', [PacienteController::class, 'editPerfil'])->name('paciente.perfil.edit');
         Route::put('/perfil', [PacienteController::class, 'updatePerfil'])->name('paciente.perfil.update');
         
+        // Rutas de notificaciones del paciente
+        Route::prefix('notificaciones')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'index'])->name('paciente.notificaciones.index');
+            Route::post('/{id}/marcar-leida', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'markAsRead'])->name('paciente.notificaciones.marcar-leida');
+            Route::post('/leer-todas', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'markAllAsRead'])->name('paciente.notificaciones.leer-todas');
+            Route::delete('/{id}', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'destroy'])->name('paciente.notificaciones.destroy');
+            Route::post('/eliminar-multiples', [\App\Http\Controllers\Paciente\PacienteNotificationController::class, 'destroyAll'])->name('paciente.notificaciones.destroy-all');
+        });
+
         // Rutas de solicitudes de acceso a historial médico
         Route::get('/solicitudes-acceso', [HistoriaClinicaController::class, 'listarSolicitudesPaciente'])->name('paciente.solicitudes');
         Route::post('/solicitudes-acceso/{id}/aprobar', [HistoriaClinicaController::class, 'aprobarSolicitud'])->name('paciente.solicitudes.aprobar');
@@ -130,9 +155,11 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Rutas Globales de Ubicación (AJAX)
-    Route::get('/ubicacion/get-ciudades/{estadoId}', [UbicacionController::class, 'getCiudadesByEstado']);
-    Route::get('/ubicacion/get-municipios/{estadoId}', [UbicacionController::class, 'getMunicipiosByEstado']);
-    Route::get('/ubicacion/get-parroquias/{municipioId}', [UbicacionController::class, 'getParroquiasByMunicipio']);
+    Route::prefix('ubicacion')->group(function () {
+        Route::get('get-ciudades/{estadoId}', [UbicacionController::class, 'getCiudadesByEstado'])->name('ubicacion.get-ciudades');
+        Route::get('get-municipios/{estadoId}', [UbicacionController::class, 'getMunicipiosByEstado'])->name('ubicacion.get-municipios');
+        Route::get('get-parroquias/{municipioId}', [UbicacionController::class, 'getParroquiasByMunicipio'])->name('ubicacion.get-parroquias');
+    });
     
     // =========================================================================
     // ADMINISTRACIÓN DEL SISTEMA
@@ -169,6 +196,14 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('medico')->middleware(['auth'])->group(function () {
         Route::get('/perfil/editar', [MedicoController::class, 'editPerfil'])->name('medico.perfil.edit');
         Route::put('/perfil', [MedicoController::class, 'updatePerfil'])->name('medico.perfil.update');
+
+        // Rutas de notificaciones del médico
+        Route::prefix('notificaciones')->group(function () {
+            Route::get('/', [\App\Http\Controllers\MedicoNotificacionController::class, 'index'])->name('medico.notificaciones.index');
+            Route::get('/no-leidas', [\App\Http\Controllers\MedicoNotificacionController::class, 'getUnread'])->name('medico.notificaciones.unread');
+            Route::post('/{id}/marcar-leida', [\App\Http\Controllers\MedicoNotificacionController::class, 'markAsRead'])->name('medico.notificaciones.mark-read');
+            Route::post('/marcar-todas-leidas', [\App\Http\Controllers\MedicoNotificacionController::class, 'markAllAsRead'])->name('medico.notificaciones.mark-all-read');
+        });
     });
     
     // =========================================================================
@@ -189,7 +224,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('buscar-disponibilidad', [CitaController::class, 'buscarDisponibilidad'])->name('citas.buscar-disponibilidad');
     Route::get('events', [CitaController::class, 'events'])->name('citas.events');
     Route::get('admin/buscar-paciente', [CitaController::class, 'buscarPaciente'])->name('admin.buscar-paciente');
-    Route::get('ajax/verificar-correo', [CitaController::class, 'verificarCorreo'])->name('ajax.verificar-correo');
     
     // =========================================================================
     // ESPECIALIDADES MÉDICAS
@@ -245,7 +279,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('parroquias/{id}/edit', [UbicacionController::class, 'editParroquia'])->name('ubicacion.parroquias.edit');
         Route::put('parroquias/{id}', [UbicacionController::class, 'updateParroquia'])->name('ubicacion.parroquias.update');
         Route::delete('parroquias/{id}', [UbicacionController::class, 'destroyParroquia'])->name('ubicacion.parroquias.destroy');
-
     });
     
     // =========================================================================
@@ -448,4 +481,18 @@ if (app()->environment('local')) {
 
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
+});
+
+// Temporary Fix Route for Payment Methods
+Route::get('/fix-payment-methods', function () {
+    $methods = \App\Models\MetodoPago::all();
+    $count = 0;
+    foreach ($methods as $method) {
+        if (empty($method->nombre)) {
+            $method->nombre = $method->descripcion;
+            $method->save();
+            $count++;
+        }
+    }
+    return "Se han corregido $count métodos de pago. Ya puede recargar la página de registro de pago.";
 });

@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\ScopedByConsultorio;
+use Illuminate\Notifications\Notifiable;
 
 class Paciente extends Model
 {
-    use HasFactory;
+    use HasFactory, Notifiable;
 
     protected $table = 'pacientes';
     protected $primaryKey = 'id';
@@ -124,5 +124,28 @@ class Paciente extends Model
     public function getEsEspecialAttribute($value)
     {
         return $value == 1;
+    }
+
+    /**
+     * Route notifications for the mail channel.
+     *
+     * @return  array<string, string>|string
+     */
+    public function routeNotificationForMail($notification)
+    {
+        return $this->usuario->correo ?? null;
+    }
+
+    public function getNombreCompletoAttribute()
+    {
+        return $this->primer_nombre . ' ' . $this->primer_apellido;
+    }
+
+    /**
+     * Get the channels the entity receives broadcast notifications on.
+     */
+    public function receivesBroadcastNotificationsOn(): string
+    {
+        return 'App.Models.Paciente.' . $this->id;
     }
 }
