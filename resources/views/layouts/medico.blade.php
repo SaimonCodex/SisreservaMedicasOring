@@ -50,8 +50,15 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
 
     <style>
+        /* Alpine.js x-cloak */
+        [x-cloak] { display: none !important; }
+        
         :root {
             --medical-500: {{ $baseColor }};
             --medical-600: {{ $baseColor }}cc; /* A bit lighter/transparent for gradients */
@@ -141,9 +148,15 @@
             </a>
             
             <a href="{{ route('historia-clinica.base.index') }}" 
-               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('historia-clinica.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-file-earmark-medical-fill text-lg mr-3 {{ request()->is('*/historia-clinica*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('historia-clinica.base.*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+                <i class="bi bi-file-earmark-medical-fill text-lg mr-3 {{ request()->routeIs('historia-clinica.base.*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Historias Clínicas</span>
+            </a>
+
+            <a href="{{ route('historia-clinica.evoluciones.general') }}" 
+               class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('historia-clinica.evoluciones.general') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
+                <i class="bi bi-journal-medical text-lg mr-3 {{ request()->routeIs('historia-clinica.evoluciones.general') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+                <span class="font-medium text-sm">Evoluciones Clínicas</span>
             </a>
             
             <a href="{{ route('ordenes-medicas.index') }}" 
@@ -157,9 +170,9 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Gestión</p>
             </div>
             
-            <a href="{{ route('medicos.horarios', auth()->id()) }}" 
+            <a href="{{ route('medicos.horarios', $medico->id ?? auth()->user()->medico->id) }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('medicos.horarios') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-calendar-week-fill text-lg mr-3 {{ request()->is('*/medico/agenda*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+                <i class="bi bi-calendar-week-fill text-lg mr-3 {{ request()->routeIs('medicos.horarios') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mi Agenda</span>
             </a>
             
@@ -174,9 +187,9 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cuenta</p>
             </div>
             
-            <a href="{{ route('medicos.show', auth()->id()) }}" 
+            <a href="{{ route('medicos.show', $medico->id ?? auth()->user()->medico->id) }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('medicos.show') || request()->is('*/medico/perfil*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
-                <i class="bi bi-person-fill text-lg mr-3 {{ request()->is('*/medico/perfil*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
+                <i class="bi bi-person-fill text-lg mr-3 {{ request()->routeIs('medicos.show') || request()->is('*/medico/perfil*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mi Perfil</span>
             </a>
             
@@ -349,6 +362,25 @@
                 </div>
             @endif
             
+            @if($errors->any())
+                <div class="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-xl animate-slide-in-down">
+                    <div class="flex items-start gap-3">
+                        <i class="bi bi-exclamation-octagon-fill text-rose-500 text-xl mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-bold text-rose-900 mb-1">Por favor corrige los siguientes errores:</h4>
+                            <ul class="list-disc list-inside text-sm text-rose-800 space-y-1">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-rose-500 hover:text-rose-700">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            @endif
+
             <!-- Main Content -->
             @yield('content')
         </div>
@@ -567,6 +599,63 @@
         setInterval(cargarNotificaciones, 30000);
     </script>
     
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+        @if(session('success'))
+        <div class="toast pointer-events-auto flex items-center w-full max-w-xs p-4 text-gray-500 bg-white rounded-lg shadow-lg border border-gray-100 dark:text-gray-400 dark:bg-gray-800 transition-all duration-300 transform translate-x-0 animate-slide-in-right" role="alert">
+            <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200">
+                <i class="bi bi-check-lg"></i>
+            </div>
+            <div class="ml-3 text-sm font-medium">{{ session('success') }}</div>
+            <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" onclick="this.closest('.toast').remove()">
+                <span class="sr-only">Cerrar</span>
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        @endif
+
+        @if(session('error'))
+        <div class="toast pointer-events-auto flex items-center w-full max-w-xs p-4 text-gray-500 bg-white rounded-lg shadow-lg border border-gray-100 dark:text-gray-400 dark:bg-gray-800 transition-all duration-300 transform translate-x-0 animate-slide-in-right" role="alert">
+            <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-red-500 bg-red-100 rounded-lg dark:bg-red-800 dark:text-red-200">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <div class="ml-3 text-sm font-medium">{{ session('error') }}</div>
+            <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" onclick="this.closest('.toast').remove()">
+                <span class="sr-only">Cerrar</span>
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        @endif
+
+        @if(session('info'))
+        <div class="toast pointer-events-auto flex items-center w-full max-w-xs p-4 text-gray-500 bg-white rounded-lg shadow-lg border border-gray-100 dark:text-gray-400 dark:bg-gray-800 transition-all duration-300 transform translate-x-0 animate-slide-in-right" role="alert">
+            <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-blue-500 bg-blue-100 rounded-lg dark:bg-blue-800 dark:text-blue-200">
+                <i class="bi bi-info-circle-fill"></i>
+            </div>
+            <div class="ml-3 text-sm font-medium">{{ session('info') }}</div>
+            <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" onclick="this.closest('.toast').remove()">
+                <span class="sr-only">Cerrar</span>
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        @endif
+    </div>
+
+    <script>
+        // Auto-close toasts after 3 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                const toasts = document.querySelectorAll('.toast');
+                toasts.forEach(toast => {
+                    toast.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(-20px)';
+                    setTimeout(() => toast.remove(), 500);
+                });
+            }, 3000); // 3 seconds
+        });
+    </script>
+
     @stack('scripts')
 </body>
 </html>

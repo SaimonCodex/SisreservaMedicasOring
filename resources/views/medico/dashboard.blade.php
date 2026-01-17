@@ -286,9 +286,7 @@
                 <a href="{{ route('pacientes.index') }}" class="btn btn-outline w-full justify-start">
                     <i class="bi bi-folder-plus"></i> Nueva Historia
                 </a>
-                <a href="{{ route('ordenes-medicas.index') }}" class="btn btn-outline w-full justify-start">
-                    <i class="bi bi-clipboard-check"></i> Registrar Resultados
-                </a>
+
             </div>
         </div>
 

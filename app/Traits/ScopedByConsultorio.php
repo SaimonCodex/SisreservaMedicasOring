@@ -66,7 +66,7 @@ trait ScopedByConsultorio
             }
             
             // Para evoluciones clínicas
-            elseif ($table === 'evoluciones_clinicas') {
+            elseif ($table === 'evolucion_clinica') {
                 $builder->whereHas('cita', function ($query) use ($consultorioIds) {
                     $query->whereIn('consultorio_id', $consultorioIds);
                 });

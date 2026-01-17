@@ -673,8 +673,8 @@
     }
 
     function generarContrasena(prefix) {
-        const documento = document.getElementById(`${prefix}_numero_documento`)?.value || '';
-        const nombre = document.getElementById(`${prefix}_primer_nombre`)?.value || '';
+        const documento = document.getElementById(`${prefix}_numero_documento`)?.value.trim() || '';
+        const nombre = document.getElementById(`${prefix}_primer_nombre`)?.value.trim() || '';
         const fechaNac = document.getElementById(`${prefix}_fecha_nac`)?.value || '';
         
         if (!documento || !nombre) {
@@ -682,11 +682,26 @@
         }
         
         const nombreCap = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
-        const año = fechaNac ? new Date(fechaNac).getFullYear() : new Date().getFullYear();
+        
+        // Obtener año directamente del string para evitar problemas de timezone
+        let año = new Date().getFullYear();
+        if (fechaNac) {
+            const parts = fechaNac.split('-');
+            if (parts.length > 0) {
+                año = parts[0];
+            }
+        }
+        
         const password = `#${documento}${nombreCap}${año}`;
         
-        document.getElementById(`${prefix}_password_display`).value = password;
-        document.getElementById(`${prefix}_password`).value = password;
+        // Asignar a ambos campos (visual y hidden)
+        const displayEl = document.getElementById(`${prefix}_password_display`);
+        const hiddenEl = document.getElementById(`${prefix}_password`);
+        
+        if (displayEl) displayEl.value = password;
+        if (hiddenEl) hiddenEl.value = password;
+        
+        console.log(`Contraseña generada para ${prefix}:`, password);
     }
 
     // Auto-generar contraseña al cambiar campos relevantes

@@ -40,45 +40,51 @@
                 <div class="p-6">
                     <div class="flex items-start gap-6">
                         <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                            {{ strtoupper(substr($historia->paciente->primer_nombre ?? 'P', 0, 1)) }}{{ strtoupper(substr($historia->paciente->primer_apellido ?? 'A', 0, 1)) }}
+                            {{ strtoupper(substr($paciente->primer_nombre ?? 'P', 0, 1)) }}{{ strtoupper(substr($paciente->primer_apellido ?? 'A', 0, 1)) }}
                         </div>
                         <div class="flex-1">
                             <h4 class="text-2xl font-bold text-gray-900">
-                                {{ $historia->paciente->primer_nombre ?? 'N/A' }} 
-                                {{ $historia->paciente->segundo_nombre ?? '' }}
-                                {{ $historia->paciente->primer_apellido ?? '' }}
-                                {{ $historia->paciente->segundo_apellido ?? '' }}
+                                {{ $paciente->primer_nombre ?? 'N/A' }} 
+                                {{ $paciente->segundo_nombre ?? '' }}
+                                {{ $paciente->primer_apellido ?? '' }}
+                                {{ $paciente->segundo_apellido ?? '' }}
                             </h4>
                             <div class="grid grid-cols-3 gap-4 mt-4">
                                 <div>
                                     <p class="text-sm text-gray-500">Cédula</p>
-                                    <p class="font-semibold text-gray-900">{{ $historia->paciente->cedula ?? 'N/A' }}</p>
+                                    <p class="font-semibold text-gray-900">
+                                        {{ $paciente->tipo_documento ?? '' }}-{{ $paciente->numero_documento ?? 'N/A' }}
+                                    </p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-500">Edad</p>
                                     <p class="font-semibold text-gray-900">
-                                        {{ isset($historia->paciente->fecha_nacimiento) ? \Carbon\Carbon::parse($historia->paciente->fecha_nacimiento)->age . ' años' : 'N/A' }}
+                                        {{ isset($paciente->fecha_nac) ? \Carbon\Carbon::parse($paciente->fecha_nac)->age . ' años' : 'N/A' }}
                                     </p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-500">Sexo</p>
-                                    <p class="font-semibold text-gray-900">{{ ucfirst($historia->paciente->sexo ?? 'N/A') }}</p>
+                                    <p class="font-semibold text-gray-900">
+                                        {{ $paciente->genero }}
+                                    </p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-500">Teléfono</p>
-                                    <p class="font-semibold text-gray-900">{{ $historia->paciente->telefono ?? 'N/A' }}</p>
+                                    <p class="font-semibold text-gray-900">
+                                        {{ $paciente->prefijo_tlf ?? '' }} {{ $paciente->numero_tlf ?? 'N/A' }}
+                                    </p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-500">Correo</p>
-                                    <p class="font-semibold text-gray-900 text-sm truncate">{{ $historia->paciente->correo ?? 'N/A' }}</p>
+                                    <p class="font-semibold text-gray-900 text-sm truncate">{{ $paciente->usuario->correo ?? 'N/A' }}</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-500">Dirección</p>
-                                    <p class="font-semibold text-gray-900 text-sm truncate">{{ $historia->paciente->direccion ?? 'N/A' }}</p>
+                                    <p class="font-semibold text-gray-900 text-sm truncate">{{ $paciente->direccion_detallada ?? 'N/A' }}</p>
                                 </div>
                             </div>
                             <div class="mt-4">
-                                <a href="{{ route('pacientes.show', $historia->paciente->id ?? 1) }}" class="btn btn-sm btn-outline">
+                                <a href="{{ route('pacientes.show', $paciente->id ?? 1) }}" class="btn btn-sm btn-outline">
                                     <i class="bi bi-eye"></i> Ver Perfil Completo
                                 </a>
                             </div>
@@ -224,11 +230,15 @@
                     </div>
                 </div>
                 <div class="p-6">
+                    @php
+                        $medicoActualId = auth()->user()->medico->id ?? 0;
+                    @endphp
+                    
                     @forelse($historia->evoluciones ?? [] as $evolucion)
                     <div class="flex gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors mb-3">
                         <div class="flex-shrink-0">
-                            <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                                <i class="bi bi-file-medical text-purple-600 text-xl"></i>
+                            <div class="w-12 h-12 rounded-lg {{ $evolucion->medico_id == $medicoActualId ? 'bg-purple-100' : 'bg-blue-100' }} flex items-center justify-center">
+                                <i class="bi bi-file-medical {{ $evolucion->medico_id == $medicoActualId ? 'text-purple-600' : 'text-blue-600' }} text-xl"></i>
                             </div>
                         </div>
                         <div class="flex-1">
@@ -236,12 +246,34 @@
                             <p class="text-sm text-gray-600 mt-1">{{ $evolucion->motivo_consulta ?? 'N/A' }}</p>
                             <p class="text-xs text-gray-500 mt-1">
                                 {{ isset($evolucion->created_at) ? \Carbon\Carbon::parse($evolucion->created_at)->format('d/m/Y H:i A') : 'N/A' }}
+                                @if($evolucion->medico)
+                                    <span class="ml-2 {{ $evolucion->medico_id == $medicoActualId ? 'text-purple-600' : 'text-blue-600' }}">
+                                        • Dr. {{ $evolucion->medico->primer_nombre }} {{ $evolucion->medico->primer_apellido }}
+                                    </span>
+                                @endif
                             </p>
                         </div>
                         <div class="flex-shrink-0">
-                            <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $evolucion->cita_id ?? 0]) }}" class="btn btn-sm btn-outline">
-                                <i class="bi bi-eye"></i>
-                            </a>
+                            @if($evolucion->medico_id == $medicoActualId)
+                                {{-- Es mi evolución - puedo ver directamente --}}
+                                <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $evolucion->cita_id ?? 0]) }}" 
+                                   class="btn btn-sm btn-outline" title="Ver evolución">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            @elseif(isset($accesosAprobados) && $accesosAprobados->contains($evolucion->id))
+                                {{-- Tengo acceso aprobado --}}
+                                <a href="{{ route('historia-clinica.evoluciones.show', ['citaId' => $evolucion->cita_id ?? 0]) }}" 
+                                   class="btn btn-sm btn-success" title="Acceso aprobado">
+                                    <i class="bi bi-eye-fill"></i>
+                                </a>
+                            @else
+                                {{-- Es de otro médico - debo solicitar acceso --}}
+                                <button type="button" 
+                                        onclick="solicitarAcceso({{ $evolucion->id }}, '{{ $evolucion->medico->primer_nombre ?? '' }} {{ $evolucion->medico->primer_apellido ?? '' }}')"
+                                        class="btn btn-sm btn-primary" title="Solicitar acceso">
+                                    <i class="bi bi-envelope"></i> Solicitar
+                                </button>
+                            @endif
                         </div>
                     </div>
                     @empty
@@ -313,27 +345,82 @@
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="card p-6">
-                <h3 class="text-lg font-display font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
-                <div class="space-y-2">
-                    {{-- Ver todas las evoluciones de este paciente con el médico actual --}}
-                    <a href="{{ route('historia-clinica.evoluciones.index', $historia->paciente->id ?? 1) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-journal-medical"></i>
-                        Ver Evoluciones
-                    </a>
-                    <a href="{{ route('ordenes-medicas.create', ['paciente' => $historia->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-clipboard-plus"></i>
-                        Nueva Orden
-                    </a>
-                    {{-- Botón oculto - Los médicos no pueden agendar citas. Descomentar si se requiere habilitar --}}
-                    {{-- <a href="{{ route('citas.create', ['paciente' => $historia->paciente->id ?? 1]) }}" class="btn btn-outline w-full justify-start">
-                        <i class="bi bi-calendar-plus"></i>
-                        Agendar Cita
-                    </a> --}}
-                </div>
-            </div>
+
         </div>
     </div>
 </div>
+
+<!-- Modal Solicitar Acceso -->
+<div id="modalSolicitarAcceso" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                <i class="bi bi-shield-lock text-blue-600 text-2xl"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-gray-900">Solicitar Acceso</h3>
+                <p class="text-sm text-gray-600">Evolución del Dr. <span id="nombreMedicoPropietario"></span></p>
+            </div>
+        </div>
+        
+        <form id="formSolicitarAcceso" method="POST" action="">
+            @csrf
+            <input type="hidden" id="evolucionIdInput" name="evolucion_id" value="">
+            
+            <div class="mb-4">
+                <label class="form-label">Motivo de la Solicitud</label>
+                <select name="motivo_solicitud" class="form-select" required>
+                    <option value="">Seleccione...</option>
+                    <option value="Interconsulta">Interconsulta</option>
+                    <option value="Emergencia">Emergencia</option>
+                    <option value="Segunda Opinion">Segunda Opinión</option>
+                    <option value="Referencia">Referencia</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label">Observaciones (Opcional)</label>
+                <textarea name="observaciones" rows="3" class="form-textarea" placeholder="Explique brevemente por qué necesita acceder a esta información..."></textarea>
+            </div>
+            
+            <div class="bg-blue-50 rounded-lg p-3 text-sm text-blue-800 mb-4">
+                <i class="bi bi-info-circle mr-2"></i>
+                El paciente recibirá una notificación y decidirá si aprueba o rechaza su solicitud.
+            </div>
+            
+            <div class="flex gap-3">
+                <button type="button" onclick="cerrarModal()" class="btn btn-outline flex-1">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary flex-1">
+                    <i class="bi bi-send"></i> Enviar Solicitud
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    function solicitarAcceso(evolucionId, nombreMedico) {
+        document.getElementById('evolucionIdInput').value = evolucionId;
+        document.getElementById('nombreMedicoPropietario').textContent = nombreMedico;
+        document.getElementById('formSolicitarAcceso').action = '{{ url("historia-clinica/evolucion") }}/' + evolucionId + '/solicitar-acceso';
+        document.getElementById('modalSolicitarAcceso').classList.remove('hidden');
+        document.getElementById('modalSolicitarAcceso').classList.add('flex');
+    }
+    
+    function cerrarModal() {
+        document.getElementById('modalSolicitarAcceso').classList.add('hidden');
+        document.getElementById('modalSolicitarAcceso').classList.remove('flex');
+    }
+    
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('modalSolicitarAcceso').addEventListener('click', function(e) {
+        if (e.target === this) {
+            cerrarModal();
+        }
+    });
+</script>
+@endpush
 @endsection

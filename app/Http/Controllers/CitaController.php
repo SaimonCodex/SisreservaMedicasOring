@@ -98,6 +98,7 @@ class CitaController extends Controller
             'especialidad', 
             'consultorio',
             'evolucionClinica',
+            'ordenesMedicas',
             'facturaPaciente.pagos'
         ])->where('status', true);
 
@@ -174,9 +175,9 @@ class CitaController extends Controller
             }
         }
 
-        // Ordenamiento: priorizar citas confirmadas (pagadas) primero, luego por fecha más próxima
+        // Ordenamiento: priorizar citas confirmadas (pagadas) primero, luego por fecha más próxima (ASC)
         $citas = $query->orderByRaw("FIELD(estado_cita, 'Confirmada', 'En Progreso', 'Programada', 'Completada', 'Cancelada', 'No Asistió')")
-                       ->orderBy('fecha_cita', 'desc')
+                       ->orderBy('fecha_cita', 'asc')
                        ->orderBy('hora_inicio', 'asc')
                        ->paginate(10)
                        ->withQueryString();
@@ -435,7 +436,7 @@ class CitaController extends Controller
                         if ($request->registrar_usuario == '1' && $request->pac_correo) {
                             $usuario = Usuario::create([
                                 'correo' => $request->pac_correo,
-                                'password' => md5(md5($request->pac_password)), // Doble MD5
+                                'password' => $request->pac_password, // Mutator en modelo Usuario aplica md5(md5())
                                 'rol_id' => 3, // Rol paciente
                                 'status' => true
                             ]);
@@ -482,8 +483,14 @@ class CitaController extends Controller
                             $representanteId = $request->representante_id;
                             Log::info('Admin: Usando representante existente', ['representante_id' => $representanteId]);
                         } else {
-                            // Crear nuevo representante
+                            // Buscar si ya existe un paciente con el mismo documento del representante
+                            $pacienteExistenteRep = Paciente::where('tipo_documento', $request->rep_tipo_documento)
+                                                            ->where('numero_documento', $request->rep_numero_documento)
+                                                            ->first();
+                            
+                            // Crear nuevo representante con paciente_id si existe
                             $representante = Representante::create([
+                                'paciente_id' => $pacienteExistenteRep ? $pacienteExistenteRep->id : null,
                                 'primer_nombre' => $request->rep_primer_nombre,
                                 'segundo_nombre' => $request->rep_segundo_nombre,
                                 'primer_apellido' => $request->rep_primer_apellido,
@@ -493,6 +500,7 @@ class CitaController extends Controller
                                 'fecha_nac' => $request->rep_fecha_nac,
                                 'prefijo_tlf' => $request->rep_prefijo_tlf,
                                 'numero_tlf' => $request->rep_numero_tlf,
+                                'genero' => $request->rep_genero,
                                 'parentesco' => $request->rep_parentesco,
                                 'estado_id' => $request->rep_estado_id,
                                 'municipio_id' => $request->rep_municipio_id,
@@ -502,19 +510,19 @@ class CitaController extends Controller
                                 'status' => true
                             ]);
                             $representanteId = $representante->id;
-                            Log::info('Admin: Representante nuevo creado', ['representante_id' => $representanteId]);
+                            Log::info('Admin: Representante nuevo creado', ['representante_id' => $representanteId, 'paciente_id' => $representante->paciente_id]);
                             
                             // Si se marcó registrar usuario para representante
                             if ($request->has('chk_registrar_representante') && $request->rep_correo) {
                                 $usuarioRep = Usuario::create([
                                     'correo' => $request->rep_correo,
-                                    'password' => md5(md5($request->rep_password)),
+                                    'password' => $request->rep_password, // Mutator en modelo Usuario aplica md5(md5())
                                     'rol_id' => 3,
                                     'status' => true
                                 ]);
                                 
                                 // Crear perfil de Paciente para este usuario (para que pueda hacer login)
-                                Paciente::create([
+                                $pacienteRep = Paciente::create([
                                     'user_id' => $usuarioRep->id,
                                     'primer_nombre' => $request->rep_primer_nombre,
                                     'segundo_nombre' => $request->rep_segundo_nombre,
@@ -533,7 +541,14 @@ class CitaController extends Controller
                                     'status' => true
                                 ]);
                                 
-                                Log::info('Admin: Usuario y perfil Paciente creado para representante', ['usuario_id' => $usuarioRep->id]);
+                                // Vincular el representante con la cuenta de paciente recién creada
+                                $representante->update(['paciente_id' => $pacienteRep->id]);
+                                
+                                Log::info('Admin: Usuario y perfil Paciente creado para representante', [
+                                    'usuario_id' => $usuarioRep->id, 
+                                    'paciente_id' => $pacienteRep->id,
+                                    'representante_id' => $representanteId
+                                ]);
                             }
                         }
                         
@@ -557,7 +572,7 @@ class CitaController extends Controller
                             $representanteDoc = $request->rep_numero_documento;
                             $pacNumeroDoc = $this->calculateNextId($representanteDoc);
                             
-                            // Crear en tabla pacientes primero
+                            // Crear en tabla pacientes primero (marcado como especial)
                             $paciente = Paciente::create([
                                 'primer_nombre' => $request->pac_esp_primer_nombre,
                                 'segundo_nombre' => $request->pac_esp_segundo_nombre,
@@ -572,6 +587,7 @@ class CitaController extends Controller
                                 'municipio_id' => $request->pac_esp_municipio_id,
                                 'parroquia_id' => $request->pac_esp_parroquia_id,
                                 'direccion_detallada' => $request->pac_esp_direccion_detallada,
+                                'es_especial' => 1, // Marcar como paciente especial
                                 'status' => true
                             ]);
                             $pacienteId = $paciente->id;
@@ -684,7 +700,7 @@ class CitaController extends Controller
                             $pacParroquiaId = $usarMismaDireccion ? $representante->parroquia_id : $request->pac_parroquia_id;
                             $pacDireccion = $usarMismaDireccion ? $representante->direccion_detallada : $request->pac_direccion_detallada;
                             
-                            // 3. Crear o actualizar registro en tabla PACIENTES
+                            // 3. Crear o actualizar registro en tabla PACIENTES (marcado como especial)
                             $paciente = Paciente::updateOrCreate(
                                 [
                                     'tipo_documento' => $pacTipoDoc,
@@ -696,17 +712,28 @@ class CitaController extends Controller
                                     'primer_apellido' => $request->pac_primer_apellido,
                                     'segundo_apellido' => $request->pac_segundo_apellido,
                                     'fecha_nac' => $request->pac_fecha_nac,
+                                    'genero' => $request->pac_genero,
                                     'estado_id' => $pacEstadoId,
                                     'ciudad_id' => $pacCiudadId,
                                     'municipio_id' => $pacMunicipioId,
                                     'parroquia_id' => $pacParroquiaId,
                                     'direccion_detallada' => $pacDireccion,
+                                    'es_especial' => 1, // Marcar como paciente especial
                                     'status' => true
                                 ]
                             );
                             $pacienteId = $paciente->id;
                             
-                            Log::info('Paciente creado/encontrado', ['id' => $pacienteId]);
+                            Log::info('Paciente especial creado/encontrado', ['id' => $pacienteId, 'es_especial' => 1]);
+                            
+                            // Vincular representante con paciente existente si coincide por documento
+                            $pacienteRepresentante = Paciente::where('tipo_documento', $request->rep_tipo_documento)
+                                                             ->where('numero_documento', $request->rep_numero_documento)
+                                                             ->first();
+                            if ($pacienteRepresentante && !$representante->paciente_id) {
+                                $representante->update(['paciente_id' => $pacienteRepresentante->id]);
+                                Log::info('Representante vinculado a cuenta de paciente existente', ['paciente_id' => $pacienteRepresentante->id]);
+                            }
                             
                             // 4. Crear o actualizar registro en tabla PACIENTES_ESPECIALES
                             $pacienteEspecial = PacienteEspecial::updateOrCreate(

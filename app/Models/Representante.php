@@ -11,6 +11,7 @@ class Representante extends Model
     protected $table = 'representantes';
     protected $primaryKey = 'id';
     protected $fillable = [
+        'paciente_id',
         'primer_nombre',
         'segundo_nombre',
         'primer_apellido',
@@ -54,5 +55,29 @@ class Representante extends Model
     {
         return $this->belongsToMany(PacienteEspecial::class, 'representante_paciente_especial', 'representante_id', 'paciente_especial_id')
                     ->withPivot('tipo_responsabilidad', 'status');
+    }
+
+    /**
+     * Relación: cuenta de paciente asociada a este representante
+     */
+    public function paciente()
+    {
+        return $this->belongsTo(Paciente::class, 'paciente_id');
+    }
+
+    /**
+     * Usuario asociado a través de la cuenta de paciente
+     */
+    public function usuario()
+    {
+        return $this->hasOneThrough(Usuario::class, Paciente::class, 'id', 'id', 'paciente_id', 'user_id');
+    }
+
+    /**
+     * Verificar si tiene cuenta de paciente vinculada
+     */
+    public function tieneAccesoPortal()
+    {
+        return $this->paciente_id !== null && $this->paciente && $this->paciente->user_id;
     }
 }

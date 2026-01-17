@@ -9,6 +9,8 @@ use App\Models\Cita;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SolicitudAccesoMail;
 
 class HistoriaClinicaController extends Controller
 {
@@ -37,7 +39,7 @@ class HistoriaClinicaController extends Controller
     // HISTORIA CLÍNICA BASE (Información médica permanente del paciente)
     // =========================================================================
 
-    public function indexBase()
+    public function indexBase(Request $request)
     {
         $user = Auth::user();
         
@@ -47,24 +49,55 @@ class HistoriaClinicaController extends Controller
         }
         
         // Médicos: solo historias de sus pacientes
+        // Médicos: solo historias de sus pacientes
         if ($user->rol_id == 2) {
             $medico = $user->medico;
             if (!$medico) {
                 return redirect()->route('medico.dashboard')->with('error', 'No se encontró el perfil de médico');
             }
             
-            // Obtener IDs de pacientes atendidos por este médico
-            $pacienteIds = \App\Models\Cita::where('medico_id', $medico->id)
-                                          ->where('status', true)
-                                          ->distinct()
-                                          ->pluck('paciente_id');
+            // Cargar especialidades para consistencia en filtros (opcional si se usa en vista)
+            $medico->load('especialidades');
+
+            // 1. Identificar pacientes del médico (que tengan citas)
+            $citasQuery = \App\Models\Cita::where('medico_id', $medico->id)->where('status', true);
             
-            $historias = HistoriaClinicaBase::with('paciente')
-                                           ->whereIn('paciente_id', $pacienteIds)
-                                           ->where('status', true)
-                                           ->paginate(10);
+            // Filtro por Especialidad (si viene en request)
+            if ($request->filled('especialidad')) {
+                $citasQuery->where('especialidad_id', $request->especialidad);
+            }
             
-            return view('medico.historia-clinica.base.index', compact('historias'));
+            $pacienteIds = $citasQuery->distinct()->pluck('paciente_id');
+
+            // 2. Query Principal de Historias
+            $query = HistoriaClinicaBase::with('paciente.usuario')
+                                       ->whereIn('paciente_id', $pacienteIds)
+                                       ->where('status', true);
+
+            // 3. Filtros de Búsqueda
+            if ($request->filled('buscar')) {
+                $busqueda = $request->buscar;
+                $query->whereHas('paciente', function($q) use ($busqueda) {
+                    $q->where('primer_nombre', 'like', "%$busqueda%")
+                      ->orWhere('segundo_nombre', 'like', "%$busqueda%")
+                      ->orWhere('primer_apellido', 'like', "%$busqueda%")
+                      ->orWhere('segundo_apellido', 'like', "%$busqueda%")
+                      ->orWhere('numero_documento', 'like', "%$busqueda%");
+                });
+            }
+
+            // 4. Estadísticas (Datos reales del médico)
+            $stats = [
+                'total' => $query->count(),
+                'recientes' => $query->clone()->where('created_at', '>=', now()->subMonth())->count(),
+                'sin_antecedentes' => $query->clone()->whereNull('antecedentes_personales')->count(), 
+                // Ejemplo: Historias incompletas o nuevas
+                'actualizadas_hoy' => $query->clone()->whereDate('updated_at', now())->count()
+            ];
+
+            $historias = $query->orderBy('updated_at', 'desc')->paginate(10);
+            
+            return view('medico.historia-clinica.base.index', compact('historias', 'stats', 'medico'));
         }
         
         // Pacientes: solo su propia historia (implementar si es necesario)
@@ -95,9 +128,23 @@ class HistoriaClinicaController extends Controller
                            ->with('info', 'El paciente no tiene historia clínica base. Por favor créela.');
         }
 
+        // Cargar evoluciones con la relación del médico
+        $historia->load(['evoluciones' => function($q) {
+            $q->where('status', true)->with('medico')->orderBy('created_at', 'desc');
+        }]);
+
+        // Médicos: obtener accesos aprobados para evoluciones de otros médicos
+        $accesosAprobados = collect();
+        if ($user->rol_id == 2 && $user->medico) {
+            $accesosAprobados = \App\Models\SolicitudHistorial::obtenerAccesosActivos(
+                $user->medico->id,
+                $pacienteId
+            );
+        }
+
         // Médicos: vista específica
         if ($user->rol_id == 2) {
-            return view('medico.historia-clinica.base.show', compact('paciente', 'historia'));
+            return view('medico.historia-clinica.base.show', compact('paciente', 'historia', 'accesosAprobados'));
         }
         
         // Pacientes/Representantes: vista compartida
@@ -355,7 +402,7 @@ class HistoriaClinicaController extends Controller
             $evolucionesQuery->where('medico_id', $user->medico->id);
         }
         
-        $evoluciones = $evolucionesQuery->orderBy('created_at', 'desc')->get();
+        $evoluciones = $evolucionesQuery->orderBy('created_at', 'desc')->paginate(10);
 
         // Médicos: vista específica
         if ($user->rol_id == 2) {
@@ -364,6 +411,55 @@ class HistoriaClinicaController extends Controller
         
         // Pacientes/Representantes: vista compartida
         return view('shared.historia-clinica.evoluciones.index', compact('paciente', 'evoluciones'));
+    }
+
+    /**
+     * Listado GENERAL de evoluciones para el médico (sin paciente específico)
+     */
+    public function indexGeneral(Request $request)
+    {
+        $user = Auth::user();
+        if ($user->rol_id != 2) {
+             abort(403, 'Acceso exclusivo para médicos.');
+        }
+
+        $medico = $user->medico;
+
+        // Corregido: 'paciente' relación directa, no via historiaClinica
+        $evolucionesQuery = EvolucionClinica::with(['paciente', 'cita'])
+                                     ->where('medico_id', $medico->id)
+                                     ->where('status', true);
+
+        // Filtro por Paciente (Búsqueda)
+        if ($request->filled('paciente')) {
+            $busqueda = $request->paciente;
+            $evolucionesQuery->whereHas('paciente', function($q) use ($busqueda) {
+                $q->where('primer_nombre', 'like', "%$busqueda%")
+                  ->orWhere('segundo_nombre', 'like', "%$busqueda%")
+                  ->orWhere('primer_apellido', 'like', "%$busqueda%")
+                  ->orWhere('segundo_apellido', 'like', "%$busqueda%")
+                  ->orWhere('numero_documento', 'like', "%$busqueda%");
+            });
+        }
+
+        // Filtro por Fecha Desde
+        if ($request->filled('fecha_desde')) {
+            $evolucionesQuery->whereDate('created_at', '>=', $request->fecha_desde);
+        }
+
+        // Filtro por Fecha Hasta
+        if ($request->filled('fecha_hasta')) {
+            $evolucionesQuery->whereDate('created_at', '<=', $request->fecha_hasta);
+        }
+
+        // Filtro por Diagnóstico
+        if ($request->filled('diagnostico')) {
+            $evolucionesQuery->where('diagnostico', 'like', '%' . $request->diagnostico . '%');
+        }
+
+        $evoluciones = $evolucionesQuery->orderBy('created_at', 'desc')->paginate(10);
+
+        return view('medico.historia-clinica.evoluciones.index', compact('evoluciones'));
     }
 
     public function createEvolucion($citaId)
@@ -375,9 +471,9 @@ class HistoriaClinicaController extends Controller
         $cita = Cita::with(['paciente', 'medico', 'especialidad'])->findOrFail($citaId);
         $medicoId = Auth::user()->medico->id;
         
-        // Verificar que la cita esté en estado Confirmada o Completada
-        if (!in_array($cita->estado_cita, ['Confirmada', 'Completada'])) {
-            return redirect()->back()->with('error', 'Solo se puede crear evolución clínica para citas confirmadas (pagadas) o completadas.');
+        // Verificar que la cita esté en estado Confirmada, En Progreso o Completada
+        if (!in_array($cita->estado_cita, ['Confirmada', 'En Progreso', 'Completada'])) {
+            return redirect()->back()->with('error', 'Solo se puede crear evolución clínica para citas confirmadas, en progreso o completadas.');
         }
 
         // Verificar que no exista ya una evolución para esta cita
@@ -418,11 +514,24 @@ class HistoriaClinicaController extends Controller
             'tension_diastolica' => 'nullable|integer|min:30|max:200',
             'frecuencia_cardiaca' => 'nullable|integer|min:30|max:250',
             'temperatura_c' => 'nullable|numeric|min:30|max:45',
-            'frecuencia_respiratoria' => 'nullable|integer|min:5|max:60',
+            'frecuencia_respiratoria' => 'nullable|integer|min:8|max:100',
             'saturacion_oxigeno' => 'nullable|numeric|min:50|max:100',
             'examen_fisico' => 'nullable|string',
             'recomendaciones' => 'nullable|string',
             'notas_adicionales' => 'nullable|string',
+        ], [
+            // Mensajes personalizados en español
+            'tension_sistolica.min' => 'La tensión sistólica debe ser al menos 50.',
+            'tension_diastolica.min' => 'La tensión diastólica debe ser al menos 30.',
+            'frecuencia_cardiaca.min' => 'La frecuencia cardíaca debe ser al menos 30.',
+            'saturacion_oxigeno.min' => 'La saturación de oxígeno debe ser al menos 50.',
+            'temperatura_c.min' => 'La temperatura debe ser al menos 30°C.',
+            'temperatura_c.max' => 'La temperatura no puede ser mayor a 45°C.',
+            'frecuencia_respiratoria.min' => 'La frecuencia respiratoria debe ser al menos 8 rpm.',
+            'frecuencia_respiratoria.max' => 'La frecuencia respiratoria no puede ser mayor a 100 rpm.',
+            'required' => 'El campo :attribute es obligatorio.',
+            'numeric' => 'El campo :attribute debe ser un número.',
+            'integer' => 'El campo :attribute debe ser un número entero.',
         ]);
 
         if ($validator->fails()) {
@@ -502,15 +611,101 @@ class HistoriaClinicaController extends Controller
         }
         
         $cita = Cita::with(['paciente', 'medico', 'especialidad'])->findOrFail($citaId);
-        $evolucion = EvolucionClinica::where('cita_id', $citaId)->firstOrFail();
+        // Cargar también la relación paciente y medico en la evolución para asegurar acceso directo
+        $evolucion = EvolucionClinica::with(['paciente', 'medico'])->where('cita_id', $citaId)->firstOrFail();
 
         // Médicos: vista específica
         if ($user->rol_id == 2) {
+            // Verificar permisos para médicos
+            $medicoId = $user->medico->id;
+            // Si no es el propietario, verificar si tiene acceso aprobado
+            if ($evolucion->medico_id != $medicoId) {
+                $tieneAcceso = \App\Models\SolicitudHistorial::tieneAccesoActivo($medicoId, $evolucion->id);
+                if (!$tieneAcceso) {
+                    return redirect()->route('historia-clinica.base.show', $evolucion->paciente_id)
+                        ->with('error', 'No tiene permiso para ver esta evolución. Debe solicitar acceso.');
+                }
+            }
+            
             return view('medico.historia-clinica.evoluciones.show', compact('cita', 'evolucion'));
         }
         
         // Pacientes/Representantes: vista compartida
         return view('shared.historia-clinica.evoluciones.show', compact('cita', 'evolucion'));
+    }
+
+    // ... (otros métodos)
+
+    /**
+     * MÉDICO solicita acceso a una evolución clínica específica de otro médico.
+     */
+    public function solicitarAccesoEvolucion(Request $request, $evolucionId)
+    {
+        $user = Auth::user();
+        
+        // Solo médicos pueden solicitar acceso
+        if ($user->rol_id != 2 || !$user->medico) {
+            return redirect()->back()->with('error', 'Solo los médicos pueden solicitar acceso a evoluciones.');
+        }
+
+        $evolucion = EvolucionClinica::with(['paciente', 'medico'])->findOrFail($evolucionId);
+        $medicoSolicitanteId = $user->medico->id;
+        $medicoPropietarioId = $evolucion->medico_id;
+        $pacienteId = $evolucion->paciente_id;
+        
+        // No se puede solicitar acceso a las propias evoluciones
+        if ($medicoSolicitanteId == $medicoPropietarioId) {
+            return redirect()->back()->with('info', 'No necesita solicitar acceso a sus propias evoluciones.');
+        }
+
+        // Verificar si ya existe una solicitud pendiente o activa
+        $existente = \App\Models\SolicitudHistorial::where('medico_solicitante_id', $medicoSolicitanteId)
+            ->where('evolucion_id', $evolucionId)
+            ->where('status', true)
+            ->whereIn('estado_permiso', ['Pendiente', 'Aprobado'])
+            ->first();
+
+        if ($existente) {
+            if ($existente->estado_permiso == 'Aprobado' && $existente->acceso_valido_hasta > now()) {
+                return redirect()->back()->with('info', 'Ya tiene acceso activo a esta evolución.');
+            }
+            if ($existente->estado_permiso == 'Pendiente') {
+                return redirect()->back()->with('info', 'Ya tiene una solicitud pendiente para esta evolución.');
+            }
+        }
+
+        // Validar motivo
+        $request->validate([
+            'motivo_solicitud' => 'required|in:Interconsulta,Emergencia,Segunda Opinion,Referencia',
+            'observaciones' => 'nullable|string|max:500'
+        ]);
+
+        // Generar token único
+        $token = strtoupper(\Illuminate\Support\Str::random(8));
+        
+        // Crear la solicitud
+        $solicitud = \App\Models\SolicitudHistorial::create([
+            'cita_id' => $evolucion->cita_id,
+            'paciente_id' => $pacienteId,
+            'evolucion_id' => $evolucionId,
+            'medico_solicitante_id' => $medicoSolicitanteId,
+            'medico_propietario_id' => $medicoPropietarioId,
+            'token_validacion' => $token,
+            'token_expira_at' => now()->addHours(48),
+            'intentos_fallidos' => 0,
+            'motivo_solicitud' => $request->motivo_solicitud,
+            'estado_permiso' => 'Pendiente',
+            'observaciones' => $request->observaciones,
+            'status' => true
+        ]);
+
+        // Enviar notificación al paciente
+        $this->enviarNotificacionSolicitudPaciente($solicitud, $evolucion->paciente);
+
+        \Log::info("Solicitud de acceso a evolución {$evolucionId} creada por médico {$medicoSolicitanteId}. Token: {$token}");
+
+        $nombrePaciente = $evolucion->paciente->primer_nombre . ' ' . $evolucion->paciente->primer_apellido;
+        return redirect()->back()->with('success', "Solicitud al paciente {$nombrePaciente} enviada exitosamente.");
     }
 
     public function editEvolucion($citaId)
@@ -912,7 +1107,7 @@ class HistoriaClinicaController extends Controller
                     ->first();
                     
                 if ($representante && $representante->usuario) {
-                    // Notificar al representante
+                    // Notificar al representante por App
                     \App\Models\Notificacion::create([
                         'receptor_id' => $representante->usuario->id,
                         'receptor_rol' => 'representante',
@@ -923,6 +1118,16 @@ class HistoriaClinicaController extends Controller
                         'estado_envio' => 'Pendiente',
                         'status' => true
                     ]);
+
+                    // Enviar Correo al Representante
+                    if ($representante->usuario->correo) {
+                        try {
+                            Mail::to($representante->usuario->correo)
+                                ->send(new SolicitudAccesoMail($solicitud, true, $pacienteEspecial->primer_nombre . ' ' . $pacienteEspecial->primer_apellido));
+                        } catch (\Exception $e) {
+                            \Log::error('Error enviando correo a representante: ' . $e->getMessage());
+                        }
+                    }
                     
                     \Log::info("Notificación enviada al representante {$representante->id} para paciente especial {$pacienteEspecial->id} - Solicitud: {$solicitud->id}");
                     return;
@@ -931,6 +1136,7 @@ class HistoriaClinicaController extends Controller
             
             // Paciente regular - notificar directamente al paciente
             if ($paciente->usuario) {
+                // Notificar al paciente por App
                 \App\Models\Notificacion::create([
                     'receptor_id' => $paciente->usuario->id,
                     'receptor_rol' => 'paciente',
@@ -941,6 +1147,16 @@ class HistoriaClinicaController extends Controller
                     'estado_envio' => 'Pendiente',
                     'status' => true
                 ]);
+
+                // Enviar Correo al Paciente
+                if ($paciente->usuario->correo) {
+                    try {
+                        Mail::to($paciente->usuario->correo)
+                            ->send(new SolicitudAccesoMail($solicitud, false));
+                    } catch (\Exception $e) {
+                        \Log::error('Error enviando correo a paciente: ' . $e->getMessage());
+                    }
+                }
                 
                 \Log::info("Notificación de solicitud enviada al paciente {$paciente->id} - Solicitud: {$solicitud->id}");
             }
@@ -948,4 +1164,6 @@ class HistoriaClinicaController extends Controller
             \Log::error('Error enviando notificación de solicitud: ' . $e->getMessage());
         }
     }
+
+
 }

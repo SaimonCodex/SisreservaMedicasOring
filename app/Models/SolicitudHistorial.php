@@ -14,6 +14,7 @@ class SolicitudHistorial extends Model
     protected $fillable = [
         'cita_id',
         'paciente_id',
+        'evolucion_id',
         'medico_solicitante_id',
         'medico_propietario_id',
         'token_validacion',
@@ -24,6 +25,11 @@ class SolicitudHistorial extends Model
         'acceso_valido_hasta',
         'observaciones',
         'status'
+    ];
+
+    protected $casts = [
+        'token_expira_at' => 'datetime',
+        'acceso_valido_hasta' => 'datetime',
     ];
 
     public function cita()
@@ -44,5 +50,36 @@ class SolicitudHistorial extends Model
     public function medicoPropietario()
     {
         return $this->belongsTo(Medico::class, 'medico_propietario_id');
+    }
+
+    public function evolucion()
+    {
+        return $this->belongsTo(EvolucionClinica::class, 'evolucion_id');
+    }
+
+    /**
+     * Verificar si el médico tiene acceso activo a una evolución
+     */
+    public static function tieneAccesoActivo($medicoId, $evolucionId)
+    {
+        return self::where('medico_solicitante_id', $medicoId)
+                   ->where('evolucion_id', $evolucionId)
+                   ->where('estado_permiso', 'Aprobado')
+                   ->where('acceso_valido_hasta', '>', now())
+                   ->where('status', true)
+                   ->exists();
+    }
+
+    /**
+     * Obtener solicitudes aprobadas para un médico y paciente
+     */
+    public static function obtenerAccesosActivos($medicoId, $pacienteId)
+    {
+        return self::where('medico_solicitante_id', $medicoId)
+                   ->where('paciente_id', $pacienteId)
+                   ->where('estado_permiso', 'Aprobado')
+                   ->where('acceso_valido_hasta', '>', now())
+                   ->where('status', true)
+                   ->pluck('evolucion_id');
     }
 }
