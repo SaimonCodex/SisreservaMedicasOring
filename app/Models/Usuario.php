@@ -18,11 +18,14 @@ class Usuario extends Authenticatable
         'password',
         'status',
         'email_verified_at',
+        'blocked_until',
+        'lock_reason',
     ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'status' => 'boolean',
+        'blocked_until' => 'datetime',
+        'status' => 'integer', // Changed to integer since 0=inactive, 1=active, 2=locked
     ];
 
     protected $hidden = [

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Location Routes</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        h1 { color: #333; }
+        .test-section { margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test de Rutas de Ubicación</h1>
+        
+        <div class="test-section">
+            <h3>Test 1: Cargar Ciudades (Estado ID: 1)</h3>
+            <button onclick="testCiudades()">Ejecutar Test</button>
+            <div id="result-ciudades" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 2: Cargar Municipios (Estado ID: 1)</h3>
+            <button onclick="testMunicipios()">Ejecutar Test</button>
+            <div id="result-municipios" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 3: Cargar Parroquias (Municipio ID: 1)</h3>
+            <button onclick="testParroquias()">Ejecutar Test</button>
+            <div id="result-parroquias" style="margin-top: 10px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = 'http://localhost/sisreservamedicasoring/public';
+
+        async function testCiudades() {
+            const resultDiv = document.getElementById('result-ciudades');
+            resultDiv.innerHTML = '<p>Cargando...</p>';
+            
+            try {
+                const response = await fetch(`${baseUrl}/ubicacion/get-ciudades/1`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✓ Éxito: ${data.length} ciudades cargadas</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">✗ Error ${response.status}: ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testMunicipios() {
+            const resultDiv = document.getElementById('result-municipios');
+            resultDiv.innerHTML = '<p>Cargando...</p>';
+            
+            try {
+                const response = await fetch(`${baseUrl}/ubicacion/get-municipios/1`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✓ Éxito: ${data.length} municipios cargados</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">✗ Error ${response.status}: ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testParroquias() {
+            const resultDiv = document.getElementById('result-parroquias');
+            resultDiv.innerHTML = '<p>Cargando...</p>';
+            
+            try {
+                const response = await fetch(`${baseUrl}/ubicacion/get-parroquias/1`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✓ Éxito: ${data.length} parroquias cargadas</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">✗ Error ${response.status}: ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

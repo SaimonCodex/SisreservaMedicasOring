@@ -51,10 +51,33 @@ class AuthController extends Controller
         }
 
         // Verificar status del usuario
-        if (!$usuario->status) {
+        if (!$usuario->status && $usuario->status !== 2) {
             return redirect()->back()
                 ->withErrors(['correo' => 'Esta cuenta está inactiva.'])
                 ->withInput();
+        }
+
+        // Check if account is locked
+        if ($usuario->status == 2) {
+            // Check if lockout period has expired
+            if ($usuario->blocked_until && $usuario->blocked_until <= now()) {
+                // Auto-unlock account
+                $usuario->status = 1;
+                $usuario->blocked_until = null;
+                $usuario->lock_reason = null;
+                $usuario->save();
+                
+                Log::info('Account auto-unlocked after lockout period', [
+                    'user_id' => $usuario->id,
+                    'email' => $usuario->correo
+                ]);
+            } else {
+                // Still locked
+                $blockedUntil = $usuario->blocked_until ? $usuario->blocked_until->format('d/m/Y H:i') : 'indefinidamente';
+                return redirect()->back()
+                    ->withErrors(['correo' => "Tu cuenta está bloqueada hasta {$blockedUntil} por seguridad. {$usuario->lock_reason}"])
+                    ->withInput();
+            }
         }
 
         // Aplicar MD5 dos veces a la contraseña provista
@@ -159,12 +182,12 @@ class AuthController extends Controller
             Log::error('Error enviando alerta de login: ' . $e->getMessage());
         }
 
-        // Guardar en historial de passwords
-        HistorialPassword::create([
-            'user_id' => $usuario->id,
-            'password_hash' => $passwordHash,
-            'status' => true
-        ]);
+        // Guardar en historial de passwords - ELIMINADO: Solo se debe guardar al registrar o cambiar, no al hacer login
+        // HistorialPassword::create([
+        //     'user_id' => $usuario->id,
+        //     'password_hash' => $passwordHash,
+        //     'status' => true
+        // ]);
 
         // Redirigir según el rol
         return $this->redirectByRole($usuario);
@@ -246,10 +269,12 @@ class AuthController extends Controller
 
             // Crear 3 respuestas de seguridad
             for ($i = 1; $i <= 3; $i++) {
+                // Convert to lowercase for case-insensitive comparison
+                $respuesta = strtolower(trim($request->input("respuesta_seguridad_$i")));
                 RespuestaSeguridad::create([
                     'user_id' => $usuario->id,
                     'pregunta_id' => $request->input("pregunta_seguridad_$i"),
-                    'respuesta_hash' => md5(md5($request->input("respuesta_seguridad_$i"))),
+                    'respuesta_hash' => md5(md5($respuesta)),
                     'status' => true
                 ]);
             }
@@ -266,6 +291,13 @@ class AuthController extends Controller
             Log::info('Perfil creado');
 
             DB::commit();
+
+            // Crear historial de contraseña inicial
+            HistorialPassword::create([
+                'user_id' => $usuario->id,
+                'password_hash' => md5(md5($request->password)),
+                'status' => true
+            ]);
 
             // Enviar email de confirmación
             $this->enviarEmailConfirmacion($usuario);
@@ -296,13 +328,86 @@ class AuthController extends Controller
         return view('auth.recovery');
     }
 
+    public function sendRecovery(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+        
+        $usuario = Usuario::where('correo', $request->email)->first();
+        
+        if (!$usuario) {
+            return response()->json(['success' => false, 'message' => 'Correo no encontrado en el sistema.']);
+        }
+
+        // Generar token
+        $token = Str::random(64);
+        DB::table('password_resets')->updateOrInsert(
+            ['email' => $usuario->correo],
+            ['token' => $token, 'created_at' => now()]
+        );
+
+        // Enviar email
+        try {
+            $this->enviarEmailRecuperacion($usuario, $token);
+            return response()->json(['success' => true, 'message' => 'Enlace enviado correctamente.']);
+        } catch (\Exception $e) {
+            Log::error('Error en sendRecovery: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+            return response()->json(['success' => false, 'message' => 'Error al enviar el correo: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function getSecurityQuestions(Request $request)
     {
         $identifier = $request->identifier;
         
-        $usuario = Usuario::where('correo', $identifier)
-                          ->orWhere('numero_documento', $identifier)
-                          ->first();
+        Log::info('getSecurityQuestions called', [
+            'identifier' => $identifier,
+            'request_all' => $request->all()
+        ]);
+        
+        // Try to find user by email first
+        $usuario = Usuario::where('correo', $identifier)->first();
+        
+        // If not found and identifier looks like a cedula (numeric), search in related models
+        if (!$usuario && preg_match('/^\d+$/', $identifier)) {
+            Log::info('Email not found, searching by cedula in related tables', [
+                'identifier' => $identifier
+            ]);
+            
+            // Search in Paciente table
+            $paciente = Paciente::where('numero_documento', $identifier)
+                                ->where('status', true)
+                                ->first();
+            
+            if ($paciente) {
+                $usuario = $paciente->usuario;
+                Log::info('User found via Paciente model', [
+                    'paciente_id' => $paciente->id,
+                    'user_id' => $usuario?->id
+                ]);
+            }
+            
+            // If still not found, search in Medico table
+            if (!$usuario) {
+                $medico = Medico::where('numero_documento', $identifier)
+                                ->where('status', true)
+                                ->first();
+                
+                if ($medico) {
+                    $usuario = $medico->usuario;
+                    Log::info('User found via Medico model', [
+                        'medico_id' => $medico->id,
+                        'user_id' => $usuario?->id
+                    ]);
+                }
+            }
+        }
+
+        Log::info('Usuario search result', [
+            'identifier' => $identifier,
+            'usuario_found' => $usuario ? 'Yes' : 'No',
+            'usuario_id' => $usuario?->id
+        ]);
 
         if (!$usuario) {
             return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
@@ -311,6 +416,11 @@ class AuthController extends Controller
         $respuestas = RespuestaSeguridad::where('user_id', $usuario->id)
                                         ->with('pregunta')
                                         ->get();
+        
+        Log::info('Security answers found', [
+            'user_id' => $usuario->id,
+            'respuestas_count' => $respuestas->count()
+        ]);
                                         
         if ($respuestas->isEmpty()) {
              return response()->json(['success' => false, 'message' => 'El usuario no tiene preguntas de seguridad configuradas'], 400);
@@ -338,9 +448,24 @@ class AuthController extends Controller
         if (!$usuario) {
             return response()->json(['success' => false, 'message' => 'Usuario no válido'], 404);
         }
+
+        // Check if account is already locked
+        if ($usuario->status == 2 && $usuario->blocked_until && $usuario->blocked_until > now()) {
+            return response()->json([
+                'success' => false,
+                'locked' => true,
+                'message' => 'Cuenta bloqueada temporalmente por seguridad.',
+                'blocked_until' => $usuario->blocked_until->format('d/m/Y H:i')
+            ], 403);
+        }
+        
+        // Get current attempts from session (scoped to user_id)
+        $sessionKey = "recovery_attempts_{$userId}";
+        $attempts = session($sessionKey, 0);
         
         $allCorrect = true;
         
+
         for ($i = 1; $i <= 3; $i++) {
             $questionId = $request->input("question_{$i}_id");
             $userAnswer = $request->input("answer_{$i}");
@@ -358,13 +483,43 @@ class AuthController extends Controller
                 break;
             }
             
-            if ($respuestaAlmacenada->respuesta_hash !== md5(md5($userAnswer))) {
+            // Convert to lowercase for case-insensitive comparison
+            $normalizedAnswer = strtolower(trim($userAnswer));
+            
+            // Check 1: Normalized (Standard - lowercase + trimmed)
+            $normalizedHash = md5(md5($normalizedAnswer));
+            
+            // Check 2: Trimmed only (Legacy support - preserves case)
+            $trimmedHash = md5(md5(trim($userAnswer)));
+            
+            // Check 3: Raw (Legacy support - includes spaces and case)
+            $rawHash = md5(md5($userAnswer));
+            
+            Log::info("Verification attempt for Question {$questionId}", [
+                'user_id' => $usuario->id,
+                'input_raw' => $userAnswer,
+                'input_normalized' => $normalizedAnswer,
+                'stored_hash' => $respuestaAlmacenada->respuesta_hash,
+                'generated_normalized_hash' => $normalizedHash,
+                'generated_trimmed_hash' => $trimmedHash,
+                'generated_raw_hash' => $rawHash,
+                'match_normalized' => ($respuestaAlmacenada->respuesta_hash === $normalizedHash),
+                'match_trimmed' => ($respuestaAlmacenada->respuesta_hash === $trimmedHash),
+                'match_raw' => ($respuestaAlmacenada->respuesta_hash === $rawHash)
+            ]);
+            
+            if ($respuestaAlmacenada->respuesta_hash !== $normalizedHash && 
+                $respuestaAlmacenada->respuesta_hash !== $trimmedHash &&
+                $respuestaAlmacenada->respuesta_hash !== $rawHash) {
                 $allCorrect = false;
                 break;
             }
         }
         
         if ($allCorrect) {
+            // Clear attempts on success
+            session()->forget($sessionKey);
+            
             $token = Str::random(64);
             DB::table('password_resets')->updateOrInsert(
                 ['email' => $usuario->correo],
@@ -377,7 +532,59 @@ class AuthController extends Controller
                 'email' => $usuario->correo
             ]);
         } else {
-            return response()->json(['success' => false, 'message' => 'Respuestas incorrectas'], 400);
+            // Increment attempts
+            $attempts++;
+            session([$sessionKey => $attempts]);
+            
+            Log::warning('Failed security question attempt', [
+                'user_id' => $userId,
+                'attempts' => $attempts,
+                'ip' => $request->ip()
+            ]);
+            
+            // Check if this is the 3rd failed attempt
+            if ($attempts >= 3) {
+                // Lock the account
+                $blockedUntil = now()->addHours(24);
+                $usuario->status = 2; // locked
+                $usuario->blocked_until = $blockedUntil;
+                $usuario->lock_reason = 'Múltiples intentos fallidos de recuperación de contraseña';
+                $usuario->save();
+                
+                // Clear attempts
+                session()->forget($sessionKey);
+                
+                // Send notification
+                try {
+                    $usuario->notify(new \App\Notifications\AlertaCuentaBloqueada(
+                        $blockedUntil,
+                        'Múltiples intentos fallidos de recuperación de contraseña'
+                    ));
+                } catch (\Exception $e) {
+                    Log::error('Error sending account locked notification: ' . $e->getMessage());
+                }
+                
+                Log::alert('Account locked due to failed recovery attempts', [
+                    'user_id' => $usuario->id,
+                    'email' => $usuario->correo,
+                    'blocked_until' => $blockedUntil,
+                    'ip' => $request->ip()
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'locked' => true,
+                    'message' => 'Cuenta bloqueada por 24 horas debido a múltiples intentos fallidos.',
+                    'blocked_until' => $blockedUntil->format('d/m/Y H:i')
+                ], 403);
+            }
+            
+            $attemptsRemaining = 3 - $attempts;
+            return response()->json([
+                'success' => false,
+                'message' => 'Respuestas incorrectas',
+                'attempts_remaining' => $attemptsRemaining
+            ], 400);
         }
     }
 
@@ -389,7 +596,7 @@ class AuthController extends Controller
             return redirect()->route('login')->with('error', 'Token inválido o expirado');
         }
 
-        return view('auth.reset-password', compact('token'));
+        return view('auth.reset-password', ['token' => $token, 'email' => $reset->email]);
     }
 
     public function resetPassword(Request $request)
@@ -419,19 +626,48 @@ class AuthController extends Controller
             return redirect()->back()->with('error', 'Usuario no encontrado');
         }
 
+        // --- VALIDACIÓN DE HISTORIAL DE CONTRASEÑAS ---
+        $newPasswordHash = md5(md5($request->password));
+        
+        $passwordInHistory = HistorialPassword::where('user_id', $usuario->id)
+                                             ->where('password_hash', $newPasswordHash)
+                                             ->exists();
+        
+        if ($passwordInHistory) {
+            return redirect()->back()->with('error', 'La nueva contraseña no puede ser una de las que has usado anteriormente. Por seguridad, utiliza una diferente.');
+        }
+
+        // --- INACTIVAR HISTORIAL ANTIGUO ---
+        HistorialPassword::where('user_id', $usuario->id)
+                         ->where('status', true)
+                         ->update(['status' => false]);
+
+        // --- ACTUALIZAR CONTRASEÑA Y GUARDAR NUEVO HISTORIAL ---
         $usuario->update(['password' => $request->password]);
 
         HistorialPassword::create([
             'user_id' => $usuario->id,
-            'password_hash' => md5(md5($request->password)),
+            'password_hash' => $newPasswordHash,
             'status' => true
         ]);
 
+        // --- ELIMINAR TOKEN DE RESETEO ---
         DB::table('password_resets')->where('email', $request->email)->delete();
 
-        $this->enviarEmailConfirmacionCambio($usuario);
+        // --- NOTIFICACIONES ---
+        try {
+            // Notificación por Email
+            $this->enviarEmailConfirmacionCambio($usuario);
+            
+            // Notificación de Sistema (Alerta al próximo login)
+            if ($usuario->id) {
+                $usuario->notify(new \App\Notifications\AlertaPasswordCambiada());
+            }
+        } catch (\Exception $e) {
+            Log::error('Error enviando notificaciones post-reseteo: ' . $e->getMessage());
+        }
 
-        return redirect()->route('login')->with('success', 'Contraseña restablecida exitosamente');
+        return redirect()->route('login')->with('success', 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión.');
     }
 
     private function crearPerfilMedico($userId, $request)
@@ -505,19 +741,15 @@ class AuthController extends Controller
 
     private function enviarEmailRecuperacion($usuario, $token)
     {
-        try {
-            $resetUrl = route('password.reset', $token);
-            
-            Mail::send('emails.recuperacion', [
-                'usuario' => $usuario,
-                'resetUrl' => $resetUrl
-            ], function($message) use ($usuario) {
-                $message->to($usuario->correo)
-                        ->subject('Recuperación de Contraseña - Sistema Médico');
-            });
-        } catch (\Exception $e) {
-            Log::error('Error enviando email de recuperación: ' . $e->getMessage());
-        }
+        $resetUrl = route('password.reset', ['token' => $token, 'email' => $usuario->correo]);
+        
+        Mail::send('emails.recuperar-password', [
+            'usuario' => $usuario,
+            'resetUrl' => $resetUrl
+        ], function($message) use ($usuario) {
+            $message->to($usuario->correo)
+                    ->subject('Recuperación de Contraseña - Sistema Médico');
+        });
     }
 
     private function enviarEmailConfirmacionCambio($usuario)

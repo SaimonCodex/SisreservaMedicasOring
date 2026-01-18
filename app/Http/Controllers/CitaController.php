@@ -1181,7 +1181,6 @@ class CitaController extends Controller
                         }
                     }
                 }
-            }
         } catch (\Exception $e) {
             Log::error('Error enviando notificación (Update): ' . $e->getMessage());
         }

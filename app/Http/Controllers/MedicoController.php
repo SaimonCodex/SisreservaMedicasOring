@@ -604,11 +604,99 @@ class MedicoController extends Controller
 
         // 4. Actualizar Password
         if ($request->filled('password')) {
+            // Validar que no sea la misma contraseña actual
+            if (\Illuminate\Support\Facades\Hash::check($request->password, $medico->usuario->password)) {
+                return redirect()->back()->with('error_password', 'La nueva contraseña no puede ser igual a la actual.')->withInput();
+            }
+
             $medico->usuario->update([
                 'password' => $request->password
             ]);
         }
 
         return redirect()->back()->with('success', 'Perfil médico actualizado correctamente');
+    }
+    public function showSecurityQuestions()
+    {
+        $usuario = auth()->user();
+        
+        // Get current security questions
+        $currentQuestions = \App\Models\RespuestaSeguridad::where('user_id', $usuario->id)
+            ->with('pregunta')
+            ->get();
+        
+        // Get all available questions from catalog
+        $preguntasCatalogo = \App\Models\PreguntaCatalogo::where('status', true)
+            ->orderBy('pregunta')
+            ->get();
+        
+        return view('shared.perfil.security-questions', compact('currentQuestions', 'preguntasCatalogo'));
+    }
+    
+    public function updateSecurityQuestions(Request $request)
+    {
+        $usuario = auth()->user();
+        
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required',
+            'question_1' => 'required|exists:preguntas_catalogo,id',
+            'answer_1' => 'required|string|min:3',
+            'question_2' => 'required|exists:preguntas_catalogo,id|different:question_1',
+            'answer_2' => 'required|string|min:3',
+            'question_3' => 'required|exists:preguntas_catalogo,id|different:question_1|different:question_2',
+            'answer_3' => 'required|string|min:3',
+        ], [
+            'current_password.required' => 'Debes ingresar tu contraseña actual',
+            'question_1.required' => 'Debes seleccionar la pregunta 1',
+            'question_2.different' => 'Las preguntas deben ser diferentes',
+            'question_3.different' => 'Las preguntas deben ser diferentes',
+            'answer_1.min' => 'La respuesta debe tener al menos 3 caracteres',
+            'answer_2.min' => 'La respuesta debe tener al menos 3 caracteres',
+            'answer_3.min' => 'La respuesta debe tener al menos 3 caracteres',
+        ]);
+        
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+        
+        // Verify current password
+        $passwordHash = md5(md5($request->current_password));
+        if ($usuario->password !== $passwordHash) {
+            return redirect()->back()
+                ->withErrors(['current_password' => 'La contraseña actual es incorrecta.'])
+                ->withInput();
+        }
+        
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $usuario) {
+                // Delete old security questions
+                \App\Models\RespuestaSeguridad::where('user_id', $usuario->id)->delete();
+                
+                // Create new security questions
+                for ($i = 1; $i <= 3; $i++) {
+                    // Convert to lowercase for case-insensitive comparison (matches registration format)
+                    $respuesta = strtolower(trim($request->input("answer_{$i}")));
+                    \App\Models\RespuestaSeguridad::create([
+                        'user_id' => $usuario->id,
+                        'pregunta_id' => $request->input("question_{$i}"),
+                        'respuesta_hash' => md5(md5($respuesta))
+                    ]);
+                }
+            });
+            
+            \Illuminate\Support\Facades\Log::info('Security questions updated', [
+                'user_id' => $usuario->id,
+                'email' => $usuario->correo
+            ]);
+            
+            return redirect()->route('medico.perfil.edit')
+                ->with('success', 'Preguntas de seguridad actualizadas exitosamente');
+                
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error updating security questions: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Error al actualizar las preguntas de seguridad')
+                ->withInput();
+        }
     }
 }

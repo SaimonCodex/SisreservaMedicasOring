@@ -1,6 +1,6 @@
 @php
-    $admin = auth()->user()->administrador;
-    $temaDinamico = $admin->tema_dinamico ?? false;
+    $admin = auth()->user()->administrador ?? null;
+    $temaDinamico = $admin ? ($admin->tema_dinamico ?? false) : false;
     $baseColor = '#10b981'; // Default
     $textColorOnPrimary = '#ffffff';
 
@@ -147,13 +147,13 @@
                 </button>
                 
                 <div id="submenu-usuarios" class="ml-4 mt-1 pl-3 border-l border-white/10 space-y-1 hidden">
-                    @if($admin->tipo_admin === 'Root')
+                    @if($admin && $admin->tipo_admin === 'Root')
                     <a href="{{ route('usuarios.index') }}" 
                        class="flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-200 {{ request()->is('*/usuarios*') ? 'text-medical-500 bg-medical-500/10' : 'text-slate-400 hover:text-slate-200' }}">
                         <span>Todos los Usuarios</span>
                     </a>
                     @endif
-                    @if($admin->tipo_admin === 'Root')
+                    @if($admin && $admin->tipo_admin === 'Root')
                     <a href="{{ url('/admin/administradores') }}" 
                        class="flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-200 {{ request()->is('*/admin/administradores*') ? 'text-medical-500 bg-medical-500/10' : 'text-slate-400 hover:text-slate-200' }}">
                         <span>Administradores</span>
@@ -247,7 +247,7 @@
                 <span class="font-medium text-sm">Notificaciones</span>
             </a>
  
-            @if($admin->tipo_admin === 'Root')
+            @if($admin && $admin->tipo_admin === 'Root')
             <a href="{{ route('configuracion.index') }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->is('*/configuracion*') ? 'bg-medical-500/20 text-medical-500 ring-1 ring-medical-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-gear-fill text-lg mr-3 {{ request()->is('*/configuracion*') ? 'text-medical-500' : 'text-slate-500 group-hover:text-slate-200' }}"></i>
@@ -262,17 +262,17 @@
         <div class="p-4 border-t border-white/5 bg-black/20">
              <div class="flex items-center gap-3">
                 <div class="relative flex-shrink-0">
-                    @if($admin->foto_perfil)
+                    @if($admin && $admin->foto_perfil)
                         <img src="{{ asset('storage/' . $admin->foto_perfil) }}" class="w-9 h-9 rounded-lg object-cover ring-2 ring-white/10 shadow-sm">
                     @else
                         <div class="w-9 h-9 rounded-lg bg-medical-500 flex items-center justify-center text-xs font-bold text-white shadow-sm ring-2 ring-white/10">
-                            {{ strtoupper(substr($admin->primer_nombre, 0, 1)) }}
+                            {{ $admin ? strtoupper(substr($admin->primer_nombre, 0, 1)) : 'A' }}
                         </div>
                     @endif
                     <div class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full"></div>
                 </div>
                 <div class="overflow-hidden flex-1">
-                    <p class="text-xs font-semibold text-slate-200 truncate">{{ $admin->primer_nombre }} {{ $admin->primer_apellido }}</p>
+                    <p class="text-xs font-semibold text-slate-200 truncate">{{ $admin ? $admin->primer_nombre . ' ' . $admin->primer_apellido : 'Administrador' }}</p>
                     <p class="text-[10px] text-slate-500 flex items-center gap-1">
                         Admin • Online
                     </p>
@@ -308,7 +308,7 @@
                            class="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition-all hover:bg-medical-50 hover:text-medical-600 ring-1 ring-slate-200 group-hover:ring-medical-500">
                             <i class="bi bi-bell-fill text-xl"></i>
                             @php
-                                $unreadAdminCount = auth()->user()->administrador->unreadNotifications()->count();
+                                $unreadAdminCount = $admin ? $admin->unreadNotifications()->count() : 0;
                             @endphp
                             @if($unreadAdminCount > 0)
                                 <span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white" id="notif-count">
@@ -334,7 +334,7 @@
                                     @endif
                                 </div>
                                 <div class="max-h-96 overflow-y-auto">
-                                    @forelse(auth()->user()->administrador->unreadNotifications()->take(5)->get() as $notification)
+                                    @forelse(($admin ? $admin->unreadNotifications()->take(5)->get() : collect()) as $notification)
                                         <a href="{{ $notification->data['link'] ?? '#' }}" 
                                            class="block px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
                                            onclick="event.preventDefault(); marcarComoLeidaAdmin('{{ $notification->id }}', '{{ $notification->data['link'] ?? '#' }}')">
@@ -371,16 +371,16 @@
                     <!-- User Dropdown -->
                     <div class="relative group">
                         <button class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                            @if($admin->foto_perfil)
+                            @if($admin && $admin->foto_perfil)
                                 <img src="{{ asset('storage/' . $admin->foto_perfil) }}" class="w-9 h-9 rounded-full object-cover shadow-sm ring-1 ring-gray-200">
                             @else
                                 <div class="w-9 h-9 rounded-full bg-gradient-to-br from-medical-500 to-indigo-600 flex items-center justify-center text-white font-semibold shadow-md">
-                                    {{ strtoupper(substr($admin->primer_nombre, 0, 1)) }}
+                                    {{ $admin ? strtoupper(substr($admin->primer_nombre, 0, 1)) : 'A' }}
                                 </div>
                             @endif
                             <div class="hidden md:block text-left">
-                                <p class="text-sm font-semibold text-gray-900 leading-tight">{{ $admin->primer_nombre }}</p>
-                                <p class="text-[10px] text-gray-500 uppercase tracking-tighter">{{ $admin->tipo_admin }}</p>
+                                <p class="text-sm font-semibold text-gray-900 leading-tight">{{ $admin ? $admin->primer_nombre : 'Admin' }}</p>
+                                <p class="text-[10px] text-gray-500 uppercase tracking-tighter">{{ $admin ? $admin->tipo_admin : 'User' }}</p>
                             </div>
                             <i class="bi bi-chevron-down text-xs text-gray-400 group-hover:text-medical-500 transition-colors"></i>
                         </button>
@@ -388,7 +388,7 @@
                         <!-- Dropdown Menu -->
                         <div class="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-hard border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50 overflow-hidden">
                             <div class="p-4 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
-                                <p class="text-sm font-bold text-gray-900">{{ $admin->primer_nombre }} {{ $admin->primer_apellido }}</p>
+                                <p class="text-sm font-bold text-gray-900">{{ $admin ? $admin->primer_nombre . ' ' . $admin->primer_apellido : 'Administrador' }}</p>
                                 <p class="text-[10px] text-gray-500 truncate mt-0.5">{{ auth()->user()->correo }}</p>
                             </div>
                             <div class="p-2">
@@ -396,7 +396,7 @@
                                     <i class="bi bi-person-badge text-lg"></i>
                                     <span>Mi Perfil Personalizado</span>
                                 </a>
-                                @if($admin->tipo_admin === 'Root')
+                                @if($admin && $admin->tipo_admin === 'Root')
                                 <a href="{{ route('configuracion.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-all text-sm text-gray-600 font-medium">
                                     <i class="bi bi-gear-wide-connected text-lg"></i>
                                     <span>Configuración Sistema</span>
@@ -649,8 +649,8 @@
 
         // Real-time Notifications Listener (Laravel Echo)
         document.addEventListener('DOMContentLoaded', () => {
-            if (window.Echo) {
-                const adminId = "{{ auth()->user()->administrador->id ?? '' }}";
+            if (window.Echo && @json($admin !== null)) {
+                const adminId = "{{ $admin->id ?? '' }}";
                 if (adminId) {
                     window.Echo.private(`App.Models.Administrador.${adminId}`)
                         .notification((notification) => {
@@ -690,9 +690,9 @@
         });
 
         // Show unread admin notifications as toasts ONLY if the login flag is present
-        @if(session('mostrar_bienvenida_toasts'))
+        @if(session('mostrar_bienvenida_toasts') && $admin)
             @php
-                $toasts = auth()->user()->administrador->unreadNotifications->take(3)->map(function($n) {
+                $toasts = $admin->unreadNotifications->take(3)->map(function($n) {
                     return [
                         'id' => $n->id,
                         'title' => $n->data['titulo'] ?? 'Notificación',
