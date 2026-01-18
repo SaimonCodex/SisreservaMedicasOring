@@ -15,9 +15,9 @@
 
 
     @php
-        $paciente = auth()->user()->paciente;
-        $temaDinamico = $paciente->tema_dinamico ?? false;
-        $bannerColor = $paciente->banner_color ?? null;
+        $paciente = auth()->user()->paciente ?? null;
+        $temaDinamico = $paciente ? ($paciente->tema_dinamico ?? false) : false;
+        $bannerColor = $paciente ? ($paciente->banner_color ?? null) : null;
         
         // Determinar color base para el tema
         $baseColor = '#10b981'; // Emerald 500 predeterminado
@@ -171,7 +171,7 @@
                                class="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition-all hover:bg-medical-50 hover:text-medical-600 ring-1 ring-slate-200 group-hover:ring-medical-500">
                                 <i class="bi bi-bell-fill text-xl"></i>
                                 @php
-                                    $unreadCount = auth()->user()->paciente->unreadNotifications()->count();
+                                    $unreadCount = $paciente ? $paciente->unreadNotifications()->count() : 0;
                                 @endphp
                                 @if($unreadCount > 0)
                                     <span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white">
@@ -195,7 +195,7 @@
                                         @endif
                                     </div>
                                     <div class="max-h-96 overflow-y-auto">
-                                        @forelse(auth()->user()->paciente->unreadNotifications()->take(5)->get() as $notification)
+                                        @forelse(($paciente ? $paciente->unreadNotifications()->take(5)->get() : collect()) as $notification)
                                             <a href="{{ $notification->data['link'] ?? '#' }}" 
                                                class="block px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
                                                onclick="event.preventDefault(); marcarComoLeida('{{ $notification->id }}', '{{ $notification->data['link'] ?? '#' }}')">
@@ -402,8 +402,8 @@
 
         // Laravel Echo Listener
         document.addEventListener('DOMContentLoaded', () => {
-            if (window.Echo) {
-                const pacienteId = {{ auth()->user()->paciente->id }};
+            if (window.Echo && @json($paciente !== null)) {
+                const pacienteId = {{ $paciente->id ?? 'null' }};
                 
                 window.Echo.private(`App.Models.Paciente.${pacienteId}`)
                     .notification((notification) => {
@@ -480,9 +480,9 @@
         }
 
         // Show unread notifications as toasts ONLY if the login flag is present
-        @if(session('mostrar_bienvenida_toasts'))
+        @if(session('mostrar_bienvenida_toasts') && $paciente)
             @php
-                $toasts = auth()->user()->paciente->unreadNotifications->take(3)->map(function($n) {
+                $toasts = $paciente->unreadNotifications->take(3)->map(function($n) {
                     return [
                         'id' => $n->id,
                         'title' => $n->data['titulo'] ?? 'Notificación',

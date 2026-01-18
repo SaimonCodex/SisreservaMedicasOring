@@ -282,3 +282,25 @@ export function showFormErrors(form, errors) {
         firstError.focus();
     }
 }
+
+/**
+ * Toggle Submit Button State
+ * Deshabilita o habilita un botón de submit y cambia su texto
+ */
+export function toggleSubmitButton(button, disabled = true, loadingText = null) {
+    if (disabled) {
+        button.disabled = true;
+        button.classList.add('opacity-50', 'cursor-not-allowed');
+        if (loadingText) {
+            button.dataset.originalText = button.innerHTML;
+            button.innerHTML = loadingText;
+        }
+    } else {
+        button.disabled = false;
+        button.classList.remove('opacity-50', 'cursor-not-allowed');
+        if (button.dataset.originalText) {
+            button.innerHTML = button.dataset.originalText;
+            delete button.dataset.originalText;
+        }
+    }
+}

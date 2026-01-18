@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Security Questions</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            color: #4ec9b0;
+        }
+
+        .section {
+            background: #252526;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #3c3c3c;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #3c3c3c;
+            background: #3c3c3c;
+            color: #d4d4d4;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #0e639c;
+            color: white;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #1177bb;
+        }
+
+        .hash {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 12px;
+            color: #ce9178;
+        }
+
+        .success {
+            color: #4ec9b0;
+        }
+
+        .error {
+            color: #f48771;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        td,
+        th {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #3c3c3c;
+        }
+
+        th {
+            background: #1e1e1e;
+            color: #4ec9b0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔍 Debug de Preguntas de Seguridad</h1>
+
+        <div class="section">
+            <h2>Generador de Hash</h2>
+            <p>Ingresa una respuesta para ver cómo se genera el hash:</p>
+            <input type="text" id="testAnswer" placeholder="Ejemplo: Hola Mundo" value="">
+            <button onclick="generateHash()">Generar Hash</button>
+
+            <div id="hashResults" style="margin-top: 20px;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Verificar Respuestas Guardadas</h2>
+            <p>Email del usuario:</p>
+            <input type="email" id="userEmail" placeholder="correo@ejemplo.com">
+            <button onclick="checkStoredAnswers()">Verificar Hashes Almacenados</button>
+
+            <div id="storedResults" style="margin-top: 20px;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Test de Comparación</h2>
+            <p>Respuesta ingresada:</p>
+            <input type="text" id="inputAnswer" placeholder="Respuesta del usuario">
+            <p>Hash almacenado en base de datos:</p>
+            <input type="text" id="storedHash" placeholder="Hash de la BD">
+            <button onclick="compareHash()">Comparar</button>
+
+            <div id="compareResults" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        function generateHash() {
+            const answer = document.getElementById('testAnswer').value;
+            const resultsDiv = document.getElementById('hashResults');
+
+            if (!answer) {
+                resultsDiv.innerHTML = '<p class="error">Por favor ingresa una respuesta</p>';
+                return;
+            }
+
+            // Simular el proceso de hashing (esto debe coincidir con el backend)
+            const trimmed = answer.trim();
+            const lowercase = trimmed.toLowerCase();
+
+            const hashTrimmed = md5(md5(trimmed));
+            const hashLowercase = md5(md5(lowercase));
+            const hashRaw = md5(md5(answer));
+
+            resultsDiv.innerHTML = `
+                <table>
+                    <tr><th>Formato</th><th>Valor</th><th>Hash MD5(MD5(...))</th></tr>
+                    <tr>
+                        <td>Original</td>
+                        <td>"${answer}"</td>
+                        <td class="hash">${hashRaw}</td>
+                    </tr>
+                    <tr>
+                        <td>Trimmed (anterior)</td>
+                        <td>"${trimmed}"</td>
+                        <td class="hash">${hashTrimmed}</td>
+                    </tr>
+                    <tr>
+                        <td>Lowercase + Trimmed (NUEVO)</td>
+                        <td>"${lowercase}"</td>
+                        <td class="hash">${hashLowercase}</td>
+                    </tr>
+                </table>
+                <p class="success">✓ El nuevo formato (lowercase) debería usarse en registro y actualización de preguntas</p>
+            `;
+        }
+
+        function compareHash() {
+            const input = document.getElementById('inputAnswer').value;
+            const stored = document.getElementById('storedHash').value;
+            const resultsDiv = document.getElementById('compareResults');
+
+            if (!input || !stored) {
+                resultsDiv.innerHTML = '<p class="error">Completa ambos campos</p>';
+                return;
+            }
+
+            const normalized = input.toLowerCase().trim();
+            const trimmed = input.trim();
+            const raw = input;
+
+            const hashNormalized = md5(md5(normalized));
+            const hashTrimmed = md5(md5(trimmed));
+            const hashRaw = md5(md5(raw));
+
+            const matchNormalized = hashNormalized === stored;
+            const matchTrimmed = hashTrimmed === stored;
+            const matchRaw = hashRaw === stored;
+
+            resultsDiv.innerHTML = `
+                <h3>Resultados de Comparación:</h3>
+                <table>
+                    <tr><th>Formato</th><th>Hash Generado</th><th>¿Coincide?</th></tr>
+                    <tr>
+                        <td>Normalized (lowercase + trim)</td>
+                        <td class="hash">${hashNormalized}</td>
+                        <td class="${matchNormalized ? 'success' : 'error'}">${matchNormalized ? '✓ SÍ' : '✗ NO'}</td>
+                    </tr>
+                    <tr>
+                        <td>Trimmed only</td>
+                        <td class="hash">${hashTrimmed}</td>
+                        <td class="${matchTrimmed ? 'success' : 'error'}">${matchTrimmed ? '✓ SÍ' : '✗ NO'}</td>
+                    </tr>
+                    <tr>
+                        <td>Raw (sin cambios)</td>
+                        <td class="hash">${hashRaw}</td>
+                        <td class="${matchRaw ? 'success' : 'error'}">${matchRaw ? '✓ SÍ' : '✗ NO'}</td>
+                    </tr>
+                </table>
+                <div style="margin-top: 20px; padding: 15px; background: #1e1e1e; border-radius: 4px;">
+                    <strong>Hash almacenado:</strong><br>
+                    <span class="hash">${stored}</span>
+                </div>
+            `;
+        }
+
+        async function checkStoredAnswers() {
+            const email = document.getElementById('userEmail').value;
+            const resultsDiv = document.getElementById('storedResults');
+
+            if (!email) {
+                resultsDiv.innerHTML = '<p class="error">Ingresa un email</p>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<p>Consultando base de datos...</p>';
+
+            try {
+                // Aquí deberías hacer una petición al backend
+                // Por ahora, mostramos instrucciones
+                resultsDiv.innerHTML = `
+                    <p class="error">⚠ Esta función requiere un endpoint backend</p>
+                    <p>Para verificar manualmente, ejecuta en tinker:</p>
+                    <pre style="background: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto;">
+$usuario = \\App\\Models\\Usuario::where('correo', '${email}')->first();
+if ($usuario) {
+    $respuestas = \\App\\Models\\RespuestaSeguridad::where('user_id', $usuario->id)
+        ->with('pregunta')->get();
+    
+    foreach ($respuestas as $r) {
+        echo "Pregunta: " . $r->pregunta->pregunta . "\\n";
+        echo "Hash: " . $r->respuesta_hash . "\\n\\n";
+    }
+}
+                    </pre>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Función MD5 simple (no para producción, solo debug)
+        function md5(string) {
+            // Implementación simplificada - usar una librería real en producción
+            // Por ahora usaremos crypto si está disponible
+            if (typeof crypto !== 'undefined' && crypto.subtle) {
+                // Navegadores modernos
+                return crypto.subtle.digest('MD5', new TextEncoder().encode(string))
+                    .then(hash => Array.from(new Uint8Array(hash))
+                        .map(b => b.toString(16).padStart(2, '0'))
+                        .join(''));
+            }
+
+            // Fallback: usar una implementación JavaScript de MD5
+            // Para simplicidad, aquí deberías incluir una librería como blueimp-md5
+            // Por ahora retornamos un placeholder
+            return 'MD5_NOT_AVAILABLE_' + string.length;
+        }
+
+        // Cargar librería MD5 desde CDN
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js';
+        script.onload = function () {
+            console.log('MD5 library loaded');
+            // Reemplazar la función md5 placeholder
+            window.md5 = window.md5 || function (str) { return window.md5(str); };
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+
+</html>

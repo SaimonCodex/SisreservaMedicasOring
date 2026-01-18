@@ -201,9 +201,24 @@
                                    placeholder="Repita la contraseña">
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-2">
+                    <p class="text-xs text-gray-500 mt-2 mb-4">
                         <i class="bi bi-info-circle"></i> Deja estos campos en blanco si no deseas cambiar tu contraseña.
                     </p>
+
+                    <div class="pt-4 border-t border-gray-100">
+                        <a href="{{ route('admin.security-questions') }}" class="flex items-center justify-between p-4 bg-amber-50 rounded-xl border border-amber-100 hover:bg-amber-100 transition-colors group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 group-hover:bg-amber-200 transition-colors">
+                                    <i class="bi bi-question-shield text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-900 text-sm">Preguntas de Seguridad</h4>
+                                    <p class="text-xs text-gray-600">Configura tus preguntas para recuperar acceso</p>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-gray-400 group-hover:text-amber-600 transition-colors"></i>
+                        </a>
+                    </div>
                 </div>
 
             </div>
@@ -388,6 +403,15 @@
         }
         if (file) reader.readAsDataURL(file);
     }
+
+    // Mostrar alerta si la contraseña es igual a la actual
+    @if(session('error_password'))
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof createToast === 'function') {
+                createToast('Seguridad', "{{ session('error_password') }}", 'danger');
+            }
+        });
+    @endif
 
     function previewBanner(event) {
         const file = event.target.files[0];

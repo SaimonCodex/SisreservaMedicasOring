@@ -36,23 +36,95 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [AuthController::class, 'register']);
+// Rutas de recuperación profesional
 Route::get('/recovery', [AuthController::class, 'showRecovery'])->name('recovery');
-Route::post('/recovery', [AuthController::class, 'sendRecovery']);
+Route::post('/recovery/send-email', [AuthController::class, 'sendRecovery'])->name('recovery.send-email');
+Route::post('/recovery/get-questions', [AuthController::class, 'getSecurityQuestions'])->name('recovery.get-questions');
+Route::post('/recovery/verify-answers', [AuthController::class, 'verifySecurityAnswers'])->name('recovery.verify-answers');
+
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/password/reset', [AuthController::class, 'showRecovery'])->name('password.request');
 Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 
-// AJAX Recovery Routes
-Route::post('/recovery/get-questions', [AuthController::class, 'getSecurityQuestions'])->name('recovery.get-questions');
-Route::post('/recovery/verify-answers', [AuthController::class, 'verifySecurityAnswers'])->name('recovery.verify-answers');
+// AJAX Validation Routes for Register
+Route::post('/verificar-correo', [AuthController::class, 'verificarCorreo'])->name('validate.email');
+Route::post('/verificar-documento', [AuthController::class, 'getSecurityQuestions'])->name('validate.document'); // Reuse getSecurityQuestions as it checks existence
 
-// Public Location Routes (for Register)
-Route::prefix('ubicacion')->group(function () {
-    Route::get('get-ciudades/{estadoId}', [UbicacionController::class, 'getCiudadesByEstado'])->name('ubicacion.get-ciudades');
-    Route::get('get-municipios/{estadoId}', [UbicacionController::class, 'getMunicipiosByEstado'])->name('ubicacion.get-municipios');
-    Route::get('get-parroquias/{municipioId}', [UbicacionController::class, 'getParroquiasByMunicipio'])->name('ubicacion.get-parroquias');
+// Public Location Routes for Register (using closures to avoid middleware)
+Route::get('ubicacion/get-ciudades/{estadoId}', function($estadoId) {
+    $ciudades = \App\Models\Ciudad::where('id_estado', $estadoId)->where('status', true)->get();
+    return response()->json($ciudades);
 });
+
+Route::get('ubicacion/get-municipios/{estadoId}', function($estadoId) {
+    $municipios = \App\Models\Municipio::where('id_estado', $estadoId)->where('status', true)->get();
+    return response()->json($municipios);
+});
+
+Route::get('ubicacion/get-parroquias/{municipioId}', function($municipioId) {
+    $parroquias = \App\Models\Parroquia::where('id_municipio', $municipioId)->where('status', true)->get();
+    return response()->json($parroquias);
+});
+
+// TEMPORARY: Reset Security Questions for Debugging
+Route::get('/force-reset-questions', function() {
+    // ID 7 as seen in logs "milenasivira@gmail.com"
+    $usuario = \App\Models\Usuario::find(7);
+    
+    if(!$usuario) return "Usuario ID 7 no encontrado";
+    
+    // Delet old answers
+    \App\Models\RespuestaSeguridad::where('user_id', $usuario->id)->delete();
+    
+    // Create new ones (All 'hola')
+    // Encrypted with md5(md5(trim('hola'))) -> 'cf96bce69f409820e4b6bce661eb4e78'
+    $hash = md5(md5('hola'));
+    
+    // Pregunta IDs: 1, 2, 3 (Assuming they exist in catalog)
+    for($i=1; $i<=3; $i++) {
+        \App\Models\RespuestaSeguridad::create([
+            'user_id' => $usuario->id,
+            'pregunta_id' => $i,
+            'respuesta_hash' => $hash
+        ]);
+    }
+    
+    return "Preguntas de seguridad reseteadas para {$usuario->correo}. La respuesta ahora es 'hola' para las 3 preguntas.";
+});
+
+// Test route to verify user existence (TEMPORARY - REMOVE AFTER DEBUGGING)
+Route::get('/test-user-search/{email}', function($email) {
+    $usuario = \App\Models\Usuario::where('correo', $email)->first();
+    
+    if ($usuario) {
+        $respuestas = \App\Models\RespuestaSeguridad::where('user_id', $usuario->id)
+                                                    ->with('pregunta')
+                                                    ->get();
+        
+        return response()->json([
+            'found' => true,
+            'usuario' => [
+                'id' => $usuario->id,
+                'correo' => $usuario->correo,
+                'numero_documento' => $usuario->numero_documento ?? 'N/A',
+                'rol_id' => $usuario->rol_id
+            ],
+            'respuestas_count' => $respuestas->count(),
+            'preguntas' => $respuestas->map(fn($r) => [
+                'pregunta_id' => $r->pregunta_id,
+                'pregunta_texto' => $r->pregunta->pregunta ?? 'N/A'
+            ])
+        ]);
+    }
+    
+    return response()->json([
+        'found' => false,
+        'searched_email' => $email,
+        'all_usuarios_count' => \App\Models\Usuario::count(),
+        'sample_emails' => \App\Models\Usuario::limit(5)->pluck('correo')
+    ]);
+})->name('test.user.search');
 
 // Rutas públicas para búsqueda de médicos
 Route::get('buscar-medicos-publico', [MedicoController::class, 'buscar'])->name('medicos.buscar.publico');
@@ -124,6 +196,10 @@ Route::middleware(['auth'])->group(function () {
         // Rutas de perfil del paciente
         Route::get('/perfil/editar', [PacienteController::class, 'editPerfil'])->name('paciente.perfil.edit');
         Route::put('/perfil', [PacienteController::class, 'updatePerfil'])->name('paciente.perfil.update');
+
+        // Preguntas de Seguridad Paciente
+        Route::get('/perfil/preguntas-seguridad', [PacienteController::class, 'showSecurityQuestions'])->name('paciente.security-questions');
+        Route::post('/perfil/preguntas-seguridad', [PacienteController::class, 'updateSecurityQuestions'])->name('paciente.security-questions.update');
         
         // Rutas de notificaciones del paciente
         Route::prefix('notificaciones')->group(function () {
@@ -154,12 +230,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/solicitudes-acceso/{id}/rechazar', [HistoriaClinicaController::class, 'rechazarSolicitud'])->name('representante.solicitudes.rechazar');
     });
 
-    // Rutas Globales de Ubicación (AJAX)
-    Route::prefix('ubicacion')->group(function () {
-        Route::get('get-ciudades/{estadoId}', [UbicacionController::class, 'getCiudadesByEstado'])->name('ubicacion.get-ciudades');
-        Route::get('get-municipios/{estadoId}', [UbicacionController::class, 'getMunicipiosByEstado'])->name('ubicacion.get-municipios');
-        Route::get('get-parroquias/{municipioId}', [UbicacionController::class, 'getParroquiasByMunicipio'])->name('ubicacion.get-parroquias');
-    });
+    // NOTE: Location AJAX routes are defined as public routes (lines 55-68) to allow access from registration page
+    // Do NOT duplicate them here inside the auth middleware
     
     // =========================================================================
     // ADMINISTRACIÓN DEL SISTEMA
@@ -182,6 +254,10 @@ Route::middleware(['auth'])->group(function () {
         // Perfil Admin
         Route::get('perfil/editar', [AdministradorController::class, 'editPerfil'])->name('admin.perfil.edit');
         Route::put('perfil', [AdministradorController::class, 'updatePerfil'])->name('admin.perfil.update');
+        
+        // Preguntas de Seguridad Admin
+        Route::get('perfil/preguntas-seguridad', [AdministradorController::class, 'showSecurityQuestions'])->name('admin.security-questions');
+        Route::post('perfil/preguntas-seguridad', [AdministradorController::class, 'updateSecurityQuestions'])->name('admin.security-questions.update');
     });
     
     // =========================================================================
@@ -196,6 +272,10 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('medico')->middleware(['auth'])->group(function () {
         Route::get('/perfil/editar', [MedicoController::class, 'editPerfil'])->name('medico.perfil.edit');
         Route::put('/perfil', [MedicoController::class, 'updatePerfil'])->name('medico.perfil.update');
+
+        // Preguntas de Seguridad Medico
+        Route::get('/perfil/preguntas-seguridad', [MedicoController::class, 'showSecurityQuestions'])->name('medico.security-questions');
+        Route::post('/perfil/preguntas-seguridad', [MedicoController::class, 'updateSecurityQuestions'])->name('medico.security-questions.update');
 
         // Rutas de notificaciones del médico
         Route::prefix('notificaciones')->group(function () {
@@ -470,6 +550,18 @@ Route::middleware(['auth'])->group(function () {
 if (app()->environment('local')) {
     Route::get('/debug', function () {
         return view('debug');
+    });
+
+    Route::get('/test-mail', function () {
+        try {
+            \Illuminate\Support\Facades\Mail::raw('Este es un correo de prueba de Mailtrap desde el Sistema Médico.', function ($message) {
+                $message->to('test@example.com')
+                        ->subject('Prueba de Configuración Mailtrap');
+            });
+            return 'Correo enviado correctamente. Revisa tu bandeja de entrada de Mailtrap.';
+        } catch (\Exception $e) {
+            return 'Error al enviar el correo: ' . $e->getMessage();
+        }
     });
 }
 

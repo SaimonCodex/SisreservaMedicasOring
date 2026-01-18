@@ -170,7 +170,7 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Gestión</p>
             </div>
             
-            <a href="{{ route('medicos.horarios', $medico->id ?? auth()->user()->medico->id) }}" 
+            <a href="{{ route('medicos.horarios', $medico->id ?? 0) }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('medicos.horarios') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-calendar-week-fill text-lg mr-3 {{ request()->routeIs('medicos.horarios') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mi Agenda</span>
@@ -187,7 +187,7 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cuenta</p>
             </div>
             
-            <a href="{{ route('medicos.show', $medico->id ?? auth()->user()->medico->id) }}" 
+            <a href="{{ route('medicos.show', $medico->id ?? 0) }}" 
                class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group {{ request()->routeIs('medicos.show') || request()->is('*/medico/perfil*') ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200' }}">
                 <i class="bi bi-person-fill text-lg mr-3 {{ request()->routeIs('medicos.show') || request()->is('*/medico/perfil*') ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200 transition-colors' }}"></i>
                 <span class="font-medium text-sm">Mi Perfil</span>
@@ -654,6 +654,55 @@
                 });
             }, 3000); // 3 seconds
         });
+
+        // Toast Creation Function
+        function createToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const iconMap = {
+                success: '<i class="bi bi-check-lg"></i>',
+                error: '<i class="bi bi-exclamation-triangle-fill"></i>',
+                danger: '<i class="bi bi-exclamation-triangle-fill"></i>',
+                info: '<i class="bi bi-info-circle-fill"></i>',
+                warning: '<i class="bi bi-exclamation-circle-fill"></i>'
+            };
+            
+            const colorMap = {
+                success: 'text-green-500 bg-green-100 dark:bg-green-800 dark:text-green-200',
+                error: 'text-red-500 bg-red-100 dark:bg-red-800 dark:text-red-200',
+                danger: 'text-red-500 bg-red-100 dark:bg-red-800 dark:text-red-200',
+                info: 'text-blue-500 bg-blue-100 dark:bg-blue-800 dark:text-blue-200',
+                warning: 'text-amber-500 bg-amber-100 dark:bg-amber-800 dark:text-amber-200'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = 'toast pointer-events-auto flex items-center w-full max-w-xs p-4 text-gray-500 bg-white rounded-lg shadow-lg border border-gray-100 dark:text-gray-400 dark:bg-gray-800 transition-all duration-300 transform translate-x-0 animate-slide-in-right mb-2';
+            toast.role = 'alert';
+            
+            toast.innerHTML = `
+                <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg ${colorMap[type] || colorMap.info}">
+                    ${iconMap[type] || iconMap.info}
+                </div>
+                <div class="ml-3 text-sm font-medium">
+                    <div class="font-bold text-gray-900 mb-0.5">${title}</div>
+                    ${message}
+                </div>
+                <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" onclick="this.closest('.toast').remove()">
+                    <span class="sr-only">Cerrar</span>
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto remove
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                setTimeout(() => toast.remove(), 500);
+            }, 5000);
+        }
     </script>
 
     @stack('scripts')

@@ -1,55 +1,60 @@
 @extends('emails.layout')
 
-@section('title', 'Recuperación de Contraseña')
-
 @section('content')
-<h1 class="email-title">🔐 Recuperación de Contraseña</h1>
+<tr>
+    <td style="padding: 40px 30px;">
+        <!-- Icon Header -->
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="display: inline-block; width: 80px; height: 80px; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); border-radius: 50%; padding: 20px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">
+                <i class="bi bi-key-fill" style="font-size: 40px; color: white; line-height: 40px;"></i>
+            </div>
+        </div>
 
-<div class="email-content">
-    <p>Hola <strong>{{ $usuario->primer_nombre }} {{ $usuario->primer_apellido }}</strong>,</p>
-    
-    <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>MediReserva</strong>.</p>
-    
-    <p>Haz clic en el botón de abajo para crear una nueva contraseña:</p>
-</div>
+        <!-- Title -->
+        <h1 style="color: #1e293b; font-size: 28px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
+            Recuperar Contraseña
+        </h1>
 
-<center>
-    <a href="{{ $urlRecuperacion }}" class="btn-primary">Restablecer Contraseña</a>
-</center>
+        <!-- Message -->
+        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+            Hola <strong>{{ $usuario->nombre_completo }}</strong>,
+        </p>
 
-<div class="alert alert-warning">
-    <strong>⏰ Este enlace expirará en 60 minutos</strong><br>
-    Por razones de seguridad, este enlace solo es válido por una hora.
-</div>
+        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+            Recibimos una solicitud para restablecer la contraseña de tu cuenta en el <strong>Sistema de Reservas Médicas</strong>. Si no solicitaste esto, puedes ignorar este correo.
+        </p>
 
-<div class="alert alert-danger">
-    <strong>⚠️ ¿No solicitaste este cambio?</strong><br>
-    Si no fuiste tú quien solicitó restablecer la contraseña, ignora este correo. Tu contraseña permanecerá segura.
-</div>
+        <!-- Action Button -->
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{ $resetUrl }}" 
+               style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
+                Restablecer Contraseña
+            </a>
+        </div>
 
-<div class="email-content">
-    <p><strong>Consejos de seguridad:</strong></p>
-    <ul style="padding-left: 20px; margin-top: 10px;">
-        <li>Usa una contraseña única que no uses en otros sitios</li>
-        <li>Tu contraseña debe tener al menos 8 caracteres</li>
-        <li>Combina letras mayúsculas, minúsculas, números y símbolos</li>
-        <li>Nunca compartas tu contraseña con nadie</li>
-    </ul>
-</div>
+        <!-- Info Box -->
+        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 25px 0; border-radius: 8px;">
+            <p style="color: #92400e; font-size: 14px; line-height: 1.6; margin: 0;">
+                <strong>⏰ Este enlace expirará en 60 minutos</strong><br>
+                Por tu seguridad, este enlace es temporal. Si expira, deberás solicitar uno nuevo.
+            </p>
+        </div>
 
-<div class="email-content" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
-    <p style="color: #6B7280; font-size: 14px;">
-        <strong>¿Problemas con el botón?</strong><br>
-        Si el botón no funciona, copia y pega la siguiente URL en tu navegador:
-    </p>
-    <p style="background-color: #F3F4F6; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; word-break: break-all; margin-top: 10px;">
-        {{ $urlRecuperacion }}
-    </p>
-</div>
+        <!-- Security Tips -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin-top: 30px;">
+            <h4 style="color: #1e293b; margin: 0 0 10px 0; font-size: 14px;">Consejos de Seguridad:</h4>
+            <ul style="color: #64748b; font-size: 13px; margin: 0; padding-left: 20px;">
+                <li>Usa una contraseña que no repitas en otros sitios.</li>
+                <li>Incluye letras (mayúsculas/minúsculas), números y símbolos.</li>
+                <li>Nunca compartas tu información de acceso.</li>
+            </ul>
+        </div>
 
-<div class="email-content" style="text-align: center; margin-top: 20px;">
-    <p style="color: #6B7280; font-size: 12px;">
-        Si necesitas ayuda adicional, contáctanos a través de nuestro equipo de soporte.
-    </p>
-</div>
+        <!-- Trouble Link -->
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 30px; text-align: center;">
+            ¿Problemas con el botón? Copia y pega esta URL en tu navegador:<br>
+            <span style="display: block; margin-top: 5px; color: #3b82f6;">{{ $resetUrl }}</span>
+        </p>
+    </td>
+</tr>
 @endsection

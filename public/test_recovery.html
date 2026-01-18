@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Security Questions Recovery</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+
+        .test-section h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        input,
+        button {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .info {
+            color: #17a2b8;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .result.success-bg {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .result.error-bg {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+
+        .question-item {
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔐 Test de Recuperación por Preguntas de Seguridad</h1>
+        <p class="subtitle">Herramienta de diagnóstico para verificar el flujo de recuperación de contraseña</p>
+
+        <!-- Step 1: Get Questions -->
+        <div class="test-section">
+            <h3>Paso 1: Buscar Usuario y Obtener Preguntas</h3>
+            <p style="font-size: 14px; color: #666;">Ingresa un correo electrónico para buscar las preguntas de
+                seguridad:</p>
+            <input type="email" id="identifier" placeholder="correo@ejemplo.com" value="milenasivira@gmail.com">
+            <button onclick="testGetQuestions()" id="btnGetQuestions">
+                🔍 Buscar Preguntas
+            </button>
+            <div id="result-questions"></div>
+        </div>
+
+        <!-- Step 2: Verify Answers -->
+        <div class="test-section" id="step2-section" style="display: none;">
+            <h3>Paso 2: Verificar Respuestas</h3>
+            <p style="font-size: 14px; color: #666;">Responde las preguntas de seguridad:</p>
+            <div id="questions-form"></div>
+            <button onclick="testVerifyAnswers()" id="btnVerify">
+                ✅ Verificar Respuestas
+            </button>
+            <div id="result-verify"></div>
+        </div>
+
+        <!-- Debug Info -->
+        <div class="test-section" style="border-color: #6c757d;">
+            <h3 style="color: #6c757d;">📋 Información de Debug</h3>
+            <div id="debug-info" style="font-size: 12px; color: #666;">
+                <p>Base URL: <span class="info" id="base-url"></span></p>
+                <p>CSRF Token: <span class="info" id="csrf-status">Buscando...</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = 'http://localhost/sisreservamedicasoring/public';
+        let userId = null;
+        let questions = [];
+        let csrfToken = '';
+
+        // Initialize
+        document.getElementById('base-url').textContent = baseUrl;
+        fetchCSRFToken();
+
+        async function fetchCSRFToken() {
+            try {
+                const response = await fetch(`${baseUrl}/recovery`);
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const tokenInput = doc.querySelector('input[name="_token"]');
+                if (tokenInput) {
+                    csrfToken = tokenInput.value;
+                    document.getElementById('csrf-status').textContent = `✓ Token encontrado (${csrfToken.substring(0, 10)}...)`;
+                    document.getElementById('csrf-status').classList.add('success');
+                } else {
+                    document.getElementById('csrf-status').textContent = '✗ No se encontró token CSRF';
+                    document.getElementById('csrf-status').classList.add('error');
+                }
+            } catch (error) {
+                console.error('Error fetching CSRF token:', error);
+                document.getElementById('csrf-status').textContent = '✗ Error al obtener token';
+                document.getElementById('csrf-status').classList.add('error');
+            }
+        }
+
+        async function testGetQuestions() {
+            const identifier = document.getElementById('identifier').value.trim();
+            const resultDiv = document.getElementById('result-questions');
+            const btn = document.getElementById('btnGetQuestions');
+
+            if (!identifier) {
+                resultDiv.innerHTML = '<div class="result error-bg"><span class="error">⚠ Por favor ingresa un correo electrónico</span></div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="result"><span class="info">🔄 Enviando solicitud...</span></div>';
+            btn.disabled = true;
+
+            try {
+                console.log('Sending request to:', `${baseUrl}/recovery/get-questions`);
+                console.log('Identifier:', identifier);
+                console.log('CSRF Token:', csrfToken);
+
+                const response = await fetch(`${baseUrl}/recovery/get-questions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ identifier: identifier })
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok && data.success) {
+                    userId = data.user_id;
+                    questions = data.questions;
+
+                    let questionsHtml = '<div class="result success-bg">';
+                    questionsHtml += `<p class="success">✓ Usuario encontrado (ID: ${data.user_id})</p>`;
+                    questionsHtml += `<p style="margin-top: 10px; font-weight: bold;">Preguntas de seguridad encontradas:</p>`;
+
+                    data.questions.forEach((q, idx) => {
+                        questionsHtml += `<div class="question-item">${idx + 1}. ${q.pregunta}</div>`;
+                    });
+
+                    questionsHtml += '</div>';
+                    resultDiv.innerHTML = questionsHtml;
+
+                    // Show step 2
+                    showStep2(data.questions, data.user_id);
+                } else {
+                    resultDiv.innerHTML = `<div class="result error-bg">
+                        <span class="error">✗ Error: ${data.message || 'Usuario no encontrado'}</span>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `<div class="result error-bg">
+                    <span class="error">✗ Error de conexión: ${error.message}</span>
+                </div>`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function showStep2(questions, user_id) {
+            const formDiv = document.getElementById('questions-form');
+            let html = `<input type="hidden" id="user_id" value="${user_id}">`;
+
+            questions.forEach((q, idx) => {
+                html += `
+                    <div style="margin: 15px 0;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">
+                            Pregunta ${idx + 1}: ${q.pregunta}
+                        </label>
+                        <input type="hidden" id="question_${idx + 1}_id" value="${q.id}">
+                        <input 
+                            type="text" 
+                            id="answer_${idx + 1}" 
+                            placeholder="Tu respuesta"
+                            style="width: 100%;"
+                        >
+                    </div>
+                `;
+            });
+
+            formDiv.innerHTML = html;
+            document.getElementById('step2-section').style.display = 'block';
+            document.getElementById('step2-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function testVerifyAnswers() {
+            const resultDiv = document.getElementById('result-verify');
+            const btn = document.getElementById('btnVerify');
+
+            resultDiv.innerHTML = '<div class="result"><span class="info">🔄 Verificando respuestas...</span></div>';
+            btn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('user_id', userId);
+
+                for (let i = 1; i <= questions.length; i++) {
+                    const questionId = document.getElementById(`question_${i}_id`).value;
+                    const answer = document.getElementById(`answer_${i}`).value;
+                    formData.append(`question_${i}_id`, questionId);
+                    formData.append(`answer_${i}`, answer);
+                }
+
+                console.log('Verifying answers for user:', userId);
+
+                const response = await fetch(`${baseUrl}/recovery/verify-answers`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                console.log('Verification response:', data);
+
+                if (data.success) {
+                    resultDiv.innerHTML = `<div class="result success-bg">
+                        <p class="success">✓ ¡Respuestas correctas!</p>
+                        <p>Token de reseteo: <code>${data.token}</code></p>
+                        <p>Email: <code>${data.email}</code></p>
+                        <p style="margin-top: 10px;">
+                            <a href="${baseUrl}/reset-password/${data.token}?email=${data.email}" 
+                               target="_blank" 
+                               style="color: #007bff; text-decoration: underline;">
+                                → Ir a resetear contraseña
+                            </a>
+                        </p>
+                    </div>`;
+                } else if (data.locked) {
+                    resultDiv.innerHTML = `<div class="result error-bg">
+                        <span class="error">🔒 Cuenta bloqueada</span>
+                        <p>Bloqueada hasta: ${data.blocked_until || 'N/A'}</p>
+                        <p>${data.message}</p>
+                    </div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result error-bg">
+                        <span class="error">✗ Respuestas incorrectas</span>
+                        <p>Intentos restantes: ${data.attempts_remaining !== undefined ? data.attempts_remaining : 'N/A'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `<div class="result error-bg">
+                    <span class="error">✗ Error: ${error.message}</span>
+                </div>`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
